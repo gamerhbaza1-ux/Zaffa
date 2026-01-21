@@ -152,28 +152,8 @@ export default function ChecklistClient({ initialItems, initialCategories }: Che
         <Tabs defaultValue={topLevelCategories[0]?.id} className="w-full" dir="rtl">
             <TabsList className="flex flex-wrap w-full h-auto justify-start">
                 {topLevelCategories.map(category => (
-                    <TabsTrigger key={category.id} value={category.id} className="flex-grow justify-between gap-2 group/tab">
+                    <TabsTrigger key={category.id} value={category.id} className="flex-grow">
                         <span className="truncate">{category.name}</span>
-                        <DropdownMenu>
-                            <DropdownMenuTrigger
-                                onClick={(e) => e.stopPropagation()}
-                                asChild
-                            >
-                                <Button variant="ghost" size="icon" className="h-7 w-7 opacity-0 group-hover/tab:opacity-100 group-data-[state=active]:opacity-100 focus:opacity-100 -mr-2">
-                                  <MoreVertical className="h-4 w-4" />
-                                </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="start" onClick={(e) => e.preventDefault()}>
-                                <DropdownMenuItem onSelect={() => setCategoryToEdit(category)}>
-                                    <Pencil className="ml-2 h-4 w-4" />
-                                    <span>تعديل</span>
-                                </DropdownMenuItem>
-                                <DropdownMenuItem onSelect={() => setCategoryToDelete(category)} className="text-destructive focus:text-destructive">
-                                    <Trash2 className="ml-2 h-4 w-4" />
-                                    <span>حذف</span>
-                                </DropdownMenuItem>
-                            </DropdownMenuContent>
-                        </DropdownMenu>
                     </TabsTrigger>
                 ))}
             </TabsList>
@@ -210,9 +190,29 @@ export default function ChecklistClient({ initialItems, initialCategories }: Che
 
                 return (
                     <TabsContent key={category.id} value={category.id} className="mt-4">
-                         <div className="text-sm text-muted-foreground font-normal flex gap-4 mb-2 p-1">
-                            <span>الإجمالي المتوقع: {formatPrice(expectedInTab)}</span>
-                            <span>الإجمالي المدفوع: {formatPrice(paidInTab)}</span>
+                         <div className="flex justify-between items-center mb-2 gap-4">
+                            <div className="text-sm text-muted-foreground font-normal flex gap-4 p-1">
+                                <span>الإجمالي المتوقع: {formatPrice(expectedInTab)}</span>
+                                <span>الإجمالي المدفوع: {formatPrice(paidInTab)}</span>
+                            </div>
+                             <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                    <Button variant="ghost" size="icon" className="h-8 w-8 flex-shrink-0">
+                                      <MoreVertical className="h-4 w-4" />
+                                       <span className="sr-only">إجراءات الفئة</span>
+                                    </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end">
+                                    <DropdownMenuItem onSelect={() => setCategoryToEdit(category)}>
+                                        <Pencil className="ml-2 h-4 w-4" />
+                                        <span>تعديل</span>
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem onSelect={() => setCategoryToDelete(category)} className="text-destructive focus:text-destructive">
+                                        <Trash2 className="ml-2 h-4 w-4" />
+                                        <span>حذف</span>
+                                    </DropdownMenuItem>
+                                </DropdownMenuContent>
+                            </DropdownMenu>
                         </div>
                         <Card>
                             <CardContent className="p-4 space-y-6">
