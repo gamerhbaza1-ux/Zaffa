@@ -5,4 +5,5 @@ export type ChecklistItem = {
   minPrice: number;
   maxPrice: number;
   isPurchased: boolean;
+  finalPrice?: number;
 };

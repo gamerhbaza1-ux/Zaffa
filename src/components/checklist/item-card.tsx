@@ -17,7 +17,7 @@ type ItemCardProps = {
 
 export function ItemCard({ item, onToggle, onDelete, isPending }: ItemCardProps) {
   const formatPrice = (price: number) => {
-    return new Intl.NumberFormat('ar-EG', { style: 'currency', currency: 'USD', minimumFractionDigits: 0 }).format(price);
+    return new Intl.NumberFormat('ar-EG', { style: 'currency', currency: 'EGP', minimumFractionDigits: 0 }).format(price);
   };
 
   return (
@@ -48,9 +48,15 @@ export function ItemCard({ item, onToggle, onDelete, isPending }: ItemCardProps)
             </label>
             <Badge variant="outline">{item.category}</Badge>
         </div>
-        <p className={cn("text-sm text-muted-foreground", item.isPurchased && 'line-through')}>
-          السعر التقديري: {formatPrice(item.minPrice)} - {formatPrice(item.maxPrice)}
-        </p>
+        {item.isPurchased && typeof item.finalPrice === 'number' ? (
+            <p className="text-sm text-muted-foreground">
+                السعر النهائي: {formatPrice(item.finalPrice)}
+            </p>
+        ) : (
+            <p className={cn("text-sm text-muted-foreground", item.isPurchased && 'line-through')}>
+              السعر التقديري: {formatPrice(item.minPrice)} - {formatPrice(item.maxPrice)}
+            </p>
+        )}
       </div>
       {item.isPurchased && (
         <Badge variant="secondary" className="bg-accent text-accent-foreground border-accent-foreground/20">تم الشراء</Badge>

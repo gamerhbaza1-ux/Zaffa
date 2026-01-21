@@ -18,13 +18,18 @@ const categorySchema = z.object({
   name: z.string().min(1, "اسم الفئة مطلوب."),
 });
 
+const purchaseSchema = z.object({
+  itemId: z.string(),
+  finalPrice: z.coerce.number().min(0, "يجب أن يكون السعر رقمًا موجبًا."),
+});
+
 // In-memory store for demonstration purposes
 let items: ChecklistItem[] = [
   { id: "1", name: "أريكة", category: "أثاث", minPrice: 1500, maxPrice: 3000, isPurchased: false },
-  { id: "2", name: "طقم طاولة طعام", category: "أثاث", minPrice: 800, maxPrice: 1500, isPurchased: true },
+  { id: "2", name: "طقم طاولة طعام", category: "أثاث", minPrice: 800, maxPrice: 1500, isPurchased: true, finalPrice: 950 },
   { id: "3", name: "هيكل سرير ومرتبة", category: "أثاث", minPrice: 1200, maxPrice: 2500, isPurchased: false },
   { id: "4", name: "ثلاجة", category: "أجهزة كهربائية", minPrice: 700, maxPrice: 1200, isPurchased: false },
-  { id: "5", name: "غسالة", category: "أجهزة كهربائية", minPrice: 500, maxPrice: 900, isPurchased: true },
+  { id: "5", name: "غسالة", category: "أجهزة كهربائية", minPrice: 500, maxPrice: 900, isPurchased: true, finalPrice: 750 },
   { id: "6", name: "تلفزيون", category: "أجهزة كهربائية", minPrice: 400, maxPrice: 1000, isPurchased: false },
 ];
 
@@ -96,10 +101,31 @@ export async function addItem(prevState: any, formData: FormData) {
   return { success: true };
 }
 
-export async function toggleItemPurchased(id: string) {
+export async function purchaseItem(prevState: any, formData: FormData) {
+  const validatedFields = purchaseSchema.safeParse(Object.fromEntries(formData.entries()));
+
+  if (!validatedFields.success) {
+    return {
+      errors: validatedFields.error.flatten().fieldErrors,
+    };
+  }
+  
+  await simulateLatency(500);
+
+  const { itemId, finalPrice } = validatedFields.data;
+
+  items = items.map(item =>
+    item.id === itemId ? { ...item, isPurchased: true, finalPrice: finalPrice } : item
+  );
+  revalidatePath("/");
+  return { success: true };
+}
+
+
+export async function unpurchaseItem(id: string) {
   await simulateLatency(500);
   items = items.map(item =>
-    item.id === id ? { ...item, isPurchased: !item.isPurchased } : item
+    item.id === id ? { ...item, isPurchased: false, finalPrice: undefined } : item
   );
   revalidatePath("/");
 }

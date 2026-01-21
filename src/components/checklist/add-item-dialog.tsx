@@ -34,6 +34,7 @@ import {
 } from "@/components/ui/form";
 import { Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import React from 'react';
 
 const itemSchema = z.object({
   name: z.string().min(1, "اسم العنصر مطلوب."),
@@ -65,7 +66,7 @@ type AddItemDialogProps = {
 };
 
 export function AddItemDialog({ open, onOpenChange, onItemAdded, categories }: AddItemDialogProps) {
-  const [state, formAction] = useActionState(addItem, { errors: {} });
+  const [state, formAction] = React.useActionState(addItem, { errors: {} });
   const formRef = useRef<HTMLFormElement>(null);
   const { toast } = useToast();
 

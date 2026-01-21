@@ -2,7 +2,7 @@
 
 import { useState, useTransition, useOptimistic, useMemo } from 'react';
 import type { ChecklistItem } from '@/lib/types';
-import { deleteItem, toggleItemPurchased } from '@/lib/actions';
+import { deleteItem, unpurchaseItem } from '@/lib/actions';
 import { Button } from '@/components/ui/button';
 import { Plus, Upload, ListPlus } from 'lucide-react';
 import { ItemCard } from './item-card';
@@ -10,6 +10,7 @@ import { ProgressSummary } from './progress-summary';
 import { AddItemDialog } from './add-item-dialog';
 import { ImportDialog } from './import-dialog';
 import { AddCategoryDialog } from './add-category-dialog';
+import { PurchaseDialog } from './purchase-dialog';
 import {
   Accordion,
   AccordionContent,
@@ -28,11 +29,11 @@ export default function ChecklistClient({ initialItems, initialCategories }: Che
   const [isPending, startTransition] = useTransition();
   const [optimisticItems, setOptimisticItems] = useOptimistic(
     initialItems,
-    (state, { action, item, id }: { action: 'toggle' | 'delete', item?: ChecklistItem, id?: string }) => {
-      if (action === 'toggle' && item) {
-        return state.map(i => (i.id === item.id ? { ...i, isPurchased: !i.isPurchased } : i));
+    (state, { action, id }: { action: 'unpurchase' | 'delete', id: string }) => {
+      if (action === 'unpurchase') {
+        return state.map(i => (i.id === id ? { ...i, isPurchased: false, finalPrice: undefined } : i));
       }
-      if (action === 'delete' && id) {
+      if (action === 'delete') {
         return state.filter(i => i.id !== id);
       }
       return state;
@@ -42,14 +43,20 @@ export default function ChecklistClient({ initialItems, initialCategories }: Che
   const [isAddDialogOpen, setAddDialogOpen] = useState(false);
   const [isImportDialogOpen, setImportDialogOpen] = useState(false);
   const [isAddCategoryDialogOpen, setAddCategoryDialogOpen] = useState(false);
+  const [itemToPurchase, setItemToPurchase] = useState<ChecklistItem | null>(null);
+
 
   const handleToggle = (id: string) => {
     const item = optimisticItems.find(i => i.id === id);
     if (item) {
-      startTransition(() => {
-        setOptimisticItems({ action: 'toggle', item });
-        toggleItemPurchased(id);
-      });
+      if (item.isPurchased) {
+        startTransition(() => {
+          setOptimisticItems({ action: 'unpurchase', id });
+          unpurchaseItem(id);
+        });
+      } else {
+        setItemToPurchase(item);
+      }
     }
   };
 
@@ -146,6 +153,15 @@ export default function ChecklistClient({ initialItems, initialCategories }: Che
           </div>
         )}
       </div>
+
+      <PurchaseDialog
+        item={itemToPurchase}
+        onOpenChange={(open) => {
+          if (!open) {
+            setItemToPurchase(null);
+          }
+        }}
+      />
 
       <AddItemDialog
         open={isAddDialogOpen}
