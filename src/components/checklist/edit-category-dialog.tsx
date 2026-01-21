@@ -25,6 +25,13 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 import { Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import React from 'react';
@@ -32,6 +39,7 @@ import React from 'react';
 const categorySchema = z.object({
   id: z.string(),
   name: z.string().min(1, "اسم الفئة مطلوب."),
+  parentId: z.string().nullable().optional(),
 });
 
 type FormValues = z.infer<typeof categorySchema>;
@@ -48,11 +56,12 @@ function SubmitButton() {
 
 type EditCategoryDialogProps = {
   category: Category | null;
+  categories: Category[];
   onOpenChange: (open: boolean) => void;
   onCategoryUpdated: () => void;
 };
 
-export function EditCategoryDialog({ category, onOpenChange, onCategoryUpdated }: EditCategoryDialogProps) {
+export function EditCategoryDialog({ category, categories, onOpenChange, onCategoryUpdated }: EditCategoryDialogProps) {
   const [state, formAction] = React.useActionState(updateCategory, { errors: {} });
   const formRef = useRef<HTMLFormElement>(null);
   const { toast } = useToast();
@@ -64,12 +73,13 @@ export function EditCategoryDialog({ category, onOpenChange, onCategoryUpdated }
     defaultValues: {
       id: category?.id || "",
       name: category?.name || "",
+      parentId: category?.parentId || null,
     }
   });
 
   useEffect(() => {
     if (category) {
-      form.reset({ id: category.id, name: category.name });
+      form.reset({ id: category.id, name: category.name, parentId: category.parentId });
     }
   }, [category, form]);
 
@@ -77,7 +87,7 @@ export function EditCategoryDialog({ category, onOpenChange, onCategoryUpdated }
     if (state?.success) {
       toast({
         title: "نجاح!",
-        description: "تم تحديث اسم الفئة.",
+        description: "تم تحديث الفئة.",
       });
       onCategoryUpdated();
       onOpenChange(false);
@@ -100,14 +110,16 @@ export function EditCategoryDialog({ category, onOpenChange, onCategoryUpdated }
         onOpenChange(true);
     }
   }
+  
+  const filteredCategories = categories.filter(c => c.id !== category?.id);
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
-          <DialogTitle className="font-headline">تعديل اسم الفئة</DialogTitle>
+          <DialogTitle className="font-headline">تعديل الفئة</DialogTitle>
           <DialogDescription>
-            أدخل الاسم الجديد للفئة.
+            قم بتعديل اسم الفئة أو غير الفئة الأصلية لها.
           </DialogDescription>
         </DialogHeader>
         <Form {...form}>
@@ -127,6 +139,32 @@ export function EditCategoryDialog({ category, onOpenChange, onCategoryUpdated }
                   <FormControl>
                     <Input {...field} />
                   </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            
+            <FormField
+              control={form.control}
+              name="parentId"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>الفئة الأصلية</FormLabel>
+                   <Select onValueChange={field.onChange} value={field.value || "null"}>
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="اختر فئة أصلية" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                        <SelectItem value="null">بلا فئة أصلية (فئة رئيسية)</SelectItem>
+                        {filteredCategories.map((c) => (
+                            <SelectItem key={c.id} value={c.id}>
+                            {c.name}
+                            </SelectItem>
+                        ))}
+                    </SelectContent>
+                  </Select>
                   <FormMessage />
                 </FormItem>
               )}

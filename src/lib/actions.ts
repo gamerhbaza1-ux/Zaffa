@@ -191,9 +191,14 @@ export async function updateCategory(prevState: any, formData: FormData) {
   const schema = z.object({
     id: z.string(),
     name: z.string().min(1, "اسم الفئة مطلوب."),
+    parentId: z.string().nullable().optional(),
   });
   
-  const validatedFields = schema.safeParse(Object.fromEntries(formData.entries()));
+  const rawData = Object.fromEntries(formData.entries());
+    if (rawData.parentId === 'null') {
+    rawData.parentId = null;
+  }
+  const validatedFields = schema.safeParse(rawData);
 
   if (!validatedFields.success) {
     return {
@@ -203,18 +208,29 @@ export async function updateCategory(prevState: any, formData: FormData) {
 
   await simulateLatency(500);
 
-  const { id, name } = validatedFields.data;
+  const { id, name, parentId } = validatedFields.data;
+  const newParentId = parentId || null;
 
-  const existingCategory = categories.find(c => c.id === id);
-
-  if (categories.some(c => c.name === name && c.parentId === existingCategory?.parentId && c.id !== id)) {
+  if (categories.some(c => c.name === name && c.parentId === newParentId && c.id !== id)) {
      return {
       errors: { name: ["هذه الفئة موجودة بالفعل ضمن نفس الفئة الأصلية."] },
     };
   }
 
+  // Prevent making a category its own child/descendant
+  let currentParentId = newParentId;
+  while(currentParentId) {
+      if (currentParentId === id) {
+          return {
+              errors: { parentId: ["لا يمكن جعل الفئة فئة فرعية لنفسها أو لأحد فروعها."] },
+          };
+      }
+      currentParentId = categories.find(c => c.id === currentParentId)?.parentId || null;
+  }
+
+
   categories = categories.map(c => 
-    c.id === id ? { ...c, name } : c
+    c.id === id ? { ...c, name, parentId: newParentId } : c
   );
   revalidatePath("/");
   return { success: true };
