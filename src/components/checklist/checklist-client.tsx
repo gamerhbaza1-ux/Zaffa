@@ -98,8 +98,12 @@ export default function ChecklistClient({ initialItems, initialCategories }: Che
 
       const directItems = itemsByCategoryId[catId] || [];
       let result: CategoryTotals = {
-        expected: directItems.reduce((sum, item) => sum + item.maxPrice, 0),
-        paid: directItems.reduce((sum, item) => (item.isPurchased && item.finalPrice ? sum + item.finalPrice : 0), 0),
+        expected: directItems.reduce((sum, item) => {
+          return !item.isPurchased ? sum + (item.minPrice + item.maxPrice) / 2 : sum;
+        }, 0),
+        paid: directItems.reduce((sum, item) => {
+          return item.isPurchased && typeof item.finalPrice === 'number' ? sum + item.finalPrice : sum;
+        }, 0),
         itemCount: directItems.length,
         purchasedCount: directItems.filter(i => i.isPurchased).length,
       };
