@@ -26,22 +26,45 @@ const purchaseSchema = z.object({
 
 // In-memory store for demonstration purposes
 let categories: Category[] = [
+  // الأقسام
   { id: "1", name: "أثاث", parentId: null },
   { id: "2", name: "أجهزة كهربائية", parentId: null },
   { id: "3", name: "مطبخ", parentId: null },
   { id: "4", name: "ديكور", parentId: null },
   { id: "5", name: "منسوجات", parentId: null },
   { id: "6", name: "إضاءة", parentId: null },
+  
+  // الفئات - تابعة للأقسام
+  // فئات الأثاث
   { id: "7", name: "غرفة المعيشة", parentId: "1" },
+  { id: "8", name: "غرفة طعام", parentId: "1" },
+  { id: "9", name: "غرفة نوم", parentId: "1" },
+
+  // فئات الأجهزة
+  { id: "10", name: "أجهزة مطبخ كبيرة", parentId: "2" },
+  { id: "11", name: "أجهزة ترفيهية", parentId: "2" },
+
+  // فئات المطبخ
+  { id: "12", name: "أدوات طهي", parentId: "3" },
+
+  // فئات الديكور
+  { id: "13", name: "تحف ولوحات", parentId: "4" },
+
+  // فئات المنسوجات
+  { id: "14", name: "ستائر وسجاد", parentId: "5" },
+
+  // فئات الإضاءة
+  { id: "15", name: "نجف وأبجورات", parentId: "6" },
 ];
+
 
 let items: ChecklistItem[] = [
   { id: "1", name: "أريكة", categoryId: "7", minPrice: 1500, maxPrice: 3000, isPurchased: false },
-  { id: "2", name: "طقم طاولة طعام", categoryId: "1", minPrice: 800, maxPrice: 1500, isPurchased: true, finalPrice: 950 },
-  { id: "3", name: "هيكل سرير ومرتبة", categoryId: "1", minPrice: 1200, maxPrice: 2500, isPurchased: false },
-  { id: "4", name: "ثلاجة", categoryId: "2", minPrice: 700, maxPrice: 1200, isPurchased: false },
-  { id: "5", name: "غسالة", categoryId: "2", minPrice: 500, maxPrice: 900, isPurchased: true, finalPrice: 750 },
-  { id: "6", name: "تلفزيون", categoryId: "2", minPrice: 400, maxPrice: 1000, isPurchased: false },
+  { id: "2", name: "طقم طاولة طعام", categoryId: "8", minPrice: 800, maxPrice: 1500, isPurchased: true, finalPrice: 950 },
+  { id: "3", name: "هيكل سرير ومرتبة", categoryId: "9", minPrice: 1200, maxPrice: 2500, isPurchased: false },
+  { id: "4", name: "ثلاجة", categoryId: "10", minPrice: 700, maxPrice: 1200, isPurchased: false },
+  { id: "5", name: "غسالة", categoryId: "10", minPrice: 500, maxPrice: 900, isPurchased: true, finalPrice: 750 },
+  { id: "6", name: "تلفزيون", categoryId: "11", minPrice: 400, maxPrice: 1000, isPurchased: false },
 ];
 
 const simulateLatency = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));

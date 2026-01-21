@@ -159,20 +159,16 @@ export default function ChecklistClient({ initialItems, initialCategories }: Che
                 ))}
             </TabsList>
             {topLevelCategories.map(topLevelCategory => {
-                const directItems = items.filter(item => item.categoryId === topLevelCategory.id);
-                
                 const descendantCats = getDescendantCategories(topLevelCategory.id);
-                const allSubCategoryIds = descendantCats.map(c => c.id);
-                const itemsInSubCats = items.filter(item => allSubCategoryIds.includes(item.categoryId));
+                const allSubCategoryIds = [topLevelCategory.id, ...descendantCats.map(c => c.id)];
+                const itemsInTab = items.filter(item => allSubCategoryIds.includes(item.categoryId));
 
-                const sortedSubCats = descendantCats
-                  .filter(c => c.parentId === topLevelCategory.id) // Get only direct children to start the hierarchy
+                const sortedSubCats = categories
+                  .filter(c => c.parentId === topLevelCategory.id)
                   .sort((a,b) => a.name.localeCompare(b.name));
-
-                const allItemsInTab = [...directItems, ...itemsInSubCats];
                 
-                const totalExpectedInTab = allItemsInTab.reduce((sum, item) => !item.isPurchased ? sum + (item.minPrice + item.maxPrice) / 2 : sum, 0);
-                const totalPaidInTab = allItemsInTab.reduce((sum, item) => item.isPurchased && typeof item.finalPrice === 'number' ? sum + item.finalPrice : sum, 0);
+                const totalExpectedInTab = itemsInTab.reduce((sum, item) => !item.isPurchased ? sum + (item.minPrice + item.maxPrice) / 2 : sum, 0);
+                const totalPaidInTab = itemsInTab.reduce((sum, item) => item.isPurchased && typeof item.finalPrice === 'number' ? sum + item.finalPrice : sum, 0);
                 
                 const renderCategoryTree = (categoryId: string) => {
                     const category = categoriesById.get(categoryId);
@@ -180,7 +176,7 @@ export default function ChecklistClient({ initialItems, initialCategories }: Che
 
                     const subCatItems = items.filter(i => i.categoryId === category.id);
                     const children = categories.filter(c => c.parentId === category.id).sort((a,b) => a.name.localeCompare(b.name));
-                    const level = getCategoryDepth(category.id) - getCategoryDepth(topLevelCategory.id);
+                    const level = getCategoryDepth(category.id);
 
                     const expectedInSubCat = subCatItems.reduce((sum, item) => !item.isPurchased ? sum + (item.minPrice + item.maxPrice) / 2 : sum, 0);
                     const paidInSubCat = subCatItems.reduce((sum, item) => item.isPurchased && typeof item.finalPrice === 'number' ? sum + item.finalPrice : sum, 0);
@@ -248,32 +244,14 @@ export default function ChecklistClient({ initialItems, initialCategories }: Che
                                         <span>إجمالي المدفوع في القسم: {formatPrice(totalPaidInTab)}</span>
                                     </div>
                                 </div>
-
-                                {directItems.length > 0 && (
-                                  <div className="space-y-2">
-                                    {directItems.map(item => (
-                                      <ItemCard
-                                        key={item.id}
-                                        item={item}
-                                        onToggle={() => handleToggle(item.id)}
-                                        onDelete={() => handleDeleteItem(item.id)}
-                                        isPending={isPending && (item.id === itemToPurchase?.id)}
-                                      />
-                                    ))}
-                                  </div>
-                                )}
-
-                                {directItems.length > 0 && sortedSubCats.length > 0 && <Separator className="my-6" />}
                                 
-                                {sortedSubCats.length > 0 && (
+                                {sortedSubCats.length > 0 ? (
                                     <div className="space-y-6">
                                       {sortedSubCats.map(cat => renderCategoryTree(cat.id))}
                                     </div>
-                                )}
-
-                                {directItems.length === 0 && sortedSubCats.length === 0 && (
+                                ) : (
                                     <p className="text-muted-foreground text-center py-10">
-                                        لا توجد فئات أو عناصر في هذا القسم بعد.
+                                        لا توجد فئات في هذا القسم بعد.
                                     </p>
                                 )}
                             </CardContent>

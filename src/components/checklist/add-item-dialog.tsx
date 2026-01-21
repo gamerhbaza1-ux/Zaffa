@@ -79,6 +79,9 @@ export function AddItemDialog({ open, onOpenChange, onItemAdded, categories }: A
       maxPrice: 0,
     }
   });
+  
+  const availableCategories = categories.filter(c => c.parentId);
+
 
   useEffect(() => {
     if (state?.success) {
@@ -148,11 +151,17 @@ export function AddItemDialog({ open, onOpenChange, onItemAdded, categories }: A
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      {categories.map((category) => (
-                        <SelectItem key={category.id} value={category.id}>
-                          {category.name}
-                        </SelectItem>
-                      ))}
+                      {availableCategories.length > 0 ? (
+                        availableCategories.map((category) => (
+                          <SelectItem key={category.id} value={category.id}>
+                            {category.name}
+                          </SelectItem>
+                        ))
+                      ) : (
+                        <div className="p-4 text-center text-sm text-muted-foreground">
+                          الرجاء إضافة فئة أولاً.
+                        </div>
+                      )}
                     </SelectContent>
                   </Select>
                   <FormMessage />
@@ -190,6 +199,7 @@ export function AddItemDialog({ open, onOpenChange, onItemAdded, categories }: A
             </div>
 
             <DialogFooter className="pt-4">
+              <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>إلغاء</Button>
               <SubmitButton />
             </DialogFooter>
           </form>
