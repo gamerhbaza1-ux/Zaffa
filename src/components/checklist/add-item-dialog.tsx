@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useRef, useState } from 'react';
-import { useFormState, useFormStatus } from 'react-dom';
+import { useActionState, useEffect, useRef } from 'react';
+import { useFormStatus } from 'react-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -49,7 +49,7 @@ type AddItemDialogProps = {
 };
 
 export function AddItemDialog({ open, onOpenChange, onItemAdded }: AddItemDialogProps) {
-  const [state, formAction] = useFormState(addItem, { errors: {} });
+  const [state, formAction] = useActionState(addItem, { errors: {} });
   const formRef = useRef<HTMLFormElement>(null);
   const { toast } = useToast();
 
