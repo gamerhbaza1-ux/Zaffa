@@ -11,18 +11,14 @@ import { AddItemDialog } from './add-item-dialog';
 import { ImportDialog } from './import-dialog';
 import { AddCategoryDialog } from './add-category-dialog';
 import { PurchaseDialog } from './purchase-dialog';
-import { Card } from "@/components/ui/card";
-import { Badge } from '@/components/ui/badge';
+import { Card, CardContent } from "@/components/ui/card";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 
 type ChecklistClientProps = {
   initialItems: ChecklistItem[];
   initialCategories: Category[];
 };
-
-type CategoryWithChildren = Category & { children: CategoryWithChildren[] };
-type CategoryTotals = { expected: number; paid: number; itemCount: number; purchasedCount: number };
-
 
 export default function ChecklistClient({ initialItems, initialCategories }: ChecklistClientProps) {
   const [isPending, startTransition] = useTransition();
@@ -74,87 +70,37 @@ export default function ChecklistClient({ initialItems, initialCategories }: Che
 
   const categoriesById = useMemo(() => new Map(initialCategories.map(c => [c.id, c])), [initialCategories]);
 
-  const itemsByCategoryId = useMemo(() => {
-    const grouped: { [key: string]: ChecklistItem[] } = {};
-    for (const item of optimisticItems) {
-      if (!grouped[item.categoryId]) {
-        grouped[item.categoryId] = [];
-      }
-      grouped[item.categoryId].push(item);
-    }
-    return grouped;
-  }, [optimisticItems]);
-
-  const categoryTree = useMemo(() => {
-    const tree: CategoryWithChildren[] = [];
-    const map = new Map(initialCategories.map(c => [c.id, { ...c, children: [] as CategoryWithChildren[] }]));
-
-    for (const category of map.values()) {
-      if (category.parentId && map.has(category.parentId)) {
-        map.get(category.parentId)!.children.push(category);
-      } else {
-        tree.push(category);
-      }
-    }
-    // Simple sort to ensure parent categories appear before children in the flat list
-    const sortByParent = (a: CategoryWithChildren, b: CategoryWithChildren) => {
-        if (!a.parentId) return -1;
-        if (!b.parentId) return 1;
-        return a.parentId.localeCompare(b.parentId);
-    }
-    tree.sort(sortByParent);
-
-    return tree;
+  const topLevelCategories = useMemo(() => {
+    return initialCategories.filter(c => !c.parentId).sort((a, b) => a.name.localeCompare(b.name));
   }, [initialCategories]);
 
-  const categoryTotals = useMemo(() => {
-    const totals = new Map<string, CategoryTotals>();
-    const allCategoryIds = [...categoriesById.keys()];
-
-    function calculate(catId: string): CategoryTotals {
-      if (totals.has(catId)) return totals.get(catId)!;
-
-      const directItems = itemsByCategoryId[catId] || [];
-      let result: CategoryTotals = {
-        expected: directItems.reduce((sum, item) => {
-          return !item.isPurchased ? sum + (item.minPrice + item.maxPrice) / 2 : sum;
-        }, 0),
-        paid: directItems.reduce((sum, item) => {
-          return item.isPurchased && typeof item.finalPrice === 'number' ? sum + item.finalPrice : sum;
-        }, 0),
-        itemCount: directItems.length,
-        purchasedCount: directItems.filter(i => i.isPurchased).length,
-      };
-
-      const children = initialCategories.filter(c => c.parentId === catId);
-      for (const child of children) {
-        const childTotals = calculate(child.id);
-        result.itemCount += childTotals.itemCount;
-        result.purchasedCount += childTotals.purchasedCount;
+  const getTopLevelParentId = useCallback((catId: string): string => {
+    let current = categoriesById.get(catId);
+    if (!current) return catId;
+    while (current.parentId && categoriesById.has(current.parentId)) {
+      current = categoriesById.get(current.parentId)!;
+    }
+    return current.id;
+  }, [categoriesById]);
+  
+  const itemsByTopLevelCategory = useMemo(() => {
+    const grouped: { [key: string]: ChecklistItem[] } = {};
+    for (const item of optimisticItems) {
+      const topLevelId = getTopLevelParentId(item.categoryId);
+      if (!grouped[topLevelId]) {
+        grouped[topLevelId] = [];
       }
-      totals.set(catId, result);
-      return result;
+      grouped[topLevelId].push(item);
     }
-    
-    for (const catId of allCategoryIds) {
-      calculate(catId);
-    }
-    return totals;
-  }, [itemsByCategoryId, initialCategories, categoriesById]);
-
-  const flatCategoryTree = useMemo(() => {
-    const flat: (CategoryWithChildren & { level: number })[] = [];
-    const traverse = (categories: CategoryWithChildren[], level: number) => {
-        for (const category of categories) {
-            flat.push({ ...category, level });
-            if (category.children && category.children.length > 0) {
-                traverse(category.children.sort((a,b) => a.name.localeCompare(b.name)), level + 1);
-            }
+    // Also add empty arrays for top level categories that have no items yet
+    for (const cat of topLevelCategories) {
+        if (!grouped[cat.id]) {
+            grouped[cat.id] = [];
         }
-    };
-    traverse(categoryTree.sort((a,b) => a.name.localeCompare(b.name)), 0);
-    return flat;
-  }, [categoryTree]);
+    }
+    return grouped;
+  }, [optimisticItems, topLevelCategories, getTopLevelParentId]);
+
 
   return (
     <>
@@ -164,7 +110,7 @@ export default function ChecklistClient({ initialItems, initialCategories }: Che
             <Plus className="ml-2 h-4 w-4" /> إضافة عنصر
           </Button>
           <Button variant="secondary" onClick={() => setImportDialogOpen(true)}>
-            <Upload className="ml-2 h-4 w-4" /> استيراد من Excel
+            <Upload className="ml-2 h-4 w-4" /> استيراد
           </Button>
           <Button variant="outline" onClick={() => setAddCategoryDialogOpen(true)}>
             <ListPlus className="ml-2 h-4 w-4" /> إضافة فئة
@@ -173,74 +119,93 @@ export default function ChecklistClient({ initialItems, initialCategories }: Che
         <ProgressSummary purchasedCount={purchasedCount} totalCount={totalCount} />
       </div>
 
-      <div className="space-y-4">
-        {optimisticItems.length > 0 ? (
-           <div className="w-full space-y-4">
-            {flatCategoryTree.map((category) => {
-                const directItems = itemsByCategoryId[category.id] || [];
-                const totals = categoryTotals.get(category.id);
+      {optimisticItems.length > 0 ? (
+        <Tabs defaultValue={topLevelCategories[0]?.id} className="w-full">
+            <TabsList className="flex flex-wrap w-full h-auto justify-start">
+                {topLevelCategories.map(category => (
+                    <TabsTrigger key={category.id} value={category.id} className="flex-grow">
+                        {category.name}
+                    </TabsTrigger>
+                ))}
+            </TabsList>
+            {topLevelCategories.map(category => {
+                const itemsInTab = itemsByTopLevelCategory[category.id] || [];
+                
+                const itemsBySubCategory = itemsInTab.reduce((acc, item) => {
+                    (acc[item.categoryId] = acc[item.categoryId] || []).push(item);
+                    return acc;
+                }, {} as {[key: string]: ChecklistItem[]});
 
-                if (!totals || totals.itemCount === 0) {
-                    return null;
+                const subCategoryIds = Object.keys(itemsBySubCategory);
+                
+                const getCategoryDepth = (catId: string) => {
+                    let depth = 0;
+                    let current = categoriesById.get(catId);
+                    while(current && current.parentId) {
+                        depth++;
+                        current = categoriesById.get(current.parentId);
+                    }
+                    return depth;
                 }
 
-                const directTotals = {
-                  expected: directItems.reduce((sum, item) => !item.isPurchased ? sum + (item.minPrice + item.maxPrice) / 2 : sum, 0),
-                  paid: directItems.reduce((sum, item) => item.isPurchased && typeof item.finalPrice === 'number' ? sum + item.finalPrice : sum, 0)
-                };
+                subCategoryIds.sort((a, b) => {
+                    const depthA = getCategoryDepth(a);
+                    const depthB = getCategoryDepth(b);
+                    if (depthA !== depthB) return depthA - depthB;
+                    return (categoriesById.get(a)?.name || '').localeCompare(categoriesById.get(b)?.name || '');
+                });
+
+                const expectedInTab = itemsInTab.reduce((sum, item) => !item.isPurchased ? sum + (item.minPrice + item.maxPrice) / 2 : sum, 0);
+                const paidInTab = itemsInTab.reduce((sum, item) => item.isPurchased && typeof item.finalPrice === 'number' ? sum + item.finalPrice : sum, 0);
+
 
                 return (
-                  <div key={category.id}>
-                    <div
-                      className="border rounded-t-lg overflow-hidden bg-card/80"
-                      style={{
-                          marginLeft: category.level > 0 ? `${category.level * 1.5}rem` : undefined,
-                          width: category.level > 0 ? `calc(100% - ${category.level * 1.5}rem)` : '100%',
-                      }}
-                    >
-                      <div className="text-xl font-bold font-headline p-4 bg-card">
-                        <div className="flex flex-col items-start gap-1 text-right w-full">
-                          <div className="flex items-center justify-between w-full">
-                            <div className="flex items-center gap-3">
-                              <span>{category.name}</span>
-                                <Badge variant={totals.purchasedCount === totals.itemCount && totals.itemCount > 0 ? "default" : "secondary"}>
-                                  {totals.purchasedCount}/{totals.itemCount}
-                                </Badge>
-                            </div>
-                          </div>
-                          <div className="text-xs text-muted-foreground font-normal flex gap-3">
-                            <span>المتوقع: {formatPrice(directTotals.expected)}</span>
-                            <span>المدفوع: {formatPrice(directTotals.paid)}</span>
-                          </div>
+                    <TabsContent key={category.id} value={category.id} className="mt-4">
+                         <div className="text-sm text-muted-foreground font-normal flex gap-4 mb-2 p-1">
+                            <span>الإجمالي المتوقع: {formatPrice(expectedInTab)}</span>
+                            <span>الإجمالي المدفوع: {formatPrice(paidInTab)}</span>
                         </div>
-                      </div>
-                    </div>
-                     {directItems.length > 0 && (
-                      <div 
-                        className="space-y-3 p-4 border border-t-0 rounded-b-lg"
-                        style={{
-                          marginLeft: category.level > 0 ? `${category.level * 1.5}rem` : undefined,
-                          width: category.level > 0 ? `calc(100% - ${category.level * 1.5}rem)` : '100%',
-                        }}
-                      >
-                        {directItems.map((item) => (
-                          <ItemCard
-                            key={item.id}
-                            item={item}
-                            categoryName={categoriesById.get(item.categoryId)?.name || ""}
-                            onToggle={() => handleToggle(item.id)}
-                            onDelete={() => handleDelete(item.id)}
-                            isPending={isPending}
-                          />
-                        ))}
-                      </div>
-                     )}
-                  </div>
+                        <Card>
+                            <CardContent className="p-4 space-y-6">
+                                {itemsInTab.length > 0 ? (
+                                    subCategoryIds.map(subCatId => {
+                                        const subCatItems = itemsBySubCategory[subCatId];
+                                        const subCat = categoriesById.get(subCatId);
+                                        const level = getCategoryDepth(subCatId);
+                                        return (
+                                            <div key={subCatId}>
+                                                <h3 className="font-bold text-lg mb-3 border-b pb-2" style={{
+                                                     marginLeft: level > 0 ? `${level}rem` : undefined,
+                                                }}>
+                                                    {subCat?.name}
+                                                </h3>
+                                                <div className="space-y-2">
+                                                {subCatItems.map(item => (
+                                                     <ItemCard
+                                                        key={item.id}
+                                                        item={item}
+                                                        onToggle={() => handleToggle(item.id)}
+                                                        onDelete={() => handleDelete(item.id)}
+                                                        isPending={isPending}
+                                                    />
+                                                ))}
+                                                </div>
+                                            </div>
+                                        )
+                                    })
+                                ) : (
+                                    <p className="text-muted-foreground text-center py-10">
+                                        لا توجد عناصر في هذه الفئة بعد.
+                                    </p>
+                                )}
+                            </CardContent>
+                        </Card>
+                    </TabsContent>
                 )
             })}
-          </div>
-        ) : (
-          <div className="text-center py-10 px-4 border-2 border-dashed rounded-lg">
+        </Tabs>
+      ) : (
+        <div className="text-center py-10 px-4 border-2 border-dashed rounded-lg">
             <h3 className="text-lg font-medium text-foreground">قائمة المراجعة الخاصة بك فارغة!</h3>
             <p className="text-muted-foreground mt-1">
               ابدأ بإضافة عنصر تحتاجه لمنزلك الجديد.
@@ -250,8 +215,7 @@ export default function ChecklistClient({ initialItems, initialCategories }: Che
               أضف أول عنصر لك
             </Button>
           </div>
-        )}
-      </div>
+      )}
 
       <PurchaseDialog
         item={itemToPurchase}

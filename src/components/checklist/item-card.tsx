@@ -10,13 +10,12 @@ import { Badge } from '../ui/badge';
 
 type ItemCardProps = {
   item: ChecklistItem;
-  categoryName: string;
   onToggle: () => void;
   onDelete: () => void;
   isPending: boolean;
 };
 
-export function ItemCard({ item, categoryName, onToggle, onDelete, isPending }: ItemCardProps) {
+export function ItemCard({ item, onToggle, onDelete, isPending }: ItemCardProps) {
   const formatPrice = (price: number) => {
     return new Intl.NumberFormat('ar-EG', { style: 'currency', currency: 'EGP', minimumFractionDigits: 0 }).format(price);
   };
@@ -37,20 +36,17 @@ export function ItemCard({ item, categoryName, onToggle, onDelete, isPending }: 
         className="h-5 w-5 rounded"
       />
       <div className="flex-1 grid gap-1">
-        <div className="flex items-center gap-2">
-            <label
-              htmlFor={`item-${item.id}`}
-              className={cn(
-                'font-medium text-lg cursor-pointer transition-all',
-                item.isPurchased && 'line-through text-muted-foreground'
-              )}
-            >
-              {item.name}
-            </label>
-            <Badge variant="outline">{categoryName}</Badge>
-        </div>
+        <label
+          htmlFor={`item-${item.id}`}
+          className={cn(
+            'font-medium text-lg cursor-pointer transition-all',
+            item.isPurchased && 'line-through text-muted-foreground'
+          )}
+        >
+          {item.name}
+        </label>
         {item.isPurchased && typeof item.finalPrice === 'number' ? (
-            <p className="text-sm text-muted-foreground">
+            <p className="text-sm text-primary">
                 السعر النهائي: {formatPrice(item.finalPrice)}
             </p>
         ) : (
