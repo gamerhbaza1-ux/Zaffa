@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition, useOptimistic, useMemo, useCallback } from 'react';
+import { useState, useTransition, useMemo, useCallback } from 'react';
 import type { ChecklistItem, Category } from '@/lib/types';
 import { deleteItem, unpurchaseItem } from '@/lib/actions';
 import { Button } from '@/components/ui/button';
@@ -22,18 +22,7 @@ type ChecklistClientProps = {
 
 export default function ChecklistClient({ initialItems, initialCategories }: ChecklistClientProps) {
   const [isPending, startTransition] = useTransition();
-  const [optimisticItems, setOptimisticItems] = useOptimistic(
-    initialItems,
-    (state, { action, id }: { action: 'unpurchase' | 'delete', id: string }) => {
-      if (action === 'unpurchase') {
-        return state.map(i => (i.id === id ? { ...i, isPurchased: false, finalPrice: undefined } : i));
-      }
-      if (action === 'delete') {
-        return state.filter(i => i.id !== id);
-      }
-      return state;
-    }
-  );
+  const items = initialItems;
 
   const [isAddDialogOpen, setAddDialogOpen] = useState(false);
   const [isImportDialogOpen, setImportDialogOpen] = useState(false);
@@ -45,11 +34,10 @@ export default function ChecklistClient({ initialItems, initialCategories }: Che
   }, []);
 
   const handleToggle = (id: string) => {
-    const item = optimisticItems.find(i => i.id === id);
+    const item = items.find(i => i.id === id);
     if (item) {
       if (item.isPurchased) {
         startTransition(() => {
-          setOptimisticItems({ action: 'unpurchase', id });
           unpurchaseItem(id);
         });
       } else {
@@ -60,13 +48,12 @@ export default function ChecklistClient({ initialItems, initialCategories }: Che
 
   const handleDelete = (id: string) => {
     startTransition(() => {
-      setOptimisticItems({ action: 'delete', id });
       deleteItem(id);
     });
   };
 
-  const purchasedCount = optimisticItems.filter(item => item.isPurchased).length;
-  const totalCount = optimisticItems.length;
+  const purchasedCount = items.filter(item => item.isPurchased).length;
+  const totalCount = items.length;
 
   const categoriesById = useMemo(() => new Map(initialCategories.map(c => [c.id, c])), [initialCategories]);
 
@@ -85,7 +72,7 @@ export default function ChecklistClient({ initialItems, initialCategories }: Che
   
   const itemsByTopLevelCategory = useMemo(() => {
     const grouped: { [key: string]: ChecklistItem[] } = {};
-    for (const item of optimisticItems) {
+    for (const item of items) {
       const topLevelId = getTopLevelParentId(item.categoryId);
       if (!grouped[topLevelId]) {
         grouped[topLevelId] = [];
@@ -99,7 +86,7 @@ export default function ChecklistClient({ initialItems, initialCategories }: Che
         }
     }
     return grouped;
-  }, [optimisticItems, topLevelCategories, getTopLevelParentId]);
+  }, [items, topLevelCategories, getTopLevelParentId]);
 
 
   return (
@@ -119,8 +106,8 @@ export default function ChecklistClient({ initialItems, initialCategories }: Che
         <ProgressSummary purchasedCount={purchasedCount} totalCount={totalCount} />
       </div>
 
-      {optimisticItems.length > 0 ? (
-        <Tabs defaultValue={topLevelCategories[0]?.id} className="w-full">
+      {items.length > 0 ? (
+        <Tabs defaultValue={topLevelCategories[0]?.id} className="w-full" dir="rtl">
             <TabsList className="flex flex-wrap w-full h-auto justify-start">
                 {topLevelCategories.map(category => (
                     <TabsTrigger key={category.id} value={category.id} className="flex-grow">
@@ -175,7 +162,7 @@ export default function ChecklistClient({ initialItems, initialCategories }: Che
                                         return (
                                             <div key={subCatId}>
                                                 <h3 className="font-bold text-lg mb-3 border-b pb-2" style={{
-                                                     marginLeft: level > 0 ? `${level}rem` : undefined,
+                                                     marginRight: level > 0 ? `${level}rem` : undefined,
                                                 }}>
                                                     {subCat?.name}
                                                 </h3>
