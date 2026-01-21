@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition, useOptimistic, useMemo, ReactNode } from 'react';
+import { useState, useTransition, useOptimistic, useMemo, ReactNode, useCallback } from 'react';
 import type { ChecklistItem, Category } from '@/lib/types';
 import { deleteItem, unpurchaseItem } from '@/lib/actions';
 import { Button } from '@/components/ui/button';
@@ -48,9 +48,9 @@ export default function ChecklistClient({ initialItems, initialCategories }: Che
   const [isAddCategoryDialogOpen, setAddCategoryDialogOpen] = useState(false);
   const [itemToPurchase, setItemToPurchase] = useState<ChecklistItem | null>(null);
 
-  const formatPrice = (price: number) => {
+  const formatPrice = useCallback((price: number) => {
     return new Intl.NumberFormat('ar-EG', { style: 'currency', currency: 'EGP', minimumFractionDigits: 0 }).format(price);
-  };
+  }, []);
 
   const handleToggle = (id: string) => {
     const item = optimisticItems.find(i => i.id === id);
@@ -146,7 +146,7 @@ export default function ChecklistClient({ initialItems, initialCategories }: Che
     if (filteredCategories.length === 0) return null;
 
     return (
-      <Accordion type="single" collapsible className="w-full space-y-3" defaultValue={filteredCategories[0]?.id}>
+      <Accordion type="single" collapsible className="w-full space-y-3">
         {filteredCategories.map(category => {
           const directItems = itemsByCategoryId[category.id] || [];
           const totals = categoryTotals.get(category.id);
