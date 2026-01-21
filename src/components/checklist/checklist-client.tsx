@@ -28,6 +28,125 @@ type ChecklistClientProps = {
 type CategoryWithChildren = Category & { children: CategoryWithChildren[] };
 type CategoryTotals = { expected: number; paid: number; itemCount: number; purchasedCount: number };
 
+type CategoryAccordionDisplayProps = {
+  categories: CategoryWithChildren[];
+  itemsByCategoryId: { [key: string]: ChecklistItem[] };
+  categoryTotals: Map<string, CategoryTotals>;
+  categoriesById: Map<string, Category>;
+  onItemToggle: (id: string) => void;
+  onItemDelete: (id: string) => void;
+  isPending: boolean;
+  formatPrice: (price: number) => string;
+};
+
+function CategoryAccordionDisplay({
+  categories,
+  itemsByCategoryId,
+  categoryTotals,
+  categoriesById,
+  onItemToggle,
+  onItemDelete,
+  isPending,
+  formatPrice,
+}: CategoryAccordionDisplayProps): ReactNode {
+  const filteredCategories = categories.filter(
+    (cat) => (categoryTotals.get(cat.id)?.itemCount ?? 0) > 0
+  );
+
+  if (filteredCategories.length === 0) return null;
+
+  return (
+    <Accordion type="single" collapsible className="w-full space-y-3">
+      {filteredCategories.map((category) => {
+        const directItems = itemsByCategoryId[category.id] || [];
+        const totals = categoryTotals.get(category.id);
+        if (!totals || totals.itemCount === 0) return null;
+
+        const directTotals = {
+          expected: (itemsByCategoryId[category.id] || []).reduce(
+            (sum, item) => {
+              return !item.isPurchased
+                ? sum + (item.minPrice + item.maxPrice) / 2
+                : sum;
+            },
+            0
+          ),
+          paid: (itemsByCategoryId[category.id] || []).reduce(
+            (sum, item) => {
+              return item.isPurchased && typeof item.finalPrice === "number"
+                ? sum + item.finalPrice
+                : sum;
+            },
+            0
+          ),
+        };
+
+        return (
+          <AccordionItem
+            value={category.id}
+            key={category.id}
+            className="border rounded-lg overflow-hidden bg-card/50"
+          >
+            <AccordionTrigger className="text-xl font-bold font-headline hover:no-underline p-4 bg-card">
+              <div className="flex flex-col items-start gap-1 text-right w-full">
+                <div className="flex items-center justify-between w-full">
+                  <div className="flex items-center gap-3">
+                    <span>{category.name}</span>
+                    <Badge
+                      variant={
+                        totals.purchasedCount === totals.itemCount &&
+                        totals.itemCount > 0
+                          ? "default"
+                          : "secondary"
+                      }
+                    >
+                      {totals.purchasedCount}/{totals.itemCount}
+                    </Badge>
+                  </div>
+                </div>
+                <div className="text-xs text-muted-foreground font-normal flex gap-3">
+                  <span>المتوقع: {formatPrice(directTotals.expected)}</span>
+                  <span>المدفوع: {formatPrice(directTotals.paid)}</span>
+                </div>
+              </div>
+            </AccordionTrigger>
+            <AccordionContent className="p-4 pt-0">
+              <div className="space-y-3 pt-4 border-t">
+                {directItems.map((item) => (
+                  <ItemCard
+                    key={item.id}
+                    item={item}
+                    categoryName={
+                      categoriesById.get(item.categoryId)?.name || ""
+                    }
+                    onToggle={() => onItemToggle(item.id)}
+                    onDelete={() => onItemDelete(item.id)}
+                    isPending={isPending}
+                  />
+                ))}
+                {category.children.length > 0 && (
+                  <div className="pr-4 mt-3 border-r-2 border-dashed border-border">
+                    <CategoryAccordionDisplay
+                       categories={category.children}
+                       itemsByCategoryId={itemsByCategoryId}
+                       categoryTotals={categoryTotals}
+                       categoriesById={categoriesById}
+                       onItemToggle={onItemToggle}
+                       onItemDelete={onItemDelete}
+                       isPending={isPending}
+                       formatPrice={formatPrice}
+                    />
+                  </div>
+                )}
+              </div>
+            </AccordionContent>
+          </AccordionItem>
+        );
+      })}
+    </Accordion>
+  );
+}
+
 export default function ChecklistClient({ initialItems, initialCategories }: ChecklistClientProps) {
   const [isPending, startTransition] = useTransition();
   const [optimisticItems, setOptimisticItems] = useOptimistic(
@@ -111,8 +230,6 @@ export default function ChecklistClient({ initialItems, initialCategories }: Che
       const children = initialCategories.filter(c => c.parentId === catId);
       for (const child of children) {
         const childTotals = calculate(child.id);
-        // Only roll-up counts for the badge, not financial totals, to avoid confusion.
-        // The totals for children are visible on their own accordion triggers.
         result.itemCount += childTotals.itemCount;
         result.purchasedCount += childTotals.purchasedCount;
       }
@@ -140,72 +257,6 @@ export default function ChecklistClient({ initialItems, initialCategories }: Che
     return tree;
   }, [initialCategories]);
 
-  const renderCategoryAccordion = (categories: CategoryWithChildren[]): ReactNode => {
-    const filteredCategories = categories.filter(cat => categoryTotals.get(cat.id)?.itemCount ?? 0 > 0);
-    
-    if (filteredCategories.length === 0) return null;
-
-    return (
-      <Accordion type="single" collapsible className="w-full space-y-3">
-        {filteredCategories.map(category => {
-          const directItems = itemsByCategoryId[category.id] || [];
-          const totals = categoryTotals.get(category.id);
-          if (!totals || totals.itemCount === 0) return null;
-          
-          const directTotals = {
-             expected: (itemsByCategoryId[category.id] || []).reduce((sum, item) => {
-                return !item.isPurchased ? sum + (item.minPrice + item.maxPrice) / 2 : sum;
-             }, 0),
-             paid: (itemsByCategoryId[category.id] || []).reduce((sum, item) => {
-                return item.isPurchased && typeof item.finalPrice === 'number' ? sum + item.finalPrice : sum;
-             }, 0),
-          }
-
-
-          return (
-            <AccordionItem value={category.id} key={category.id} className="border rounded-lg overflow-hidden bg-card/50">
-              <AccordionTrigger className="text-xl font-bold font-headline hover:no-underline p-4 bg-card">
-                 <div className="flex flex-col items-start gap-1 text-right w-full">
-                    <div className="flex items-center justify-between w-full">
-                       <div className="flex items-center gap-3">
-                          <span>{category.name}</span>
-                          <Badge variant={totals.purchasedCount === totals.itemCount && totals.itemCount > 0 ? 'default' : 'secondary'}>
-                            {totals.purchasedCount}/{totals.itemCount}
-                          </Badge>
-                       </div>
-                    </div>
-                    <div className="text-xs text-muted-foreground font-normal flex gap-3">
-                       <span>المتوقع: {formatPrice(directTotals.expected)}</span>
-                       <span>المدفوع: {formatPrice(directTotals.paid)}</span>
-                    </div>
-                 </div>
-              </AccordionTrigger>
-              <AccordionContent className="p-4 pt-0">
-                <div className="space-y-3 pt-4 border-t">
-                  {directItems.map(item => (
-                    <ItemCard
-                      key={item.id}
-                      item={item}
-                      categoryName={categoriesById.get(item.categoryId)?.name || ''}
-                      onToggle={() => handleToggle(item.id)}
-                      onDelete={() => handleDelete(item.id)}
-                      isPending={isPending}
-                    />
-                  ))}
-                  {category.children.length > 0 && (
-                    <div className="pr-4 mt-3 border-r-2 border-dashed border-border">
-                        {renderCategoryAccordion(category.children)}
-                    </div>
-                  )}
-                </div>
-              </AccordionContent>
-            </AccordionItem>
-          );
-        })}
-      </Accordion>
-    );
-  };
-
   return (
     <>
       <div className="mb-6 space-y-4">
@@ -225,7 +276,16 @@ export default function ChecklistClient({ initialItems, initialCategories }: Che
 
       <div className="space-y-3">
         {optimisticItems.length > 0 ? (
-          renderCategoryAccordion(categoryTree)
+           <CategoryAccordionDisplay
+            categories={categoryTree}
+            itemsByCategoryId={itemsByCategoryId}
+            categoryTotals={categoryTotals}
+            categoriesById={categoriesById}
+            onItemToggle={handleToggle}
+            onItemDelete={handleDelete}
+            isPending={isPending}
+            formatPrice={formatPrice}
+          />
         ) : (
           <div className="text-center py-10 px-4 border-2 border-dashed rounded-lg">
             <h3 className="text-lg font-medium text-foreground">قائمة المراجعة الخاصة بك فارغة!</h3>
