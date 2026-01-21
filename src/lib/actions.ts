@@ -186,3 +186,52 @@ export async function importItems(fileContent: string) {
     return { success: false, error: "فشل في تحليل الملف." };
   }
 }
+
+export async function updateCategory(prevState: any, formData: FormData) {
+  const schema = z.object({
+    id: z.string(),
+    name: z.string().min(1, "اسم الفئة مطلوب."),
+  });
+  
+  const validatedFields = schema.safeParse(Object.fromEntries(formData.entries()));
+
+  if (!validatedFields.success) {
+    return {
+      errors: validatedFields.error.flatten().fieldErrors,
+    };
+  }
+
+  await simulateLatency(500);
+
+  const { id, name } = validatedFields.data;
+
+  const existingCategory = categories.find(c => c.id === id);
+
+  if (categories.some(c => c.name === name && c.parentId === existingCategory?.parentId && c.id !== id)) {
+     return {
+      errors: { name: ["هذه الفئة موجودة بالفعل ضمن نفس الفئة الأصلية."] },
+    };
+  }
+
+  categories = categories.map(c => 
+    c.id === id ? { ...c, name } : c
+  );
+  revalidatePath("/");
+  return { success: true };
+}
+
+
+export async function deleteCategory(id: string) {
+  await simulateLatency(500);
+  
+  const hasSubcategories = categories.some(c => c.parentId === id);
+  const hasItems = items.some(i => i.categoryId === id);
+
+  if (hasSubcategories || hasItems) {
+    return { success: false, error: "لا يمكن حذف الفئة لأنها تحتوي على فئات فرعية أو عناصر." };
+  }
+
+  categories = categories.filter(c => c.id !== id);
+  revalidatePath("/");
+  return { success: true };
+}

@@ -2,17 +2,35 @@
 
 import { useState, useTransition, useMemo, useCallback } from 'react';
 import type { ChecklistItem, Category } from '@/lib/types';
-import { deleteItem, unpurchaseItem } from '@/lib/actions';
+import { deleteItem, unpurchaseItem, deleteCategory } from '@/lib/actions';
 import { Button } from '@/components/ui/button';
-import { Plus, Upload, ListPlus } from 'lucide-react';
+import { Plus, Upload, ListPlus, MoreVertical, Pencil, Trash2, Loader2 } from 'lucide-react';
 import { ItemCard } from './item-card';
 import { ProgressSummary } from './progress-summary';
 import { AddItemDialog } from './add-item-dialog';
 import { ImportDialog } from './import-dialog';
 import { AddCategoryDialog } from './add-category-dialog';
+import { EditCategoryDialog } from './edit-category-dialog';
 import { PurchaseDialog } from './purchase-dialog';
 import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { useToast } from '@/hooks/use-toast';
 
 
 type ChecklistClientProps = {
@@ -28,6 +46,9 @@ export default function ChecklistClient({ initialItems, initialCategories }: Che
   const [isImportDialogOpen, setImportDialogOpen] = useState(false);
   const [isAddCategoryDialogOpen, setAddCategoryDialogOpen] = useState(false);
   const [itemToPurchase, setItemToPurchase] = useState<ChecklistItem | null>(null);
+  const [categoryToEdit, setCategoryToEdit] = useState<Category | null>(null);
+  const [categoryToDelete, setCategoryToDelete] = useState<Category | null>(null);
+  const { toast } = useToast();
 
   const formatPrice = useCallback((price: number) => {
     return new Intl.NumberFormat('ar-EG', { style: 'currency', currency: 'EGP', minimumFractionDigits: 0 }).format(price);
@@ -49,6 +70,27 @@ export default function ChecklistClient({ initialItems, initialCategories }: Che
   const handleDelete = (id: string) => {
     startTransition(() => {
       deleteItem(id);
+    });
+  };
+  
+  const handleDeleteCategory = () => {
+    if (!categoryToDelete) return;
+
+    startTransition(async () => {
+      const result = await deleteCategory(categoryToDelete.id);
+      if (result?.success) {
+        toast({
+          title: "تم الحذف",
+          description: `تم حذف فئة "${categoryToDelete.name}".`,
+        });
+      } else {
+        toast({
+          variant: "destructive",
+          title: "فشل الحذف",
+          description: result?.error || "حدث خطأ غير متوقع.",
+        });
+      }
+      setCategoryToDelete(null);
     });
   };
 
@@ -110,8 +152,28 @@ export default function ChecklistClient({ initialItems, initialCategories }: Che
         <Tabs defaultValue={topLevelCategories[0]?.id} className="w-full" dir="rtl">
             <TabsList className="flex flex-wrap w-full h-auto justify-start">
                 {topLevelCategories.map(category => (
-                    <TabsTrigger key={category.id} value={category.id} className="flex-grow">
-                        {category.name}
+                    <TabsTrigger key={category.id} value={category.id} className="flex-grow justify-between gap-2 group/tab">
+                        <span className="truncate">{category.name}</span>
+                        <DropdownMenu>
+                            <DropdownMenuTrigger
+                                onClick={(e) => e.stopPropagation()}
+                                asChild
+                            >
+                                <Button variant="ghost" size="icon" className="h-7 w-7 opacity-0 group-hover/tab:opacity-100 group-data-[state=active]:opacity-100 focus:opacity-100 -mr-2">
+                                  <MoreVertical className="h-4 w-4" />
+                                </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="start" onClick={(e) => e.preventDefault()}>
+                                <DropdownMenuItem onSelect={() => setCategoryToEdit(category)}>
+                                    <Pencil className="ml-2 h-4 w-4" />
+                                    <span>تعديل</span>
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onSelect={() => setCategoryToDelete(category)} className="text-destructive focus:text-destructive">
+                                    <Trash2 className="ml-2 h-4 w-4" />
+                                    <span>حذف</span>
+                                </DropdownMenuItem>
+                            </DropdownMenuContent>
+                        </DropdownMenu>
                     </TabsTrigger>
                 ))}
             </TabsList>
@@ -231,6 +293,33 @@ export default function ChecklistClient({ initialItems, initialCategories }: Che
         onCategoryAdded={() => { /* revalidation is handled by server action */ }}
         categories={initialCategories}
       />
+
+      <EditCategoryDialog
+        category={categoryToEdit}
+        onOpenChange={(open) => !open && setCategoryToEdit(null)}
+        onCategoryUpdated={() => { /* revalidation is handled by server action */ }}
+      />
+      
+      <AlertDialog open={!!categoryToDelete} onOpenChange={(open) => !open && setCategoryToDelete(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>هل أنت متأكد من الحذف؟</AlertDialogTitle>
+            <AlertDialogDescription>
+              سيتم حذف فئة "{categoryToDelete?.name}". لا يمكن التراجع عن هذا الإجراء. لن يتم حذف الفئات إلا إذا كانت فارغة (لا تحتوي على عناصر أو فئات فرعية).
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>إلغاء</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDeleteCategory}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              disabled={isPending}
+            >
+              {isPending ? <Loader2 className="ml-2 h-4 w-4 animate-spin" /> : "حذف"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   );
 }
