@@ -111,8 +111,8 @@ export default function ChecklistClient({ initialItems, initialCategories }: Che
       const children = initialCategories.filter(c => c.parentId === catId);
       for (const child of children) {
         const childTotals = calculate(child.id);
-        result.expected += childTotals.expected;
-        result.paid += childTotals.paid;
+        // Only roll-up counts for the badge, not financial totals, to avoid confusion.
+        // The totals for children are visible on their own accordion triggers.
         result.itemCount += childTotals.itemCount;
         result.purchasedCount += childTotals.purchasedCount;
       }
@@ -151,6 +151,16 @@ export default function ChecklistClient({ initialItems, initialCategories }: Che
           const directItems = itemsByCategoryId[category.id] || [];
           const totals = categoryTotals.get(category.id);
           if (!totals || totals.itemCount === 0) return null;
+          
+          const directTotals = {
+             expected: (itemsByCategoryId[category.id] || []).reduce((sum, item) => {
+                return !item.isPurchased ? sum + (item.minPrice + item.maxPrice) / 2 : sum;
+             }, 0),
+             paid: (itemsByCategoryId[category.id] || []).reduce((sum, item) => {
+                return item.isPurchased && typeof item.finalPrice === 'number' ? sum + item.finalPrice : sum;
+             }, 0),
+          }
+
 
           return (
             <AccordionItem value={category.id} key={category.id} className="border rounded-lg overflow-hidden bg-card/50">
@@ -165,8 +175,8 @@ export default function ChecklistClient({ initialItems, initialCategories }: Che
                        </div>
                     </div>
                     <div className="text-xs text-muted-foreground font-normal flex gap-3">
-                       <span>المتوقع: {formatPrice(totals.expected)}</span>
-                       <span>المدفوع: {formatPrice(totals.paid)}</span>
+                       <span>المتوقع: {formatPrice(directTotals.expected)}</span>
+                       <span>المدفوع: {formatPrice(directTotals.paid)}</span>
                     </div>
                  </div>
               </AccordionTrigger>
