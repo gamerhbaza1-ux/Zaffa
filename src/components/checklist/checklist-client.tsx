@@ -53,10 +53,12 @@ export default function ChecklistClient({ initialItems, initialCategories }: Che
   const { toast } = useToast();
   
   const refreshData = async () => {
-    const newItems = await getItems();
-    const newCategories = await getCategories();
-    setItems(newItems);
-    setCategories(newCategories);
+    startTransition(async () => {
+      const newItems = await getItems();
+      const newCategories = await getCategories();
+      setItems(newItems);
+      setCategories(newCategories);
+    });
   };
 
   const formatPrice = useCallback((price: number) => {
@@ -120,17 +122,12 @@ export default function ChecklistClient({ initialItems, initialCategories }: Che
     if (!category || !category.parentId) {
       return depth;
     }
+    const parent = categoriesById.get(category.parentId);
+    if(!parent?.parentId) return depth; // this is a sub-category of a top-level category
+
     return getCategoryDepth(category.parentId, depth + 1);
   }, [categoriesById]);
 
-  const getDescendantCategories = useCallback((categoryId: string): Category[] => {
-    const directChildren = categories.filter(c => c.parentId === categoryId);
-    let allDescendants: Category[] = [...directChildren];
-    directChildren.forEach(child => {
-        allDescendants = [...allDescendants, ...getDescendantCategories(child.id)];
-    });
-    return allDescendants;
-  }, [categories]);
 
   return (
     <>
@@ -159,17 +156,12 @@ export default function ChecklistClient({ initialItems, initialCategories }: Che
                 ))}
             </TabsList>
             {topLevelCategories.map(topLevelCategory => {
-                const descendantCats = getDescendantCategories(topLevelCategory.id);
-                const allSubCategoryIds = [topLevelCategory.id, ...descendantCats.map(c => c.id)];
+                
+                const allSubCategoryIds = [topLevelCategory.id, ...categories.filter(c => c.parentId === topLevelCategory.id).map(c => c.id)];
                 const itemsInTab = items.filter(item => allSubCategoryIds.includes(item.categoryId));
+                const totalExpectedInTab = items.filter(i => allSubCategoryIds.includes(i.categoryId) && !i.isPurchased).reduce((sum, item) => sum + (item.minPrice + item.maxPrice) / 2, 0);
+                const totalPaidInTab = items.filter(i => allSubCategoryIds.includes(i.categoryId) && i.isPurchased).reduce((sum, item) => sum + (item.finalPrice ?? 0), 0);
 
-                const sortedSubCats = categories
-                  .filter(c => c.parentId === topLevelCategory.id)
-                  .sort((a,b) => a.name.localeCompare(b.name));
-                
-                const totalExpectedInTab = itemsInTab.reduce((sum, item) => !item.isPurchased ? sum + (item.minPrice + item.maxPrice) / 2 : sum, 0);
-                const totalPaidInTab = itemsInTab.reduce((sum, item) => item.isPurchased && typeof item.finalPrice === 'number' ? sum + item.finalPrice : sum, 0);
-                
                 const renderCategoryTree = (categoryId: string) => {
                     const category = categoriesById.get(categoryId);
                     if (!category) return null;
@@ -182,8 +174,12 @@ export default function ChecklistClient({ initialItems, initialCategories }: Che
                     const paidInSubCat = subCatItems.reduce((sum, item) => item.isPurchased && typeof item.finalPrice === 'number' ? sum + item.finalPrice : sum, 0);
 
                     return (
-                        <div key={category.id} style={{ paddingRight: level > 0 ? `${level * 1.5}rem` : undefined }}>
-                            <div className="flex justify-between items-center border-b pb-2 mb-3">
+                        <div 
+                            key={category.id} 
+                            className="border bg-background rounded-lg p-4 space-y-4"
+                            style={{ marginRight: level > 0 ? '1.5rem' : undefined }}
+                        >
+                            <div className="flex justify-between items-center border-b pb-2">
                                 <div className="flex-grow">
                                     <h3 className="font-bold text-lg">{category.name}</h3>
                                     {(expectedInSubCat > 0 || paidInSubCat > 0) && (
@@ -226,13 +222,15 @@ export default function ChecklistClient({ initialItems, initialCategories }: Che
                                 </div>
                             )}
                              {children.length > 0 && (
-                                <div className="mt-4 space-y-4">
+                                <div className="space-y-4">
                                     {children.map(child => renderCategoryTree(child.id))}
                                 </div>
                             )}
                         </div>
                     );
                 };
+
+                const directSubCategories = categories.filter(c => c.parentId === topLevelCategory.id).sort((a,b) => a.name.localeCompare(b.name));
 
                 return (
                     <TabsContent key={topLevelCategory.id} value={topLevelCategory.id} className="mt-4">
@@ -245,9 +243,9 @@ export default function ChecklistClient({ initialItems, initialCategories }: Che
                                     </div>
                                 </div>
                                 
-                                {sortedSubCats.length > 0 ? (
+                                {directSubCategories.length > 0 ? (
                                     <div className="space-y-6">
-                                      {sortedSubCats.map(cat => renderCategoryTree(cat.id))}
+                                      {directSubCategories.map(cat => renderCategoryTree(cat.id))}
                                     </div>
                                 ) : (
                                     <p className="text-muted-foreground text-center py-10">
