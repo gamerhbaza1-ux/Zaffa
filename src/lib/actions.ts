@@ -1,12 +1,12 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import type { ChecklistItem } from "./types";
+import type { ChecklistItem, Category } from "./types";
 import { z } from "zod";
 
 const itemSchema = z.object({
   name: z.string().min(1, "اسم العنصر مطلوب."),
-  category: z.string({ required_error: "الفئة مطلوبة."}).min(1, "الفئة مطلوبة."),
+  categoryId: z.string({ required_error: "الفئة مطلوبة."}).min(1, "الفئة مطلوبة."),
   minPrice: z.coerce.number().min(0, "يجب أن يكون السعر رقمًا موجبًا."),
   maxPrice: z.coerce.number().min(0, "يجب أن يكون السعر رقمًا موجبًا."),
 }).refine(data => data.maxPrice >= data.minPrice, {
@@ -16,6 +16,7 @@ const itemSchema = z.object({
 
 const categorySchema = z.object({
   name: z.string().min(1, "اسم الفئة مطلوب."),
+  parentId: z.string().nullable().optional(),
 });
 
 const purchaseSchema = z.object({
@@ -24,22 +25,23 @@ const purchaseSchema = z.object({
 });
 
 // In-memory store for demonstration purposes
-let items: ChecklistItem[] = [
-  { id: "1", name: "أريكة", category: "أثاث", minPrice: 1500, maxPrice: 3000, isPurchased: false },
-  { id: "2", name: "طقم طاولة طعام", category: "أثاث", minPrice: 800, maxPrice: 1500, isPurchased: true, finalPrice: 950 },
-  { id: "3", name: "هيكل سرير ومرتبة", category: "أثاث", minPrice: 1200, maxPrice: 2500, isPurchased: false },
-  { id: "4", name: "ثلاجة", category: "أجهزة كهربائية", minPrice: 700, maxPrice: 1200, isPurchased: false },
-  { id: "5", name: "غسالة", category: "أجهزة كهربائية", minPrice: 500, maxPrice: 900, isPurchased: true, finalPrice: 750 },
-  { id: "6", name: "تلفزيون", category: "أجهزة كهربائية", minPrice: 400, maxPrice: 1000, isPurchased: false },
+let categories: Category[] = [
+  { id: "1", name: "أثاث", parentId: null },
+  { id: "2", name: "أجهزة كهربائية", parentId: null },
+  { id: "3", name: "مطبخ", parentId: null },
+  { id: "4", name: "ديكور", parentId: null },
+  { id: "5", name: "منسوجات", parentId: null },
+  { id: "6", name: "إضاءة", parentId: null },
+  { id: "7", name: "غرفة المعيشة", parentId: "1" },
 ];
 
-let categories: string[] = [
-  "أثاث",
-  "أجهزة كهربائية",
-  "مطبخ",
-  "ديكور",
-  "منسوجات",
-  "إضاءة",
+let items: ChecklistItem[] = [
+  { id: "1", name: "أريكة", categoryId: "7", minPrice: 1500, maxPrice: 3000, isPurchased: false },
+  { id: "2", name: "طقم طاولة طعام", categoryId: "1", minPrice: 800, maxPrice: 1500, isPurchased: true, finalPrice: 950 },
+  { id: "3", name: "هيكل سرير ومرتبة", categoryId: "1", minPrice: 1200, maxPrice: 2500, isPurchased: false },
+  { id: "4", name: "ثلاجة", categoryId: "2", minPrice: 700, maxPrice: 1200, isPurchased: false },
+  { id: "5", name: "غسالة", categoryId: "2", minPrice: 500, maxPrice: 900, isPurchased: true, finalPrice: 750 },
+  { id: "6", name: "تلفزيون", categoryId: "2", minPrice: 400, maxPrice: 1000, isPurchased: false },
 ];
 
 const simulateLatency = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
@@ -49,13 +51,18 @@ export async function getItems(): Promise<ChecklistItem[]> {
   return items;
 }
 
-export async function getCategories(): Promise<string[]> {
+export async function getCategories(): Promise<Category[]> {
   await simulateLatency(100);
   return categories;
 }
 
 export async function addCategory(prevState: any, formData: FormData) {
-  const validatedFields = categorySchema.safeParse(Object.fromEntries(formData.entries()));
+  const rawData = Object.fromEntries(formData.entries());
+  if (rawData.parentId === 'null') {
+    rawData.parentId = null;
+  }
+  
+  const validatedFields = categorySchema.safeParse(rawData);
 
   if (!validatedFields.success) {
     return {
@@ -65,14 +72,21 @@ export async function addCategory(prevState: any, formData: FormData) {
   
   await simulateLatency(500);
 
-  const newCategory = validatedFields.data.name;
-  if (!categories.includes(newCategory)) {
+  const { name, parentId } = validatedFields.data;
+
+  const newCategory: Category = {
+    id: Date.now().toString(),
+    name,
+    parentId: parentId || null
+  };
+  
+  if (!categories.some(c => c.name === newCategory.name && c.parentId === newCategory.parentId)) {
     categories.unshift(newCategory);
     revalidatePath("/");
     return { success: true };
   } else {
     return {
-      errors: { name: ["هذه الفئة موجودة بالفعل."] },
+      errors: { name: ["هذه الفئة موجودة بالفعل ضمن نفس الفئة الأصلية."] },
     };
   }
 }
@@ -91,7 +105,7 @@ export async function addItem(prevState: any, formData: FormData) {
   const newItem: ChecklistItem = {
     id: Date.now().toString(),
     name: validatedFields.data.name,
-    category: validatedFields.data.category,
+    categoryId: validatedFields.data.categoryId,
     minPrice: validatedFields.data.minPrice,
     maxPrice: validatedFields.data.maxPrice,
     isPurchased: false,
@@ -137,23 +151,28 @@ export async function deleteItem(id: string) {
 }
 
 export async function importItems(fileContent: string) {
-  // This is a placeholder for CSV/Excel import logic.
-  // In a real app, you would use a library like 'papaparse' or 'xlsx'
-  // to parse the file content and add items.
   await simulateLatency(1500);
-
-  // For demonstration, let's assume a simple CSV format: name,minPrice,maxPrice,category
   try {
     const lines = fileContent.split('\n').slice(1); // ignore header
     const newItems: ChecklistItem[] = lines.map((line, index) => {
-      const [name, minPrice, maxPrice, category] = line.split(',');
-      if (name && minPrice && maxPrice && category) {
+      const [name, minPrice, maxPrice, categoryName] = line.split(',');
+      if (name && minPrice && maxPrice && categoryName) {
+        const categoryNameTrimmed = categoryName.trim();
+        let category = categories.find(c => c.name === categoryNameTrimmed && !c.parentId);
+        if (!category) {
+            category = {
+                id: `cat-import-${Date.now()}-${index}`,
+                name: categoryNameTrimmed,
+                parentId: null
+            };
+            categories.unshift(category);
+        }
         return {
           id: `import-${Date.now()}-${index}`,
           name: name.trim(),
           minPrice: parseFloat(minPrice),
           maxPrice: parseFloat(maxPrice),
-          category: category.trim(),
+          categoryId: category.id,
           isPurchased: false,
         };
       }

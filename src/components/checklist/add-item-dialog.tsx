@@ -6,6 +6,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { addItem } from '@/lib/actions';
+import type { Category } from '@/lib/types';
 
 import {
   Dialog,
@@ -38,7 +39,7 @@ import React from 'react';
 
 const itemSchema = z.object({
   name: z.string().min(1, "اسم العنصر مطلوب."),
-  category: z.string({ required_error: "الفئة مطلوبة."}).min(1, "الفئة مطلوبة."),
+  categoryId: z.string({ required_error: "الفئة مطلوبة."}).min(1, "الفئة مطلوبة."),
   minPrice: z.coerce.number().min(0, "يجب أن يكون السعر رقمًا موجبًا."),
   maxPrice: z.coerce.number().min(0, "يجب أن يكون السعر رقمًا موجبًا."),
 }).refine(data => data.maxPrice >= data.minPrice, {
@@ -62,7 +63,7 @@ type AddItemDialogProps = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onItemAdded: () => void;
-  categories: string[];
+  categories: Category[];
 };
 
 export function AddItemDialog({ open, onOpenChange, onItemAdded, categories }: AddItemDialogProps) {
@@ -136,7 +137,7 @@ export function AddItemDialog({ open, onOpenChange, onItemAdded, categories }: A
             
             <FormField
               control={form.control}
-              name="category"
+              name="categoryId"
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>الفئة</FormLabel>
@@ -148,8 +149,8 @@ export function AddItemDialog({ open, onOpenChange, onItemAdded, categories }: A
                     </FormControl>
                     <SelectContent>
                       {categories.map((category) => (
-                        <SelectItem key={category} value={category}>
-                          {category}
+                        <SelectItem key={category.id} value={category.id}>
+                          {category.name}
                         </SelectItem>
                       ))}
                     </SelectContent>

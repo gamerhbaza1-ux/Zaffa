@@ -10,12 +10,13 @@ import { Badge } from '../ui/badge';
 
 type ItemCardProps = {
   item: ChecklistItem;
+  categoryName: string;
   onToggle: () => void;
   onDelete: () => void;
   isPending: boolean;
 };
 
-export function ItemCard({ item, onToggle, onDelete, isPending }: ItemCardProps) {
+export function ItemCard({ item, categoryName, onToggle, onDelete, isPending }: ItemCardProps) {
   const formatPrice = (price: number) => {
     return new Intl.NumberFormat('ar-EG', { style: 'currency', currency: 'EGP', minimumFractionDigits: 0 }).format(price);
   };
@@ -46,7 +47,7 @@ export function ItemCard({ item, onToggle, onDelete, isPending }: ItemCardProps)
             >
               {item.name}
             </label>
-            <Badge variant="outline">{item.category}</Badge>
+            <Badge variant="outline">{categoryName}</Badge>
         </div>
         {item.isPurchased && typeof item.finalPrice === 'number' ? (
             <p className="text-sm text-muted-foreground">
