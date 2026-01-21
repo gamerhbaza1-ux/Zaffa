@@ -4,17 +4,19 @@ import { useState, useTransition, useOptimistic } from 'react';
 import type { ChecklistItem } from '@/lib/types';
 import { deleteItem, toggleItemPurchased } from '@/lib/actions';
 import { Button } from '@/components/ui/button';
-import { Plus, Upload } from 'lucide-react';
+import { Plus, Upload, ListPlus } from 'lucide-react';
 import { ItemCard } from './item-card';
 import { ProgressSummary } from './progress-summary';
 import { AddItemDialog } from './add-item-dialog';
 import { ImportDialog } from './import-dialog';
+import { AddCategoryDialog } from './add-category-dialog';
 
 type ChecklistClientProps = {
   initialItems: ChecklistItem[];
+  initialCategories: string[];
 };
 
-export default function ChecklistClient({ initialItems }: ChecklistClientProps) {
+export default function ChecklistClient({ initialItems, initialCategories }: ChecklistClientProps) {
   const [isPending, startTransition] = useTransition();
   const [optimisticItems, setOptimisticItems] = useOptimistic(
     initialItems,
@@ -31,6 +33,7 @@ export default function ChecklistClient({ initialItems }: ChecklistClientProps) 
 
   const [isAddDialogOpen, setAddDialogOpen] = useState(false);
   const [isImportDialogOpen, setImportDialogOpen] = useState(false);
+  const [isAddCategoryDialogOpen, setAddCategoryDialogOpen] = useState(false);
 
   const handleToggle = (id: string) => {
     const item = optimisticItems.find(i => i.id === id);
@@ -55,12 +58,15 @@ export default function ChecklistClient({ initialItems }: ChecklistClientProps) 
   return (
     <>
       <div className="mb-6 space-y-4">
-        <div className="flex flex-col sm:flex-row gap-2">
+        <div className="flex flex-col sm:flex-row gap-2 flex-wrap">
           <Button onClick={() => setAddDialogOpen(true)}>
             <Plus className="ml-2 h-4 w-4" /> إضافة عنصر
           </Button>
           <Button variant="secondary" onClick={() => setImportDialogOpen(true)}>
             <Upload className="ml-2 h-4 w-4" /> استيراد من Excel
+          </Button>
+          <Button variant="outline" onClick={() => setAddCategoryDialogOpen(true)}>
+            <ListPlus className="ml-2 h-4 w-4" /> إضافة فئة
           </Button>
         </div>
         <ProgressSummary purchasedCount={purchasedCount} totalCount={totalCount} />
@@ -95,11 +101,18 @@ export default function ChecklistClient({ initialItems }: ChecklistClientProps) 
         open={isAddDialogOpen}
         onOpenChange={setAddDialogOpen}
         onItemAdded={() => { /* revalidation is handled by server action */ }}
+        categories={initialCategories}
       />
       
       <ImportDialog
         open={isImportDialogOpen}
         onOpenChange={setImportDialogOpen}
+      />
+
+      <AddCategoryDialog
+        open={isAddCategoryDialogOpen}
+        onOpenChange={setAddCategoryDialogOpen}
+        onCategoryAdded={() => { /* revalidation is handled by server action */ }}
       />
     </>
   );

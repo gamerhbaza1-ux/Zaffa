@@ -1,5 +1,5 @@
 import Image from 'next/image';
-import { getItems } from '@/lib/actions';
+import { getItems, getCategories } from '@/lib/actions';
 import { PlaceHolderImages } from '@/lib/placeholder-images';
 import ChecklistClient from '@/components/checklist/checklist-client';
 import { Card } from '@/components/ui/card';
@@ -20,6 +20,7 @@ function Header() {
 
 export default async function Home() {
   const items = await getItems();
+  const categories = await getCategories();
   const heroImage = PlaceHolderImages.find(p => p.id === 'hero');
 
   return (
@@ -48,7 +49,7 @@ export default async function Home() {
             )}
           </Card>
           
-          <ChecklistClient initialItems={items} />
+          <ChecklistClient initialItems={items} initialCategories={categories} />
         </div>
       </main>
       <footer className="py-6">

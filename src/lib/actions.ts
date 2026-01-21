@@ -6,7 +6,7 @@ import { z } from "zod";
 
 const itemSchema = z.object({
   name: z.string().min(1, "اسم العنصر مطلوب."),
-  category: z.string().min(1, "الفئة مطلوبة."),
+  category: z.string({ required_error: "الفئة مطلوبة."}).min(1, "الفئة مطلوبة."),
   minPrice: z.coerce.number().min(0, "يجب أن يكون السعر رقمًا موجبًا."),
   maxPrice: z.coerce.number().min(0, "يجب أن يكون السعر رقمًا موجبًا."),
 }).refine(data => data.maxPrice >= data.minPrice, {
@@ -14,6 +14,9 @@ const itemSchema = z.object({
   path: ["maxPrice"],
 });
 
+const categorySchema = z.object({
+  name: z.string().min(1, "اسم الفئة مطلوب."),
+});
 
 // In-memory store for demonstration purposes
 let items: ChecklistItem[] = [
@@ -25,11 +28,48 @@ let items: ChecklistItem[] = [
   { id: "6", name: "تلفزيون", category: "أجهزة كهربائية", minPrice: 400, maxPrice: 1000, isPurchased: false },
 ];
 
+let categories: string[] = [
+  "أثاث",
+  "أجهزة كهربائية",
+  "مطبخ",
+  "ديكور",
+  "منسوجات",
+  "إضاءة",
+];
+
 const simulateLatency = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
 export async function getItems(): Promise<ChecklistItem[]> {
   await simulateLatency(500);
   return items;
+}
+
+export async function getCategories(): Promise<string[]> {
+  await simulateLatency(100);
+  return categories;
+}
+
+export async function addCategory(prevState: any, formData: FormData) {
+  const validatedFields = categorySchema.safeParse(Object.fromEntries(formData.entries()));
+
+  if (!validatedFields.success) {
+    return {
+      errors: validatedFields.error.flatten().fieldErrors,
+    };
+  }
+  
+  await simulateLatency(500);
+
+  const newCategory = validatedFields.data.name;
+  if (!categories.includes(newCategory)) {
+    categories.unshift(newCategory);
+    revalidatePath("/");
+    return { success: true };
+  } else {
+    return {
+      errors: { name: ["هذه الفئة موجودة بالفعل."] },
+    };
+  }
 }
 
 export async function addItem(prevState: any, formData: FormData) {
