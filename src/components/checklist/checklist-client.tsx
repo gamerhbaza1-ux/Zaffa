@@ -160,14 +160,7 @@ export default function ChecklistClient({ initialItems, initialCategories }: Che
             {topLevelCategories.map(category => {
                 const itemsInTab = itemsByTopLevelCategory[category.id] || [];
                 
-                const itemsBySubCategory = itemsInTab.reduce((acc, item) => {
-                    (acc[item.categoryId] = acc[item.categoryId] || []).push(item);
-                    return acc;
-                }, {} as {[key: string]: ChecklistItem[]});
-
-                const subCategoryIds = Object.keys(itemsBySubCategory);
-                
-                const getCategoryDepth = (catId: string) => {
+                const getCategoryDepth = useCallback((catId: string) => {
                     let depth = 0;
                     let current = categoriesById.get(catId);
                     while(current && current.parentId) {
@@ -175,14 +168,36 @@ export default function ChecklistClient({ initialItems, initialCategories }: Che
                         current = categoriesById.get(current.parentId);
                     }
                     return depth;
-                }
+                }, [categoriesById]);
+
+                const allSubCategoryIdsInTab = new Set<string>();
+                itemsInTab.forEach(item => {
+                  let current = categoriesById.get(item.categoryId);
+                  while (current) {
+                    // Make sure we only add categories that are descendants of the current tab category
+                    if (getTopLevelParentId(current.id) === category.id) {
+                      allSubCategoryIdsInTab.add(current.id);
+                    }
+                    current = current.parentId ? categoriesById.get(current.parentId) : undefined;
+                  }
+                });
+
+                const subCategoryIds = Array.from(allSubCategoryIdsInTab);
 
                 subCategoryIds.sort((a, b) => {
                     const depthA = getCategoryDepth(a);
                     const depthB = getCategoryDepth(b);
                     if (depthA !== depthB) return depthA - depthB;
-                    return (categoriesById.get(a)?.name || '').localeCompare(categoriesById.get(b)?.name || '');
+                    
+                    const catA = categoriesById.get(a);
+                    const catB = categoriesById.get(b);
+                    return (catA?.name || '').localeCompare(catB?.name || '');
                 });
+
+                const itemsBySubCategory = itemsInTab.reduce((acc, item) => {
+                    (acc[item.categoryId] = acc[item.categoryId] || []).push(item);
+                    return acc;
+                }, {} as {[key: string]: ChecklistItem[]});
 
                 const expectedInTab = itemsInTab.reduce((sum, item) => !item.isPurchased ? sum + (item.minPrice + item.maxPrice) / 2 : sum, 0);
                 const paidInTab = itemsInTab.reduce((sum, item) => item.isPurchased && typeof item.finalPrice === 'number' ? sum + item.finalPrice : sum, 0);
@@ -200,7 +215,7 @@ export default function ChecklistClient({ initialItems, initialCategories }: Che
                             <CardContent className="p-4 space-y-6">
                                 {itemsInTab.length > 0 ? (
                                     subCategoryIds.map(subCatId => {
-                                        const subCatItems = itemsBySubCategory[subCatId];
+                                        const subCatItems = itemsBySubCategory[subCatId] || [];
                                         const subCat = categoriesById.get(subCatId);
                                         const level = getCategoryDepth(subCatId);
                                         const expectedInSubCat = subCatItems.reduce((sum, item) => !item.isPurchased ? sum + (item.minPrice + item.maxPrice) / 2 : sum, 0);
@@ -246,26 +261,48 @@ export default function ChecklistClient({ initialItems, initialCategories }: Che
                                                         </DropdownMenu>
                                                     )}
                                                 </div>
-                                                <div className="space-y-2" style={{
-                                                    paddingRight: level > 0 ? `${level}rem` : undefined,
-                                                }}>
-                                                {subCatItems.map(item => (
-                                                     <ItemCard
-                                                        key={item.id}
-                                                        item={item}
-                                                        onToggle={() => handleToggle(item.id)}
-                                                        onDelete={() => handleDelete(item.id)}
-                                                        isPending={isPending}
-                                                    />
-                                                ))}
-                                                </div>
+                                                {subCatItems.length > 0 && (
+                                                  <div className="space-y-2" style={{
+                                                      paddingRight: level > 0 ? `${level}rem` : undefined,
+                                                  }}>
+                                                  {subCatItems.map(item => (
+                                                      <ItemCard
+                                                          key={item.id}
+                                                          item={item}
+                                                          onToggle={() => handleToggle(item.id)}
+                                                          onDelete={() => handleDelete(item.id)}
+                                                          isPending={isPending}
+                                                      />
+                                                  ))}
+                                                  </div>
+                                                )}
                                             </div>
                                         )
                                     })
                                 ) : (
-                                    <p className="text-muted-foreground text-center py-10">
-                                        لا توجد عناصر في هذه الفئة بعد.
-                                    </p>
+                                    <div className="flex justify-between items-center">
+                                         <p className="text-muted-foreground text-center py-10 flex-grow">
+                                            لا توجد عناصر في هذه الفئة بعد.
+                                        </p>
+                                        <DropdownMenu>
+                                            <DropdownMenuTrigger asChild>
+                                                <Button variant="ghost" size="icon" className="h-8 w-8 flex-shrink-0">
+                                                    <MoreVertical className="h-4 w-4" />
+                                                    <span className="sr-only">إجراءات الفئة {category.name}</span>
+                                                </Button>
+                                            </DropdownMenuTrigger>
+                                            <DropdownMenuContent align="end">
+                                                <DropdownMenuItem onSelect={() => setCategoryToEdit(category)}>
+                                                    <Pencil className="ml-2 h-4 w-4" />
+                                                    <span>تعديل</span>
+                                                </DropdownMenuItem>
+                                                <DropdownMenuItem onSelect={() => setCategoryToDelete(category)} className="text-destructive focus:text-destructive">
+                                                    <Trash2 className="ml-2 h-4 w-4" />
+                                                    <span>حذف</span>
+                                                </DropdownMenuItem>
+                                            </DropdownMenuContent>
+                                        </DropdownMenu>
+                                    </div>
                                 )}
                             </CardContent>
                         </Card>
