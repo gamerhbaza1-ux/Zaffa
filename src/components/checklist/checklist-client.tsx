@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition, useOptimistic } from 'react';
+import { useState, useTransition, useOptimistic, useMemo } from 'react';
 import type { ChecklistItem } from '@/lib/types';
 import { deleteItem, toggleItemPurchased } from '@/lib/actions';
 import { Button } from '@/components/ui/button';
@@ -10,6 +10,14 @@ import { ProgressSummary } from './progress-summary';
 import { AddItemDialog } from './add-item-dialog';
 import { ImportDialog } from './import-dialog';
 import { AddCategoryDialog } from './add-category-dialog';
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
+import { Badge } from '@/components/ui/badge';
+
 
 type ChecklistClientProps = {
   initialItems: ChecklistItem[];
@@ -55,6 +63,27 @@ export default function ChecklistClient({ initialItems, initialCategories }: Che
   const purchasedCount = optimisticItems.filter(item => item.isPurchased).length;
   const totalCount = optimisticItems.length;
 
+  const itemsByCategory = useMemo(() => {
+    const grouped: { [key: string]: ChecklistItem[] } = {};
+    for (const category of initialCategories) {
+      grouped[category] = [];
+    }
+    for (const item of optimisticItems) {
+      if (!grouped[item.category]) {
+        grouped[item.category] = [];
+      }
+      grouped[item.category].push(item);
+    }
+    return grouped;
+  }, [optimisticItems, initialCategories]);
+  
+  const orderedCategories = useMemo(() => {
+    return initialCategories.filter(cat => itemsByCategory[cat] && itemsByCategory[cat].length > 0);
+  }, [itemsByCategory, initialCategories]);
+  
+  const defaultOpenCategory = orderedCategories.length > 0 ? orderedCategories[0] : undefined;
+
+
   return (
     <>
       <div className="mb-6 space-y-4">
@@ -74,15 +103,36 @@ export default function ChecklistClient({ initialItems, initialCategories }: Che
 
       <div className="space-y-3">
         {optimisticItems.length > 0 ? (
-          optimisticItems.map(item => (
-            <ItemCard
-              key={item.id}
-              item={item}
-              onToggle={() => handleToggle(item.id)}
-              onDelete={() => handleDelete(item.id)}
-              isPending={isPending}
-            />
-          ))
+          <Accordion type="single" collapsible className="w-full space-y-3" defaultValue={defaultOpenCategory}>
+            {orderedCategories.map(category => {
+              const items = itemsByCategory[category];
+              const categoryPurchasedCount = items.filter(i => i.isPurchased).length;
+              
+              return (
+                <AccordionItem value={category} key={category} className="border rounded-lg overflow-hidden">
+                  <AccordionTrigger className="text-xl font-bold font-headline hover:no-underline p-4 bg-card">
+                    <div className="flex items-center gap-3">
+                      <span>{category}</span>
+                      <Badge variant={categoryPurchasedCount === items.length && items.length > 0 ? 'default' : 'secondary'}>{categoryPurchasedCount}/{items.length}</Badge>
+                    </div>
+                  </AccordionTrigger>
+                  <AccordionContent className="p-4 pt-0">
+                    <div className="space-y-3 pt-4 border-t">
+                    {items.map(item => (
+                      <ItemCard
+                        key={item.id}
+                        item={item}
+                        onToggle={() => handleToggle(item.id)}
+                        onDelete={() => handleDelete(item.id)}
+                        isPending={isPending}
+                      />
+                    ))}
+                    </div>
+                  </AccordionContent>
+                </AccordionItem>
+              )
+            })}
+          </Accordion>
         ) : (
           <div className="text-center py-10 px-4 border-2 border-dashed rounded-lg">
             <h3 className="text-lg font-medium text-foreground">قائمة المراجعة الخاصة بك فارغة!</h3>
