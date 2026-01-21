@@ -2,7 +2,7 @@
 
 import { useState, useTransition, useMemo, useCallback } from 'react';
 import type { ChecklistItem, Category } from '@/lib/types';
-import { deleteItem, unpurchaseItem, deleteCategory } from '@/lib/actions';
+import { deleteItem, unpurchaseItem, deleteCategory, getItems, getCategories } from '@/lib/actions';
 import { Button } from '@/components/ui/button';
 import { Plus, Upload, ListPlus, MoreVertical, Pencil, Trash2, Loader2 } from 'lucide-react';
 import { ItemCard } from './item-card';
@@ -66,8 +66,8 @@ export default function ChecklistClient({ initialItems, initialCategories }: Che
       if (item.isPurchased) {
         startTransition(async () => {
           await unpurchaseItem(id);
-          // Manually update state for instant feedback
-          setItems(prev => prev.map(i => i.id === id ? { ...i, isPurchased: false, finalPrice: undefined } : i));
+          const newItems = await getItems();
+          setItems(newItems);
         });
       } else {
         setItemToPurchase(item);
@@ -121,11 +121,11 @@ export default function ChecklistClient({ initialItems, initialCategories }: Che
     return getCategoryDepth(category.parentId, depth + 1);
   }, [categoriesById]);
 
-  const getDescendantCategoryIds = useCallback((categoryId: string): string[] => {
+  const getDescendantCategories = useCallback((categoryId: string): Category[] => {
     const directChildren = categories.filter(c => c.parentId === categoryId);
-    let allDescendants = directChildren.map(c => c.id);
+    let allDescendants: Category[] = [...directChildren];
     directChildren.forEach(child => {
-        allDescendants = [...allDescendants, ...getDescendantCategoryIds(child.id)];
+        allDescendants = [...allDescendants, ...getDescendantCategories(child.id)];
     });
     return allDescendants;
   }, [categories]);
@@ -157,11 +157,11 @@ export default function ChecklistClient({ initialItems, initialCategories }: Che
                 ))}
             </TabsList>
             {topLevelCategories.map(topLevelCategory => {
-                const descendantIds = getDescendantCategoryIds(topLevelCategory.id);
-                const allCategoryIdsInTab = [topLevelCategory.id, ...descendantIds];
+                const descendantCats = getDescendantCategories(topLevelCategory.id);
+                const allCategoriesInTab = [topLevelCategory, ...descendantCats];
+                const allCategoryIdsInTab = allCategoriesInTab.map(c => c.id);
                 
-                const sortedCategoriesInTab = categories
-                  .filter(c => allCategoryIdsInTab.includes(c.id))
+                const sortedCategoriesInTab = allCategoriesInTab
                   .sort((a,b) => getCategoryDepth(a.id) - getCategoryDepth(b.id) || a.name.localeCompare(b.name));
 
                 const itemsInTab = items.filter(item => allCategoryIdsInTab.includes(item.categoryId));
@@ -267,8 +267,9 @@ export default function ChecklistClient({ initialItems, initialCategories }: Che
             setItemToPurchase(null);
           }
         }}
-        onItemPurchased={(updatedItem) => {
-          setItems(prev => prev.map(i => i.id === updatedItem.id ? { ...i, ...updatedItem } : i));
+        onItemPurchased={async () => {
+          const newItems = await getItems();
+          setItems(newItems);
         }}
       />
 
