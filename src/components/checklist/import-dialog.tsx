@@ -36,8 +36,8 @@ export function ImportDialog({ open, onOpenChange }: ImportDialogProps) {
     if (!file) {
       toast({
         variant: "destructive",
-        title: "No file selected",
-        description: "Please select a .csv file to import.",
+        title: "لم يتم تحديد ملف",
+        description: "الرجاء تحديد ملف .csv للاستيراد.",
       });
       return;
     }
@@ -49,16 +49,16 @@ export function ImportDialog({ open, onOpenChange }: ImportDialogProps) {
         const result = await importItems(text);
         if (result.success) {
           toast({
-            title: "Import Successful!",
-            description: `${result.count} new items have been added to your list.`,
+            title: "نجاح الاستيراد!",
+            description: `تمت إضافة ${result.count} عناصر جديدة إلى قائمتك.`,
           });
           onOpenChange(false);
           setFile(null);
         } else {
           toast({
             variant: "destructive",
-            title: "Import Failed",
-            description: result.error || "There was an issue processing your file.",
+            title: "فشل الاستيراد",
+            description: result.error || "كانت هناك مشكلة في معالجة ملفك.",
           });
         }
       };
@@ -70,25 +70,25 @@ export function ImportDialog({ open, onOpenChange }: ImportDialogProps) {
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
-          <DialogTitle className="font-headline">Import from Excel/CSV</DialogTitle>
+          <DialogTitle className="font-headline">استيراد من Excel/CSV</DialogTitle>
           <DialogDescription>
-            Upload a .csv file to bulk-add items. The file should have columns: `name`, `minPrice`, `maxPrice`.
+            قم بتحميل ملف .csv لإضافة عناصر بشكل جماعي. يجب أن يحتوي الملف على الأعمدة: `name`, `minPrice`, `maxPrice`.
           </DialogDescription>
         </DialogHeader>
         <div className="grid gap-4 py-4">
           <div className="grid w-full max-w-sm items-center gap-1.5">
-            <Label htmlFor="import-file">CSV File</Label>
+            <Label htmlFor="import-file">ملف CSV</Label>
             <Input id="import-file" type="file" accept=".csv" onChange={handleFileChange} />
           </div>
           <p className="text-xs text-muted-foreground">
-            Make sure the first row is a header row, which will be ignored.
+            تأكد من أن الصف الأول هو صف رأس، والذي سيتم تجاهله.
           </p>
         </div>
         <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={isPending}>Cancel</Button>
+          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={isPending}>إلغاء</Button>
           <Button onClick={handleImport} disabled={!file || isPending}>
-            {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            Import Items
+            {isPending && <Loader2 className="ml-2 h-4 w-4 animate-spin" />}
+            استيراد العناصر
           </Button>
         </DialogFooter>
       </DialogContent>

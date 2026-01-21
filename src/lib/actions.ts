@@ -5,23 +5,23 @@ import type { ChecklistItem } from "./types";
 import { z } from "zod";
 
 const itemSchema = z.object({
-  name: z.string().min(1, "Item name is required."),
-  minPrice: z.coerce.number().min(0, "Price must be a positive number."),
-  maxPrice: z.coerce.number().min(0, "Price must be a positive number."),
+  name: z.string().min(1, "اسم العنصر مطلوب."),
+  minPrice: z.coerce.number().min(0, "يجب أن يكون السعر رقمًا موجبًا."),
+  maxPrice: z.coerce.number().min(0, "يجب أن يكون السعر رقمًا موجبًا."),
 }).refine(data => data.maxPrice >= data.minPrice, {
-  message: "Max price must be greater than or equal to min price.",
+  message: "يجب أن يكون السعر الأقصى أكبر من أو يساوي السعر الأدنى.",
   path: ["maxPrice"],
 });
 
 
 // In-memory store for demonstration purposes
 let items: ChecklistItem[] = [
-  { id: "1", name: "Sofa", minPrice: 1500, maxPrice: 3000, isPurchased: false },
-  { id: "2", name: "Dining Table Set", minPrice: 800, maxPrice: 1500, isPurchased: true },
-  { id: "3", name: "Bed Frame & Mattress", minPrice: 1200, maxPrice: 2500, isPurchased: false },
-  { id: "4", name: "Refrigerator", minPrice: 700, maxPrice: 1200, isPurchased: false },
-  { id: "5", name: "Washing Machine", minPrice: 500, maxPrice: 900, isPurchased: true },
-  { id: "6", name: "Television", minPrice: 400, maxPrice: 1000, isPurchased: false },
+  { id: "1", name: "أريكة", minPrice: 1500, maxPrice: 3000, isPurchased: false },
+  { id: "2", name: "طقم طاولة طعام", minPrice: 800, maxPrice: 1500, isPurchased: true },
+  { id: "3", name: "هيكل سرير ومرتبة", minPrice: 1200, maxPrice: 2500, isPurchased: false },
+  { id: "4", name: "ثلاجة", minPrice: 700, maxPrice: 1200, isPurchased: false },
+  { id: "5", name: "غسالة", minPrice: 500, maxPrice: 900, isPurchased: true },
+  { id: "6", name: "تلفزيون", minPrice: 400, maxPrice: 1000, isPurchased: false },
 ];
 
 const simulateLatency = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
@@ -95,6 +95,6 @@ export async function importItems(fileContent: string) {
     revalidatePath("/");
     return { success: true, count: newItems.length };
   } catch (error) {
-    return { success: false, error: "Failed to parse file." };
+    return { success: false, error: "فشل في تحليل الملف." };
   }
 }

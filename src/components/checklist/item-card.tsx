@@ -17,7 +17,7 @@ type ItemCardProps = {
 
 export function ItemCard({ item, onToggle, onDelete, isPending }: ItemCardProps) {
   const formatPrice = (price: number) => {
-    return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 0 }).format(price);
+    return new Intl.NumberFormat('ar-EG', { style: 'currency', currency: 'USD', minimumFractionDigits: 0 }).format(price);
   };
 
   return (
@@ -32,7 +32,7 @@ export function ItemCard({ item, onToggle, onDelete, isPending }: ItemCardProps)
         id={`item-${item.id}`}
         checked={item.isPurchased}
         onCheckedChange={onToggle}
-        aria-label={`Mark ${item.name} as purchased`}
+        aria-label={`تحديد ${item.name} كعنصر تم شراؤه`}
         className="h-5 w-5 rounded"
       />
       <div className="flex-1 grid gap-1">
@@ -46,17 +46,17 @@ export function ItemCard({ item, onToggle, onDelete, isPending }: ItemCardProps)
           {item.name}
         </label>
         <p className={cn("text-sm text-muted-foreground", item.isPurchased && 'line-through')}>
-          Est. Price: {formatPrice(item.minPrice)} - {formatPrice(item.maxPrice)}
+          السعر التقديري: {formatPrice(item.minPrice)} - {formatPrice(item.maxPrice)}
         </p>
       </div>
       {item.isPurchased && (
-        <Badge variant="secondary" className="bg-accent text-accent-foreground border-accent-foreground/20">Purchased</Badge>
+        <Badge variant="secondary" className="bg-accent text-accent-foreground border-accent-foreground/20">تم الشراء</Badge>
       )}
       <Button
         variant="ghost"
         size="icon"
         onClick={onDelete}
-        aria-label={`Delete ${item.name}`}
+        aria-label={`حذف ${item.name}`}
         className="text-muted-foreground hover:bg-destructive/10 hover:text-destructive h-8 w-8 rounded-full"
       >
         <Trash2 className="h-4 w-4" />

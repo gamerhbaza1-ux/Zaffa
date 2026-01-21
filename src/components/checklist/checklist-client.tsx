@@ -57,10 +57,10 @@ export default function ChecklistClient({ initialItems }: ChecklistClientProps) 
       <div className="mb-6 space-y-4">
         <div className="flex flex-col sm:flex-row gap-2">
           <Button onClick={() => setAddDialogOpen(true)}>
-            <Plus className="mr-2 h-4 w-4" /> Add Item
+            <Plus className="ml-2 h-4 w-4" /> إضافة عنصر
           </Button>
           <Button variant="secondary" onClick={() => setImportDialogOpen(true)}>
-            <Upload className="mr-2 h-4 w-4" /> Import from Excel
+            <Upload className="ml-2 h-4 w-4" /> استيراد من Excel
           </Button>
         </div>
         <ProgressSummary purchasedCount={purchasedCount} totalCount={totalCount} />
@@ -79,13 +79,13 @@ export default function ChecklistClient({ initialItems }: ChecklistClientProps) 
           ))
         ) : (
           <div className="text-center py-10 px-4 border-2 border-dashed rounded-lg">
-            <h3 className="text-lg font-medium text-foreground">Your checklist is empty!</h3>
+            <h3 className="text-lg font-medium text-foreground">قائمة المراجعة الخاصة بك فارغة!</h3>
             <p className="text-muted-foreground mt-1">
-              Start by adding an item you need for your new home.
+              ابدأ بإضافة عنصر تحتاجه لمنزلك الجديد.
             </p>
             <Button className="mt-4" onClick={() => setAddDialogOpen(true)}>
-              <Plus className="mr-2 h-4 w-4" />
-              Add your first item
+              <Plus className="ml-2 h-4 w-4" />
+              أضف أول عنصر لك
             </Button>
           </div>
         )}

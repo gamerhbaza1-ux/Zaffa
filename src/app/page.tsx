@@ -11,7 +11,7 @@ function Header() {
       <div className="container mx-auto p-4 flex items-center gap-3">
         <Feather className="text-primary" size={28} />
         <h1 className="text-2xl font-bold font-headline text-foreground">
-          Nest Planner
+          عش المخطط
         </h1>
       </div>
     </header>
@@ -39,9 +39,9 @@ export default async function Home() {
                   priority
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent" />
-                <div className="absolute bottom-0 left-0 p-6">
+                <div className="absolute bottom-0 right-0 p-6 text-right">
                   <h2 className="text-3xl md:text-4xl font-bold text-white font-headline">
-                    Building Our Future, One Item at a Time
+                    نبني مستقبلنا، عنصرًا بعنصر
                   </h2>
                 </div>
               </div>
@@ -53,7 +53,7 @@ export default async function Home() {
       </main>
       <footer className="py-6">
         <p className="text-center text-sm text-muted-foreground">
-          Made with ♡ for a new beginning.
+          صُنع بـ ♡ لبداية جديدة.
         </p>
       </footer>
     </div>
