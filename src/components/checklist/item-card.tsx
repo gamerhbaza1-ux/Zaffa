@@ -36,15 +36,18 @@ export function ItemCard({ item, onToggle, onDelete, isPending }: ItemCardProps)
         className="h-5 w-5 rounded"
       />
       <div className="flex-1 grid gap-1">
-        <label
-          htmlFor={`item-${item.id}`}
-          className={cn(
-            'font-medium text-lg cursor-pointer transition-all',
-            item.isPurchased && 'line-through text-muted-foreground'
-          )}
-        >
-          {item.name}
-        </label>
+        <div className="flex items-center gap-2">
+            <label
+              htmlFor={`item-${item.id}`}
+              className={cn(
+                'font-medium text-lg cursor-pointer transition-all',
+                item.isPurchased && 'line-through text-muted-foreground'
+              )}
+            >
+              {item.name}
+            </label>
+            <Badge variant="outline">{item.category}</Badge>
+        </div>
         <p className={cn("text-sm text-muted-foreground", item.isPurchased && 'line-through')}>
           السعر التقديري: {formatPrice(item.minPrice)} - {formatPrice(item.maxPrice)}
         </p>

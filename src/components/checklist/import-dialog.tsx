@@ -72,7 +72,7 @@ export function ImportDialog({ open, onOpenChange }: ImportDialogProps) {
         <DialogHeader>
           <DialogTitle className="font-headline">استيراد من Excel/CSV</DialogTitle>
           <DialogDescription>
-            قم بتحميل ملف .csv لإضافة عناصر بشكل جماعي. يجب أن يحتوي الملف على الأعمدة: `name`, `minPrice`, `maxPrice`.
+            قم بتحميل ملف .csv لإضافة عناصر بشكل جماعي. يجب أن يحتوي الملف على الأعمدة: `name`, `minPrice`, `maxPrice`, `category`.
           </DialogDescription>
         </DialogHeader>
         <div className="grid gap-4 py-4">

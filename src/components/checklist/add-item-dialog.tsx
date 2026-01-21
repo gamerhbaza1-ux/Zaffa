@@ -23,6 +23,7 @@ import { useToast } from '@/hooks/use-toast';
 
 const itemSchema = z.object({
   name: z.string().min(1, "اسم العنصر مطلوب."),
+  category: z.string().min(1, "الفئة مطلوبة."),
   minPrice: z.coerce.number().min(0, "يجب أن يكون السعر رقمًا موجبًا."),
   maxPrice: z.coerce.number().min(0, "يجب أن يكون السعر رقمًا موجبًا."),
 }).refine(data => data.maxPrice >= data.minPrice, {
@@ -94,6 +95,15 @@ export function AddItemDialog({ open, onOpenChange, onItemAdded }: AddItemDialog
             <div className="col-span-3">
               <Input id="name" {...register('name')} name="name" className="w-full" />
               {allErrors?.name && <p className="text-sm text-destructive mt-1">{allErrors.name[0]}</p>}
+            </div>
+          </div>
+          <div className="grid grid-cols-4 items-center gap-4">
+            <Label htmlFor="category" className="text-right">
+              الفئة
+            </Label>
+            <div className="col-span-3">
+              <Input id="category" {...register('category')} name="category" placeholder="مثال: أثاث، أجهزة..." className="w-full" />
+              {allErrors?.category && <p className="text-sm text-destructive mt-1">{allErrors.category[0]}</p>}
             </div>
           </div>
           <div className="grid grid-cols-4 items-center gap-4">
