@@ -11,12 +11,7 @@ import { AddItemDialog } from './add-item-dialog';
 import { ImportDialog } from './import-dialog';
 import { AddCategoryDialog } from './add-category-dialog';
 import { PurchaseDialog } from './purchase-dialog';
-import {
-  Accordion,
-  AccordionContent,
-  AccordionItem,
-  AccordionTrigger,
-} from "@/components/ui/accordion";
+import { Card } from "@/components/ui/card";
 import { Badge } from '@/components/ui/badge';
 
 
@@ -101,6 +96,14 @@ export default function ChecklistClient({ initialItems, initialCategories }: Che
         tree.push(category);
       }
     }
+    // Simple sort to ensure parent categories appear before children in the flat list
+    const sortByParent = (a: CategoryWithChildren, b: CategoryWithChildren) => {
+        if (!a.parentId) return -1;
+        if (!b.parentId) return 1;
+        return a.parentId.localeCompare(b.parentId);
+    }
+    tree.sort(sortByParent);
+
     return tree;
   }, [initialCategories]);
 
@@ -132,9 +135,8 @@ export default function ChecklistClient({ initialItems, initialCategories }: Che
       totals.set(catId, result);
       return result;
     }
-
-    // Iterate in reverse to ensure children are calculated before parents
-    for (const catId of allCategoryIds.reverse()) {
+    
+    for (const catId of allCategoryIds) {
       calculate(catId);
     }
     return totals;
@@ -146,11 +148,11 @@ export default function ChecklistClient({ initialItems, initialCategories }: Che
         for (const category of categories) {
             flat.push({ ...category, level });
             if (category.children && category.children.length > 0) {
-                traverse(category.children, level + 1);
+                traverse(category.children.sort((a,b) => a.name.localeCompare(b.name)), level + 1);
             }
         }
     };
-    traverse(categoryTree, 0);
+    traverse(categoryTree.sort((a,b) => a.name.localeCompare(b.name)), 0);
     return flat;
   }, [categoryTree]);
 
@@ -171,9 +173,9 @@ export default function ChecklistClient({ initialItems, initialCategories }: Che
         <ProgressSummary purchasedCount={purchasedCount} totalCount={totalCount} />
       </div>
 
-      <div className="space-y-3">
+      <div className="space-y-4">
         {optimisticItems.length > 0 ? (
-           <Accordion type="multiple" className="w-full space-y-3">
+           <div className="w-full space-y-4">
             {flatCategoryTree.map((category) => {
                 const directItems = itemsByCategoryId[category.id] || [];
                 const totals = categoryTotals.get(category.id);
@@ -188,33 +190,39 @@ export default function ChecklistClient({ initialItems, initialCategories }: Che
                 };
 
                 return (
-                  <AccordionItem
-                    value={category.id}
-                    key={category.id}
-                    className="border rounded-lg overflow-hidden bg-card/50"
-                    style={{
-                        marginRight: category.level > 0 ? `${category.level * 1.5}rem` : undefined,
-                        width: category.level > 0 ? `calc(100% - ${category.level * 1.5}rem)` : '100%'
-                    }}
-                  >
-                    <AccordionTrigger disabled={directItems.length === 0} className="text-xl font-bold font-headline hover:no-underline p-4 bg-card">
-                      <div className="flex flex-col items-start gap-1 text-right w-full">
-                        <div className="flex items-center justify-between w-full">
-                          <div className="flex items-center gap-3">
-                            <span>{category.name}</span>
-                              <Badge variant={totals.purchasedCount === totals.itemCount && totals.itemCount > 0 ? "default" : "secondary"}>
-                                {totals.purchasedCount}/{totals.itemCount}
-                              </Badge>
+                  <div key={category.id}>
+                    <div
+                      className="border rounded-t-lg overflow-hidden bg-card/80"
+                      style={{
+                          marginLeft: category.level > 0 ? `${category.level * 1.5}rem` : undefined,
+                          width: category.level > 0 ? `calc(100% - ${category.level * 1.5}rem)` : '100%',
+                      }}
+                    >
+                      <div className="text-xl font-bold font-headline p-4 bg-card">
+                        <div className="flex flex-col items-start gap-1 text-right w-full">
+                          <div className="flex items-center justify-between w-full">
+                            <div className="flex items-center gap-3">
+                              <span>{category.name}</span>
+                                <Badge variant={totals.purchasedCount === totals.itemCount && totals.itemCount > 0 ? "default" : "secondary"}>
+                                  {totals.purchasedCount}/{totals.itemCount}
+                                </Badge>
+                            </div>
+                          </div>
+                          <div className="text-xs text-muted-foreground font-normal flex gap-3">
+                            <span>المتوقع: {formatPrice(directTotals.expected)}</span>
+                            <span>المدفوع: {formatPrice(directTotals.paid)}</span>
                           </div>
                         </div>
-                        <div className="text-xs text-muted-foreground font-normal flex gap-3">
-                          <span>المتوقع: {formatPrice(directTotals.expected)}</span>
-                          <span>المدفوع: {formatPrice(directTotals.paid)}</span>
-                        </div>
                       </div>
-                    </AccordionTrigger>
-                    <AccordionContent className="p-4 pt-0">
-                      <div className="space-y-3 pt-4 border-t">
+                    </div>
+                     {directItems.length > 0 && (
+                      <div 
+                        className="space-y-3 p-4 border border-t-0 rounded-b-lg"
+                        style={{
+                          marginLeft: category.level > 0 ? `${category.level * 1.5}rem` : undefined,
+                          width: category.level > 0 ? `calc(100% - ${category.level * 1.5}rem)` : '100%',
+                        }}
+                      >
                         {directItems.map((item) => (
                           <ItemCard
                             key={item.id}
@@ -226,11 +234,11 @@ export default function ChecklistClient({ initialItems, initialCategories }: Che
                           />
                         ))}
                       </div>
-                    </AccordionContent>
-                  </AccordionItem>
+                     )}
+                  </div>
                 )
             })}
-          </Accordion>
+          </div>
         ) : (
           <div className="text-center py-10 px-4 border-2 border-dashed rounded-lg">
             <h3 className="text-lg font-medium text-foreground">قائمة المراجعة الخاصة بك فارغة!</h3>
