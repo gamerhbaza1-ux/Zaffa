@@ -1,6 +1,7 @@
 "use client";
 
 import { useActionState, useEffect, useRef } from 'react';
+import { useFormStatus } from 'react-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -38,17 +39,17 @@ import React from 'react';
 
 const categorySchema = z.object({
   id: z.string(),
-  name: z.string().min(1, "اسم الفئة مطلوب."),
+  name: z.string().min(1, "الاسم مطلوب."),
   parentId: z.string().nullable().optional(),
 });
 
 type FormValues = z.infer<typeof categorySchema>;
 
 function SubmitButton() {
-  const { formState: { isSubmitting } } = useForm<FormValues>();
+  const { pending } = useFormStatus();
   return (
-    <Button type="submit" disabled={isSubmitting}>
-      {isSubmitting && <Loader2 className="ml-2 h-4 w-4 animate-spin" />}
+    <Button type="submit" disabled={pending}>
+      {pending && <Loader2 className="ml-2 h-4 w-4 animate-spin" />}
       حفظ التغييرات
     </Button>
   );
@@ -87,7 +88,7 @@ export function EditCategoryDialog({ category, categories, onOpenChange, onCateg
     if (state?.success) {
       toast({
         title: "نجاح!",
-        description: "تم تحديث الفئة.",
+        description: "تم تحديث القسم/الفئة.",
       });
       onCategoryUpdated();
       onOpenChange(false);
@@ -117,9 +118,9 @@ export function EditCategoryDialog({ category, categories, onOpenChange, onCateg
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
-          <DialogTitle className="font-headline">تعديل الفئة</DialogTitle>
+          <DialogTitle className="font-headline">تعديل القسم أو الفئة</DialogTitle>
           <DialogDescription>
-            قم بتعديل اسم الفئة أو غير الفئة الأصلية لها.
+            قم بتعديل الاسم أو انقله إلى قسم/فئة أخرى.
           </DialogDescription>
         </DialogHeader>
         <Form {...form}>
@@ -135,7 +136,7 @@ export function EditCategoryDialog({ category, categories, onOpenChange, onCateg
               name="name"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>اسم الفئة</FormLabel>
+                  <FormLabel>الاسم</FormLabel>
                   <FormControl>
                     <Input {...field} />
                   </FormControl>
@@ -149,15 +150,15 @@ export function EditCategoryDialog({ category, categories, onOpenChange, onCateg
               name="parentId"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>الفئة الأصلية</FormLabel>
+                  <FormLabel>تابع لـ</FormLabel>
                    <Select onValueChange={field.onChange} value={field.value || "null"}>
                     <FormControl>
                       <SelectTrigger>
-                        <SelectValue placeholder="اختر فئة أصلية" />
+                        <SelectValue placeholder="اختر قسمًا أو فئة" />
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                        <SelectItem value="null">بلا فئة أصلية (فئة رئيسية)</SelectItem>
+                        <SelectItem value="null">لا شيء (جعله قسمًا رئيسيًا)</SelectItem>
                         {filteredCategories.map((c) => (
                             <SelectItem key={c.id} value={c.id}>
                             {c.name}

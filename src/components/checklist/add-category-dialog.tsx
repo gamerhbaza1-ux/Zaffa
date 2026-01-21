@@ -1,6 +1,7 @@
 "use client";
 
 import { useActionState, useEffect, useRef } from 'react';
+import { useFormStatus } from 'react-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -37,18 +38,18 @@ import { useToast } from '@/hooks/use-toast';
 import React from 'react';
 
 const categorySchema = z.object({
-  name: z.string().min(1, "اسم الفئة مطلوب."),
+  name: z.string().min(1, "اسم القسم أو الفئة مطلوب."),
   parentId: z.string().nullable().optional(),
 });
 
 type FormValues = z.infer<typeof categorySchema>;
 
 function SubmitButton() {
-  const { formState: { isSubmitting } } = useForm<FormValues>();
+  const { pending } = useFormStatus();
   return (
-    <Button type="submit" disabled={isSubmitting}>
-      {isSubmitting && <Loader2 className="ml-2 h-4 w-4 animate-spin" />}
-      إضافة فئة
+    <Button type="submit" disabled={pending}>
+      {pending && <Loader2 className="ml-2 h-4 w-4 animate-spin" />}
+      إضافة
     </Button>
   );
 }
@@ -77,7 +78,7 @@ export function AddCategoryDialog({ open, onOpenChange, onCategoryAdded, categor
     if (state?.success) {
       toast({
         title: "نجاح!",
-        description: "تمت إضافة الفئة الجديدة.",
+        description: "تمت إضافة القسم/الفئة الجديدة.",
       });
       form.reset();
       onCategoryAdded();
@@ -102,9 +103,9 @@ export function AddCategoryDialog({ open, onOpenChange, onCategoryAdded, categor
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
-          <DialogTitle className="font-headline">إضافة فئة جديدة</DialogTitle>
+          <DialogTitle className="font-headline">إضافة قسم أو فئة</DialogTitle>
           <DialogDescription>
-            أدخل اسم الفئة الجديدة واختر فئة أصلية إذا أردت.
+            أدخل اسمًا واختر ما إذا كان قسمًا رئيسيًا أم فئة تابعة.
           </DialogDescription>
         </DialogHeader>
         <Form {...form}>
@@ -119,9 +120,9 @@ export function AddCategoryDialog({ open, onOpenChange, onCategoryAdded, categor
               name="name"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>اسم الفئة</FormLabel>
+                  <FormLabel>اسم القسم أو الفئة</FormLabel>
                   <FormControl>
-                    <Input placeholder="مثال: غرفة المعيشة" {...field} />
+                    <Input placeholder="مثال: أثاث، غرفة نوم..." {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -133,15 +134,15 @@ export function AddCategoryDialog({ open, onOpenChange, onCategoryAdded, categor
               name="parentId"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>الفئة الأصلية (اختياري)</FormLabel>
+                  <FormLabel>تابع لـ (اختياري)</FormLabel>
                    <Select onValueChange={field.onChange} value={field.value || undefined}>
                     <FormControl>
                       <SelectTrigger>
-                        <SelectValue placeholder="اختر فئة أصلية" />
+                        <SelectValue placeholder="اختر قسمًا أو فئة" />
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                        <SelectItem value="null">بلا فئة أصلية (فئة رئيسية)</SelectItem>
+                        <SelectItem value="null">لا شيء (جعله قسمًا رئيسيًا)</SelectItem>
                         {categories.map((category) => (
                             <SelectItem key={category.id} value={category.id}>
                             {category.name}

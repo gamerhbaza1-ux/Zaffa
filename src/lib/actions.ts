@@ -15,7 +15,7 @@ const itemSchema = z.object({
 });
 
 const categorySchema = z.object({
-  name: z.string().min(1, "اسم الفئة مطلوب."),
+  name: z.string().min(1, "اسم القسم أو الفئة مطلوب."),
   parentId: z.string().nullable().optional(),
 });
 
@@ -86,7 +86,7 @@ export async function addCategory(prevState: any, formData: FormData) {
     return { success: true };
   } else {
     return {
-      errors: { name: ["هذه الفئة موجودة بالفعل ضمن نفس الفئة الأصلية."] },
+      errors: { name: ["هذا الاسم موجود بالفعل ضمن نفس القسم/الفئة."] },
     };
   }
 }
@@ -190,7 +190,7 @@ export async function importItems(fileContent: string) {
 export async function updateCategory(prevState: any, formData: FormData) {
   const schema = z.object({
     id: z.string(),
-    name: z.string().min(1, "اسم الفئة مطلوب."),
+    name: z.string().min(1, "الاسم مطلوب."),
     parentId: z.string().nullable().optional(),
   });
   
@@ -213,7 +213,7 @@ export async function updateCategory(prevState: any, formData: FormData) {
 
   if (categories.some(c => c.name === name && c.parentId === newParentId && c.id !== id)) {
      return {
-      errors: { name: ["هذه الفئة موجودة بالفعل ضمن نفس الفئة الأصلية."] },
+      errors: { name: ["هذا الاسم موجود بالفعل ضمن نفس القسم/الفئة."] },
     };
   }
 
@@ -244,7 +244,7 @@ export async function deleteCategory(id: string) {
   const hasItems = items.some(i => i.categoryId === id);
 
   if (hasSubcategories || hasItems) {
-    return { success: false, error: "لا يمكن حذف الفئة لأنها تحتوي على فئات فرعية أو عناصر." };
+    return { success: false, error: "لا يمكن الحذف لأن هذا القسم/الفئة يحتوي على عناصر أو فئات فرعية." };
   }
 
   categories = categories.filter(c => c.id !== id);

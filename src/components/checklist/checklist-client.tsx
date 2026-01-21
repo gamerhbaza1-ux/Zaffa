@@ -40,8 +40,8 @@ type ChecklistClientProps = {
 
 export default function ChecklistClient({ initialItems, initialCategories }: ChecklistClientProps) {
   const [isPending, startTransition] = useTransition();
-  const items = initialItems;
-  const categories = initialCategories;
+  const [items, setItems] = useState(initialItems);
+  const [categories, setCategories] = useState(initialCategories);
 
   const [isAddDialogOpen, setAddDialogOpen] = useState(false);
   const [isImportDialogOpen, setImportDialogOpen] = useState(false);
@@ -50,6 +50,11 @@ export default function ChecklistClient({ initialItems, initialCategories }: Che
   const [categoryToEdit, setCategoryToEdit] = useState<Category | null>(null);
   const [categoryToDelete, setCategoryToDelete] = useState<Category | null>(null);
   const { toast } = useToast();
+  
+  const refreshData = async () => {
+    // This function can be expanded to re-fetch from the server
+    // For now, we rely on server actions revalidating the path
+  };
 
   const formatPrice = useCallback((price: number) => {
     return new Intl.NumberFormat('ar-EG', { style: 'currency', currency: 'EGP', minimumFractionDigits: 0 }).format(price);
@@ -59,8 +64,10 @@ export default function ChecklistClient({ initialItems, initialCategories }: Che
     const item = items.find(i => i.id === id);
     if (item) {
       if (item.isPurchased) {
-        startTransition(() => {
-          unpurchaseItem(id);
+        startTransition(async () => {
+          await unpurchaseItem(id);
+          // Manually update state for instant feedback
+          setItems(prev => prev.map(i => i.id === id ? { ...i, isPurchased: false, finalPrice: undefined } : i));
         });
       } else {
         setItemToPurchase(item);
@@ -69,8 +76,9 @@ export default function ChecklistClient({ initialItems, initialCategories }: Che
   };
 
   const handleDeleteItem = (id: string) => {
-    startTransition(() => {
-      deleteItem(id);
+    startTransition(async () => {
+      await deleteItem(id);
+      setItems(prev => prev.filter(i => i.id !== id));
     });
   };
   
@@ -82,8 +90,10 @@ export default function ChecklistClient({ initialItems, initialCategories }: Che
       if (result?.success) {
         toast({
           title: "تم الحذف",
-          description: `تم حذف فئة "${categoryToDelete.name}".`,
+          description: `تم حذف "${categoryToDelete.name}".`,
         });
+        setCategories(prev => prev.filter(c => c.id !== categoryToDelete.id));
+        setCategoryToDelete(null);
       } else {
         toast({
           variant: "destructive",
@@ -91,7 +101,6 @@ export default function ChecklistClient({ initialItems, initialCategories }: Che
           description: result?.error || "حدث خطأ غير متوقع.",
         });
       }
-      setCategoryToDelete(null);
     });
   };
 
@@ -104,34 +113,23 @@ export default function ChecklistClient({ initialItems, initialCategories }: Che
     return categories.filter(c => !c.parentId).sort((a, b) => a.name.localeCompare(b.name));
   }, [categories]);
 
-  const itemsByCategoryId = useMemo(() => {
-    const grouped: { [key: string]: ChecklistItem[] } = {};
-    for (const item of items) {
-      (grouped[item.categoryId] = grouped[item.categoryId] || []).push(item);
+  const getCategoryDepth = useCallback((catId: string, depth = 0): number => {
+    const category = categoriesById.get(catId);
+    if (!category || !category.parentId) {
+      return depth;
     }
-    return grouped;
-  }, [items]);
-
-  const getCategoryDepth = useCallback((catId: string | null): number => {
-    if (!catId) return -1;
-    let depth = 0;
-    let current = categoriesById.get(catId);
-    while (current && current.parentId) {
-        depth++;
-        current = categoriesById.get(current.parentId);
-    }
-    return depth;
+    return getCategoryDepth(category.parentId, depth + 1);
   }, [categoriesById]);
 
-  const getTopLevelParent = useCallback((catId: string): Category | undefined => {
-    let current = categoriesById.get(catId);
-    if (!current) return undefined;
-    while (current.parentId && categoriesById.has(current.parentId)) {
-        current = categoriesById.get(current.parentId)!;
-    }
-    return current;
-  }, [categoriesById]);
-  
+  const getDescendantCategoryIds = useCallback((categoryId: string): string[] => {
+    const directChildren = categories.filter(c => c.parentId === categoryId);
+    let allDescendants = directChildren.map(c => c.id);
+    directChildren.forEach(child => {
+        allDescendants = [...allDescendants, ...getDescendantCategoryIds(child.id)];
+    });
+    return allDescendants;
+  }, [categories]);
+
   return (
     <>
       <div className="mb-6 space-y-4">
@@ -143,7 +141,7 @@ export default function ChecklistClient({ initialItems, initialCategories }: Che
             <Upload className="ml-2 h-4 w-4" /> استيراد
           </Button>
           <Button variant="outline" onClick={() => setAddCategoryDialogOpen(true)}>
-            <ListPlus className="ml-2 h-4 w-4" /> إضافة فئة
+            <ListPlus className="ml-2 h-4 w-4" /> إضافة قسم/فئة
           </Button>
         </div>
         <ProgressSummary purchasedCount={purchasedCount} totalCount={totalCount} />
@@ -159,16 +157,14 @@ export default function ChecklistClient({ initialItems, initialCategories }: Che
                 ))}
             </TabsList>
             {topLevelCategories.map(topLevelCategory => {
-                const allCategoriesInTab = categories
-                  .filter(c => c.id === topLevelCategory.id || getTopLevelParent(c.id)?.id === topLevelCategory.id)
-                  .sort((a, b) => {
-                    const depthA = getCategoryDepth(a.id);
-                    const depthB = getCategoryDepth(b.id);
-                    if (depthA !== depthB) return depthA - depthB;
-                    return a.name.localeCompare(b.name);
-                  });
+                const descendantIds = getDescendantCategoryIds(topLevelCategory.id);
+                const allCategoryIdsInTab = [topLevelCategory.id, ...descendantIds];
+                
+                const sortedCategoriesInTab = categories
+                  .filter(c => allCategoryIdsInTab.includes(c.id))
+                  .sort((a,b) => getCategoryDepth(a.id) - getCategoryDepth(b.id) || a.name.localeCompare(b.name));
 
-                const itemsInTab = items.filter(item => getTopLevelParent(item.categoryId)?.id === topLevelCategory.id);
+                const itemsInTab = items.filter(item => allCategoryIdsInTab.includes(item.categoryId));
                 const totalExpectedInTab = itemsInTab.reduce((sum, item) => !item.isPurchased ? sum + (item.minPrice + item.maxPrice) / 2 : sum, 0);
                 const totalPaidInTab = itemsInTab.reduce((sum, item) => item.isPurchased && typeof item.finalPrice === 'number' ? sum + item.finalPrice : sum, 0);
                 
@@ -178,26 +174,21 @@ export default function ChecklistClient({ initialItems, initialCategories }: Che
                             <CardContent className="p-4 space-y-6">
                                 <div className="flex justify-between items-center mb-4 border-b pb-2">
                                      <div className="text-sm text-muted-foreground font-normal flex flex-wrap gap-x-4 gap-y-1 p-1">
-                                        <span>إجمالي المتوقع في التبويب: {formatPrice(totalExpectedInTab)}</span>
-                                        <span>إجمالي المدفوع في التبويب: {formatPrice(totalPaidInTab)}</span>
+                                        <span>إجمالي المتوقع في القسم: {formatPrice(totalExpectedInTab)}</span>
+                                        <span>إجمالي المدفوع في القسم: {formatPrice(totalPaidInTab)}</span>
                                     </div>
                                 </div>
-                                {allCategoriesInTab.length > 0 ? (
-                                    allCategoriesInTab.map(subCat => {
-                                        const subCatItems = itemsByCategoryId[subCat.id] || [];
+                                {sortedCategoriesInTab.length > 0 ? (
+                                    sortedCategoriesInTab.map(subCat => {
+                                        const subCatItems = items.filter(i => i.categoryId === subCat.id);
                                         const level = getCategoryDepth(subCat.id) - getCategoryDepth(topLevelCategory.id);
                                         const expectedInSubCat = subCatItems.reduce((sum, item) => !item.isPurchased ? sum + (item.minPrice + item.maxPrice) / 2 : sum, 0);
                                         const paidInSubCat = subCatItems.reduce((sum, item) => item.isPurchased && typeof item.finalPrice === 'number' ? sum + item.finalPrice : sum, 0);
                                         
-                                        if (subCatItems.length === 0 && !categories.some(c => c.parentId === subCat.id)) {
-                                            // Optional: Don't render empty categories that have no subcategories, but for now we will to allow adding items.
-                                        }
-
                                         return (
-                                            <div key={subCat.id}>
+                                            <div key={subCat.id} style={{ paddingRight: level > 0 ? `${level * 1.5}rem` : undefined }}>
                                                 <div 
                                                     className="flex justify-between items-center border-b pb-2 mb-3"
-                                                    style={{ paddingRight: level > 0 ? `${level * 1.5}rem` : undefined }}
                                                 >
                                                     <div className="flex-grow">
                                                         <h3 className="font-bold text-lg">
@@ -214,7 +205,7 @@ export default function ChecklistClient({ initialItems, initialCategories }: Che
                                                         <DropdownMenuTrigger asChild>
                                                             <Button variant="ghost" size="icon" className="h-8 w-8 flex-shrink-0">
                                                               <MoreVertical className="h-4 w-4" />
-                                                               <span className="sr-only">إجراءات الفئة {subCat.name}</span>
+                                                               <span className="sr-only">إجراءات {subCat.name}</span>
                                                             </Button>
                                                         </DropdownMenuTrigger>
                                                         <DropdownMenuContent align="end">
@@ -230,14 +221,14 @@ export default function ChecklistClient({ initialItems, initialCategories }: Che
                                                     </DropdownMenu>
                                                 </div>
                                                 {subCatItems.length > 0 && (
-                                                  <div className="space-y-2" style={{ paddingRight: level > 0 ? `${level * 1.5}rem` : undefined }}>
+                                                  <div className="space-y-2">
                                                   {subCatItems.map(item => (
                                                       <ItemCard
                                                           key={item.id}
                                                           item={item}
                                                           onToggle={() => handleToggle(item.id)}
                                                           onDelete={() => handleDeleteItem(item.id)}
-                                                          isPending={isPending}
+                                                          isPending={isPending && (item.id === itemToPurchase?.id)}
                                                       />
                                                   ))}
                                                   </div>
@@ -276,24 +267,39 @@ export default function ChecklistClient({ initialItems, initialCategories }: Che
             setItemToPurchase(null);
           }
         }}
+        onItemPurchased={(updatedItem) => {
+          setItems(prev => prev.map(i => i.id === updatedItem.id ? { ...i, ...updatedItem } : i));
+        }}
       />
 
       <AddItemDialog
         open={isAddDialogOpen}
         onOpenChange={setAddDialogOpen}
-        onItemAdded={() => {}}
+        onItemAdded={async () => {
+          const newItems = await getItems();
+          setItems(newItems);
+        }}
         categories={categories}
       />
       
       <ImportDialog
         open={isImportDialogOpen}
         onOpenChange={setImportDialogOpen}
+        onImportCompleted={async () => {
+          const newItems = await getItems();
+          const newCategories = await getCategories();
+          setItems(newItems);
+          setCategories(newCategories);
+        }}
       />
 
       <AddCategoryDialog
         open={isAddCategoryDialogOpen}
         onOpenChange={setAddCategoryDialogOpen}
-        onCategoryAdded={() => {}}
+        onCategoryAdded={async () => {
+          const newCategories = await getCategories();
+          setCategories(newCategories);
+        }}
         categories={categories}
       />
 
@@ -301,7 +307,10 @@ export default function ChecklistClient({ initialItems, initialCategories }: Che
         category={categoryToEdit}
         categories={categories}
         onOpenChange={(open) => !open && setCategoryToEdit(null)}
-        onCategoryUpdated={() => {}}
+        onCategoryUpdated={async () => {
+          const newCategories = await getCategories();
+          setCategories(newCategories);
+        }}
       />
       
       <AlertDialog open={!!categoryToDelete} onOpenChange={(open) => !open && setCategoryToDelete(null)}>
@@ -309,7 +318,7 @@ export default function ChecklistClient({ initialItems, initialCategories }: Che
           <AlertDialogHeader>
             <AlertDialogTitle>هل أنت متأكد من الحذف؟</AlertDialogTitle>
             <AlertDialogDescription>
-              سيتم حذف فئة "{categoryToDelete?.name}". لا يمكن التراجع عن هذا الإجراء. لن يتم حذف الفئات إلا إذا كانت فارغة (لا تحتوي على عناصر أو فئات فرعية).
+              سيتم حذف "{categoryToDelete?.name}". هذا الإجراء لا يمكن التراجع عنه. لن يتم الحذف إلا إذا كان القسم/الفئة فارغًا (لا يحتوي على عناصر أو فئات فرعية).
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
