@@ -28,19 +28,8 @@ type ChecklistClientProps = {
 type CategoryWithChildren = Category & { children: CategoryWithChildren[] };
 type CategoryTotals = { expected: number; paid: number; itemCount: number; purchasedCount: number };
 
-type CategoryAccordionDisplayProps = {
-  categories: CategoryWithChildren[];
-  itemsByCategoryId: { [key: string]: ChecklistItem[] };
-  categoryTotals: Map<string, CategoryTotals>;
-  categoriesById: Map<string, Category>;
-  onItemToggle: (id: string) => void;
-  onItemDelete: (id: string) => void;
-  isPending: boolean;
-  formatPrice: (price: number) => string;
-};
-
-function CategoryAccordionDisplay({
-  categories,
+function CategoryAccordion({
+  category,
   itemsByCategoryId,
   categoryTotals,
   categoriesById,
@@ -48,104 +37,107 @@ function CategoryAccordionDisplay({
   onItemDelete,
   isPending,
   formatPrice,
-}: CategoryAccordionDisplayProps): ReactNode {
-  const filteredCategories = categories.filter(
-    (cat) => (categoryTotals.get(cat.id)?.itemCount ?? 0) > 0
-  );
+}: {
+  category: CategoryWithChildren;
+  itemsByCategoryId: { [key: string]: ChecklistItem[] };
+  categoryTotals: Map<string, CategoryTotals>;
+  categoriesById: Map<string, Category>;
+  onItemToggle: (id: string) => void;
+  onItemDelete: (id: string) => void;
+  isPending: boolean;
+  formatPrice: (price: number) => string;
+}) {
+  const directItems = itemsByCategoryId[category.id] || [];
+  const totals = categoryTotals.get(category.id);
 
-  if (filteredCategories.length === 0) return null;
+  if (!totals || totals.itemCount === 0) return null;
+
+  const directTotals = {
+    expected: directItems.reduce(
+      (sum, item) => {
+        return !item.isPurchased
+          ? sum + (item.minPrice + item.maxPrice) / 2
+          : sum;
+      },
+      0
+    ),
+    paid: directItems.reduce(
+      (sum, item) => {
+        return item.isPurchased && typeof item.finalPrice === "number"
+          ? sum + item.finalPrice
+          : sum;
+      },
+      0
+    ),
+  };
 
   return (
-    <Accordion type="single" collapsible className="w-full space-y-3">
-      {filteredCategories.map((category) => {
-        const directItems = itemsByCategoryId[category.id] || [];
-        const totals = categoryTotals.get(category.id);
-        if (!totals || totals.itemCount === 0) return null;
-
-        const directTotals = {
-          expected: (itemsByCategoryId[category.id] || []).reduce(
-            (sum, item) => {
-              return !item.isPurchased
-                ? sum + (item.minPrice + item.maxPrice) / 2
-                : sum;
-            },
-            0
-          ),
-          paid: (itemsByCategoryId[category.id] || []).reduce(
-            (sum, item) => {
-              return item.isPurchased && typeof item.finalPrice === "number"
-                ? sum + item.finalPrice
-                : sum;
-            },
-            0
-          ),
-        };
-
-        return (
-          <AccordionItem
-            value={category.id}
-            key={category.id}
-            className="border rounded-lg overflow-hidden bg-card/50"
-          >
-            <AccordionTrigger className="text-xl font-bold font-headline hover:no-underline p-4 bg-card">
-              <div className="flex flex-col items-start gap-1 text-right w-full">
-                <div className="flex items-center justify-between w-full">
-                  <div className="flex items-center gap-3">
-                    <span>{category.name}</span>
-                    <Badge
-                      variant={
-                        totals.purchasedCount === totals.itemCount &&
-                        totals.itemCount > 0
-                          ? "default"
-                          : "secondary"
-                      }
-                    >
-                      {totals.purchasedCount}/{totals.itemCount}
-                    </Badge>
-                  </div>
-                </div>
-                <div className="text-xs text-muted-foreground font-normal flex gap-3">
-                  <span>المتوقع: {formatPrice(directTotals.expected)}</span>
-                  <span>المدفوع: {formatPrice(directTotals.paid)}</span>
-                </div>
-              </div>
-            </AccordionTrigger>
-            <AccordionContent className="p-4 pt-0">
-              <div className="space-y-3 pt-4 border-t">
-                {directItems.map((item) => (
-                  <ItemCard
-                    key={item.id}
-                    item={item}
-                    categoryName={
-                      categoriesById.get(item.categoryId)?.name || ""
-                    }
-                    onToggle={() => onItemToggle(item.id)}
-                    onDelete={() => onItemDelete(item.id)}
-                    isPending={isPending}
-                  />
-                ))}
-                {category.children.length > 0 && (
-                  <div className="pr-4 mt-3 border-r-2 border-dashed border-border">
-                    <CategoryAccordionDisplay
-                       categories={category.children}
-                       itemsByCategoryId={itemsByCategoryId}
-                       categoryTotals={categoryTotals}
-                       categoriesById={categoriesById}
-                       onItemToggle={onItemToggle}
-                       onItemDelete={onItemDelete}
-                       isPending={isPending}
-                       formatPrice={formatPrice}
+    <AccordionItem
+      value={category.id}
+      key={category.id}
+      className="border rounded-lg overflow-hidden bg-card/50"
+    >
+      <AccordionTrigger className="text-xl font-bold font-headline hover:no-underline p-4 bg-card">
+        <div className="flex flex-col items-start gap-1 text-right w-full">
+          <div className="flex items-center justify-between w-full">
+            <div className="flex items-center gap-3">
+              <span>{category.name}</span>
+              <Badge
+                variant={
+                  totals.purchasedCount === totals.itemCount &&
+                  totals.itemCount > 0
+                    ? "default"
+                    : "secondary"
+                }
+              >
+                {totals.purchasedCount}/{totals.itemCount}
+              </Badge>
+            </div>
+          </div>
+          <div className="text-xs text-muted-foreground font-normal flex gap-3">
+            <span>المتوقع: {formatPrice(directTotals.expected)}</span>
+            <span>المدفوع: {formatPrice(directTotals.paid)}</span>
+          </div>
+        </div>
+      </AccordionTrigger>
+      <AccordionContent className="p-4 pt-0">
+        <div className="space-y-3 pt-4 border-t">
+          {directItems.map((item) => (
+            <ItemCard
+              key={item.id}
+              item={item}
+              categoryName={
+                categoriesById.get(item.categoryId)?.name || ""
+              }
+              onToggle={() => onItemToggle(item.id)}
+              onDelete={() => onItemDelete(item.id)}
+              isPending={isPending}
+            />
+          ))}
+          {category.children.length > 0 && (
+            <div className="pr-4 mt-3 border-r-2 border-dashed border-border space-y-3">
+               {category.children.map(child => (
+                 <Accordion type="multiple" className="w-full space-y-3" key={child.id}>
+                    <CategoryAccordion
+                      category={child}
+                      itemsByCategoryId={itemsByCategoryId}
+                      categoryTotals={categoryTotals}
+                      categoriesById={categoriesById}
+                      onItemToggle={onItemToggle}
+                      onItemDelete={onItemDelete}
+                      isPending={isPending}
+                      formatPrice={formatPrice}
                     />
-                  </div>
-                )}
-              </div>
-            </AccordionContent>
-          </AccordionItem>
-        );
-      })}
-    </Accordion>
+                 </Accordion>
+                ))}
+            </div>
+          )}
+        </div>
+      </AccordionContent>
+    </AccordionItem>
   );
 }
+
 
 export default function ChecklistClient({ initialItems, initialCategories }: ChecklistClientProps) {
   const [isPending, startTransition] = useTransition();
@@ -245,7 +237,7 @@ export default function ChecklistClient({ initialItems, initialCategories }: Che
 
   const categoryTree = useMemo(() => {
     const tree: CategoryWithChildren[] = [];
-    const map = new Map(initialCategories.map(c => [c.id, { ...c, children: [] }]));
+    const map = new Map(initialCategories.map(c => [c.id, { ...c, children: [] as CategoryWithChildren[] }]));
 
     for (const category of map.values()) {
       if (category.parentId && map.has(category.parentId)) {
@@ -276,16 +268,23 @@ export default function ChecklistClient({ initialItems, initialCategories }: Che
 
       <div className="space-y-3">
         {optimisticItems.length > 0 ? (
-           <CategoryAccordionDisplay
-            categories={categoryTree}
-            itemsByCategoryId={itemsByCategoryId}
-            categoryTotals={categoryTotals}
-            categoriesById={categoriesById}
-            onItemToggle={handleToggle}
-            onItemDelete={handleDelete}
-            isPending={isPending}
-            formatPrice={formatPrice}
-          />
+           <Accordion type="multiple" className="w-full space-y-3">
+            {categoryTree.map((category) => (
+              (categoryTotals.get(category.id)?.itemCount ?? 0) > 0 ? (
+                <CategoryAccordion
+                  key={category.id}
+                  category={category}
+                  itemsByCategoryId={itemsByCategoryId}
+                  categoryTotals={categoryTotals}
+                  categoriesById={categoriesById}
+                  onItemToggle={handleToggle}
+                  onItemDelete={handleDelete}
+                  isPending={isPending}
+                  formatPrice={formatPrice}
+                />
+              ) : null
+            ))}
+          </Accordion>
         ) : (
           <div className="text-center py-10 px-4 border-2 border-dashed rounded-lg">
             <h3 className="text-lg font-medium text-foreground">قائمة المراجعة الخاصة بك فارغة!</h3>
