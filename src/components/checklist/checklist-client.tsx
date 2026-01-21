@@ -31,6 +31,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { useToast } from '@/hooks/use-toast';
+import { Separator } from '@/components/ui/separator';
 
 
 type ChecklistClientProps = {
@@ -52,8 +53,10 @@ export default function ChecklistClient({ initialItems, initialCategories }: Che
   const { toast } = useToast();
   
   const refreshData = async () => {
-    // This function can be expanded to re-fetch from the server
-    // For now, we rely on server actions revalidating the path
+    const newItems = await getItems();
+    const newCategories = await getCategories();
+    setItems(newItems);
+    setCategories(newCategories);
   };
 
   const formatPrice = useCallback((price: number) => {
@@ -66,8 +69,7 @@ export default function ChecklistClient({ initialItems, initialCategories }: Che
       if (item.isPurchased) {
         startTransition(async () => {
           await unpurchaseItem(id);
-          const newItems = await getItems();
-          setItems(newItems);
+          refreshData();
         });
       } else {
         setItemToPurchase(item);
@@ -78,7 +80,7 @@ export default function ChecklistClient({ initialItems, initialCategories }: Che
   const handleDeleteItem = (id: string) => {
     startTransition(async () => {
       await deleteItem(id);
-      setItems(prev => prev.filter(i => i.id !== id));
+      refreshData();
     });
   };
   
@@ -92,7 +94,7 @@ export default function ChecklistClient({ initialItems, initialCategories }: Che
           title: "تم الحذف",
           description: `تم حذف "${categoryToDelete.name}".`,
         });
-        setCategories(prev => prev.filter(c => c.id !== categoryToDelete.id));
+        refreshData();
         setCategoryToDelete(null);
       } else {
         toast({
@@ -157,86 +159,119 @@ export default function ChecklistClient({ initialItems, initialCategories }: Che
                 ))}
             </TabsList>
             {topLevelCategories.map(topLevelCategory => {
+                const directItems = items.filter(item => item.categoryId === topLevelCategory.id);
+                
                 const descendantCats = getDescendantCategories(topLevelCategory.id);
-                const allCategoriesInTab = [topLevelCategory, ...descendantCats];
-                const allCategoryIdsInTab = allCategoriesInTab.map(c => c.id);
-                
-                const sortedCategoriesInTab = allCategoriesInTab
-                  .sort((a,b) => getCategoryDepth(a.id) - getCategoryDepth(b.id) || a.name.localeCompare(b.name));
+                const allSubCategoryIds = descendantCats.map(c => c.id);
+                const itemsInSubCats = items.filter(item => allSubCategoryIds.includes(item.categoryId));
 
-                const itemsInTab = items.filter(item => allCategoryIdsInTab.includes(item.categoryId));
-                const totalExpectedInTab = itemsInTab.reduce((sum, item) => !item.isPurchased ? sum + (item.minPrice + item.maxPrice) / 2 : sum, 0);
-                const totalPaidInTab = itemsInTab.reduce((sum, item) => item.isPurchased && typeof item.finalPrice === 'number' ? sum + item.finalPrice : sum, 0);
+                const sortedSubCats = descendantCats
+                  .filter(c => c.parentId === topLevelCategory.id) // Get only direct children to start the hierarchy
+                  .sort((a,b) => a.name.localeCompare(b.name));
+
+                const allItemsInTab = [...directItems, ...itemsInSubCats];
                 
+                const totalExpectedInTab = allItemsInTab.reduce((sum, item) => !item.isPurchased ? sum + (item.minPrice + item.maxPrice) / 2 : sum, 0);
+                const totalPaidInTab = allItemsInTab.reduce((sum, item) => item.isPurchased && typeof item.finalPrice === 'number' ? sum + item.finalPrice : sum, 0);
+                
+                const renderCategoryTree = (categoryId: string) => {
+                    const category = categoriesById.get(categoryId);
+                    if (!category) return null;
+
+                    const subCatItems = items.filter(i => i.categoryId === category.id);
+                    const children = categories.filter(c => c.parentId === category.id).sort((a,b) => a.name.localeCompare(b.name));
+                    const level = getCategoryDepth(category.id) - getCategoryDepth(topLevelCategory.id);
+
+                    const expectedInSubCat = subCatItems.reduce((sum, item) => !item.isPurchased ? sum + (item.minPrice + item.maxPrice) / 2 : sum, 0);
+                    const paidInSubCat = subCatItems.reduce((sum, item) => item.isPurchased && typeof item.finalPrice === 'number' ? sum + item.finalPrice : sum, 0);
+
+                    return (
+                        <div key={category.id} style={{ paddingRight: level > 0 ? `${level * 1.5}rem` : undefined }}>
+                            <div className="flex justify-between items-center border-b pb-2 mb-3">
+                                <div className="flex-grow">
+                                    <h3 className="font-bold text-lg">{category.name}</h3>
+                                    {(expectedInSubCat > 0 || paidInSubCat > 0) && (
+                                        <div className="text-sm text-muted-foreground font-normal flex flex-wrap gap-x-4 gap-y-1 mt-1">
+                                            <span>المتوقع: {formatPrice(expectedInSubCat)}</span>
+                                            <span>المدفوع: {formatPrice(paidInSubCat)}</span>
+                                        </div>
+                                    )}
+                                </div>
+                                <DropdownMenu>
+                                    <DropdownMenuTrigger asChild>
+                                        <Button variant="ghost" size="icon" className="h-8 w-8 flex-shrink-0">
+                                            <MoreVertical className="h-4 w-4" />
+                                            <span className="sr-only">إجراءات {category.name}</span>
+                                        </Button>
+                                    </DropdownMenuTrigger>
+                                    <DropdownMenuContent align="end">
+                                        <DropdownMenuItem onSelect={() => setCategoryToEdit(category)}>
+                                            <Pencil className="ml-2 h-4 w-4" />
+                                            <span>تعديل</span>
+                                        </DropdownMenuItem>
+                                        <DropdownMenuItem onSelect={() => setCategoryToDelete(category)} className="text-destructive focus:text-destructive">
+                                            <Trash2 className="ml-2 h-4 w-4" />
+                                            <span>حذف</span>
+                                        </DropdownMenuItem>
+                                    </DropdownMenuContent>
+                                </DropdownMenu>
+                            </div>
+                            {subCatItems.length > 0 && (
+                                <div className="space-y-2">
+                                    {subCatItems.map(item => (
+                                        <ItemCard
+                                            key={item.id}
+                                            item={item}
+                                            onToggle={() => handleToggle(item.id)}
+                                            onDelete={() => handleDeleteItem(item.id)}
+                                            isPending={isPending && (item.id === itemToPurchase?.id)}
+                                        />
+                                    ))}
+                                </div>
+                            )}
+                             {children.length > 0 && (
+                                <div className="mt-4 space-y-4">
+                                    {children.map(child => renderCategoryTree(child.id))}
+                                </div>
+                            )}
+                        </div>
+                    );
+                };
+
                 return (
                     <TabsContent key={topLevelCategory.id} value={topLevelCategory.id} className="mt-4">
                         <Card>
                             <CardContent className="p-4 space-y-6">
                                 <div className="flex justify-between items-center mb-4 border-b pb-2">
-                                     <div className="text-sm text-muted-foreground font-normal flex flex-wrap gap-x-4 gap-y-1 p-1">
+                                    <div className="text-sm text-muted-foreground font-normal flex flex-wrap gap-x-4 gap-y-1 p-1">
                                         <span>إجمالي المتوقع في القسم: {formatPrice(totalExpectedInTab)}</span>
                                         <span>إجمالي المدفوع في القسم: {formatPrice(totalPaidInTab)}</span>
                                     </div>
                                 </div>
-                                {sortedCategoriesInTab.length > 0 ? (
-                                    sortedCategoriesInTab.map(subCat => {
-                                        const subCatItems = items.filter(i => i.categoryId === subCat.id);
-                                        const level = getCategoryDepth(subCat.id) - getCategoryDepth(topLevelCategory.id);
-                                        const expectedInSubCat = subCatItems.reduce((sum, item) => !item.isPurchased ? sum + (item.minPrice + item.maxPrice) / 2 : sum, 0);
-                                        const paidInSubCat = subCatItems.reduce((sum, item) => item.isPurchased && typeof item.finalPrice === 'number' ? sum + item.finalPrice : sum, 0);
-                                        
-                                        return (
-                                            <div key={subCat.id} style={{ paddingRight: level > 0 ? `${level * 1.5}rem` : undefined }}>
-                                                <div 
-                                                    className="flex justify-between items-center border-b pb-2 mb-3"
-                                                >
-                                                    <div className="flex-grow">
-                                                        <h3 className="font-bold text-lg">
-                                                            {subCat.name}
-                                                        </h3>
-                                                         {(expectedInSubCat > 0 || paidInSubCat > 0) && (
-                                                            <div className="text-sm text-muted-foreground font-normal flex flex-wrap gap-x-4 gap-y-1 mt-1">
-                                                                <span>المتوقع: {formatPrice(expectedInSubCat)}</span>
-                                                                <span>المدفوع: {formatPrice(paidInSubCat)}</span>
-                                                            </div>
-                                                        )}
-                                                    </div>
-                                                    <DropdownMenu>
-                                                        <DropdownMenuTrigger asChild>
-                                                            <Button variant="ghost" size="icon" className="h-8 w-8 flex-shrink-0">
-                                                              <MoreVertical className="h-4 w-4" />
-                                                               <span className="sr-only">إجراءات {subCat.name}</span>
-                                                            </Button>
-                                                        </DropdownMenuTrigger>
-                                                        <DropdownMenuContent align="end">
-                                                            <DropdownMenuItem onSelect={() => setCategoryToEdit(subCat)}>
-                                                                <Pencil className="ml-2 h-4 w-4" />
-                                                                <span>تعديل</span>
-                                                            </DropdownMenuItem>
-                                                            <DropdownMenuItem onSelect={() => setCategoryToDelete(subCat)} className="text-destructive focus:text-destructive">
-                                                                <Trash2 className="ml-2 h-4 w-4" />
-                                                                <span>حذف</span>
-                                                            </DropdownMenuItem>
-                                                        </DropdownMenuContent>
-                                                    </DropdownMenu>
-                                                </div>
-                                                {subCatItems.length > 0 && (
-                                                  <div className="space-y-2">
-                                                  {subCatItems.map(item => (
-                                                      <ItemCard
-                                                          key={item.id}
-                                                          item={item}
-                                                          onToggle={() => handleToggle(item.id)}
-                                                          onDelete={() => handleDeleteItem(item.id)}
-                                                          isPending={isPending && (item.id === itemToPurchase?.id)}
-                                                      />
-                                                  ))}
-                                                  </div>
-                                                )}
-                                            </div>
-                                        )
-                                    })
-                                ) : (
+
+                                {directItems.length > 0 && (
+                                  <div className="space-y-2">
+                                    {directItems.map(item => (
+                                      <ItemCard
+                                        key={item.id}
+                                        item={item}
+                                        onToggle={() => handleToggle(item.id)}
+                                        onDelete={() => handleDeleteItem(item.id)}
+                                        isPending={isPending && (item.id === itemToPurchase?.id)}
+                                      />
+                                    ))}
+                                  </div>
+                                )}
+
+                                {directItems.length > 0 && sortedSubCats.length > 0 && <Separator className="my-6" />}
+                                
+                                {sortedSubCats.length > 0 && (
+                                    <div className="space-y-6">
+                                      {sortedSubCats.map(cat => renderCategoryTree(cat.id))}
+                                    </div>
+                                )}
+
+                                {directItems.length === 0 && sortedSubCats.length === 0 && (
                                     <p className="text-muted-foreground text-center py-10">
                                         لا توجد فئات أو عناصر في هذا القسم بعد.
                                     </p>
@@ -267,40 +302,26 @@ export default function ChecklistClient({ initialItems, initialCategories }: Che
             setItemToPurchase(null);
           }
         }}
-        onItemPurchased={async () => {
-          const newItems = await getItems();
-          setItems(newItems);
-        }}
+        onItemPurchased={refreshData}
       />
 
       <AddItemDialog
         open={isAddDialogOpen}
         onOpenChange={setAddDialogOpen}
-        onItemAdded={async () => {
-          const newItems = await getItems();
-          setItems(newItems);
-        }}
+        onItemAdded={refreshData}
         categories={categories}
       />
       
       <ImportDialog
         open={isImportDialogOpen}
         onOpenChange={setImportDialogOpen}
-        onImportCompleted={async () => {
-          const newItems = await getItems();
-          const newCategories = await getCategories();
-          setItems(newItems);
-          setCategories(newCategories);
-        }}
+        onImportCompleted={refreshData}
       />
 
       <AddCategoryDialog
         open={isAddCategoryDialogOpen}
         onOpenChange={setAddCategoryDialogOpen}
-        onCategoryAdded={async () => {
-          const newCategories = await getCategories();
-          setCategories(newCategories);
-        }}
+        onCategoryAdded={refreshData}
         categories={categories}
       />
 
@@ -308,10 +329,7 @@ export default function ChecklistClient({ initialItems, initialCategories }: Che
         category={categoryToEdit}
         categories={categories}
         onOpenChange={(open) => !open && setCategoryToEdit(null)}
-        onCategoryUpdated={async () => {
-          const newCategories = await getCategories();
-          setCategories(newCategories);
-        }}
+        onCategoryUpdated={refreshData}
       />
       
       <AlertDialog open={!!categoryToDelete} onOpenChange={(open) => !open && setCategoryToDelete(null)}>
