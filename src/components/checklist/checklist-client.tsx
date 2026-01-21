@@ -191,28 +191,10 @@ export default function ChecklistClient({ initialItems, initialCategories }: Che
                 return (
                     <TabsContent key={category.id} value={category.id} className="mt-4">
                          <div className="flex justify-between items-center mb-2 gap-4">
-                            <div className="text-sm text-muted-foreground font-normal flex gap-4 p-1">
-                                <span>الإجمالي المتوقع: {formatPrice(expectedInTab)}</span>
-                                <span>الإجمالي المدفوع: {formatPrice(paidInTab)}</span>
+                            <div className="text-sm text-muted-foreground font-normal flex flex-wrap gap-x-4 gap-y-1 p-1">
+                                <span>إجمالي المتوقع في التبويب: {formatPrice(expectedInTab)}</span>
+                                <span>إجمالي المدفوع في التبويب: {formatPrice(paidInTab)}</span>
                             </div>
-                             <DropdownMenu>
-                                <DropdownMenuTrigger asChild>
-                                    <Button variant="ghost" size="icon" className="h-8 w-8 flex-shrink-0">
-                                      <MoreVertical className="h-4 w-4" />
-                                       <span className="sr-only">إجراءات الفئة</span>
-                                    </Button>
-                                </DropdownMenuTrigger>
-                                <DropdownMenuContent align="end">
-                                    <DropdownMenuItem onSelect={() => setCategoryToEdit(category)}>
-                                        <Pencil className="ml-2 h-4 w-4" />
-                                        <span>تعديل</span>
-                                    </DropdownMenuItem>
-                                    <DropdownMenuItem onSelect={() => setCategoryToDelete(category)} className="text-destructive focus:text-destructive">
-                                        <Trash2 className="ml-2 h-4 w-4" />
-                                        <span>حذف</span>
-                                    </DropdownMenuItem>
-                                </DropdownMenuContent>
-                            </DropdownMenu>
                         </div>
                         <Card>
                             <CardContent className="p-4 space-y-6">
@@ -221,14 +203,52 @@ export default function ChecklistClient({ initialItems, initialCategories }: Che
                                         const subCatItems = itemsBySubCategory[subCatId];
                                         const subCat = categoriesById.get(subCatId);
                                         const level = getCategoryDepth(subCatId);
+                                        const expectedInSubCat = subCatItems.reduce((sum, item) => !item.isPurchased ? sum + (item.minPrice + item.maxPrice) / 2 : sum, 0);
+                                        const paidInSubCat = subCatItems.reduce((sum, item) => item.isPurchased && typeof item.finalPrice === 'number' ? sum + item.finalPrice : sum, 0);
+
                                         return (
                                             <div key={subCatId}>
-                                                <h3 className="font-bold text-lg mb-3 border-b pb-2" style={{
-                                                     marginRight: level > 0 ? `${level}rem` : undefined,
+                                                <div 
+                                                    className="flex justify-between items-center border-b pb-2 mb-3"
+                                                    style={{
+                                                        paddingRight: level > 0 ? `${level}rem` : undefined,
+                                                    }}
+                                                >
+                                                    <div className="flex-grow">
+                                                        <h3 className="font-bold text-lg">
+                                                            {subCat?.name}
+                                                        </h3>
+                                                         {(expectedInSubCat > 0 || paidInSubCat > 0) && (
+                                                            <div className="text-sm text-muted-foreground font-normal flex flex-wrap gap-x-4 gap-y-1 mt-1">
+                                                                <span>المتوقع: {formatPrice(expectedInSubCat)}</span>
+                                                                <span>المدفوع: {formatPrice(paidInSubCat)}</span>
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                    {subCat && (
+                                                        <DropdownMenu>
+                                                            <DropdownMenuTrigger asChild>
+                                                                <Button variant="ghost" size="icon" className="h-8 w-8 flex-shrink-0">
+                                                                  <MoreVertical className="h-4 w-4" />
+                                                                   <span className="sr-only">إجراءات الفئة {subCat.name}</span>
+                                                                </Button>
+                                                            </DropdownMenuTrigger>
+                                                            <DropdownMenuContent align="end">
+                                                                <DropdownMenuItem onSelect={() => setCategoryToEdit(subCat)}>
+                                                                    <Pencil className="ml-2 h-4 w-4" />
+                                                                    <span>تعديل</span>
+                                                                </DropdownMenuItem>
+                                                                <DropdownMenuItem onSelect={() => setCategoryToDelete(subCat)} className="text-destructive focus:text-destructive">
+                                                                    <Trash2 className="ml-2 h-4 w-4" />
+                                                                    <span>حذف</span>
+                                                                </DropdownMenuItem>
+                                                            </DropdownMenuContent>
+                                                        </DropdownMenu>
+                                                    )}
+                                                </div>
+                                                <div className="space-y-2" style={{
+                                                    paddingRight: level > 0 ? `${level}rem` : undefined,
                                                 }}>
-                                                    {subCat?.name}
-                                                </h3>
-                                                <div className="space-y-2">
                                                 {subCatItems.map(item => (
                                                      <ItemCard
                                                         key={item.id}
