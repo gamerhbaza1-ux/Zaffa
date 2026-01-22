@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useEffect, useRef } from 'react';
+import { useActionState, useEffect, useRef, useTransition } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -57,6 +57,7 @@ export function AddCategoryDialog({ open, onOpenChange, onCategoryAdded, categor
   const [state, formAction] = React.useActionState(addCategory, { errors: {} });
   const formRef = useRef<HTMLFormElement>(null);
   const { toast } = useToast();
+  const [, startTransition] = useTransition();
 
   const form = useForm<FormValues>({
     resolver: zodResolver(categorySchema),
@@ -87,8 +88,10 @@ export function AddCategoryDialog({ open, onOpenChange, onCategoryAdded, categor
   const handleOpenChange = (isOpen: boolean) => {
     if (!isOpen) {
       form.reset();
-      // @ts-ignore
-      formAction(new FormData()); // Reset server state
+      startTransition(() => {
+        // @ts-ignore
+        formAction(new FormData()); // Reset server state
+      });
     }
     onOpenChange(isOpen);
   }

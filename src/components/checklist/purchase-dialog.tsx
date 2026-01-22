@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useEffect, useRef } from 'react';
+import { useActionState, useEffect, useRef, useTransition } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -38,6 +38,7 @@ export function PurchaseDialog({ item, onOpenChange, onItemPurchased }: Purchase
   const [state, formAction] = useActionState(purchaseItem, { errors: {} });
   const formRef = useRef<HTMLFormElement>(null);
   const { toast } = useToast();
+  const [, startTransition] = useTransition();
   
   const open = !!item;
 
@@ -71,8 +72,10 @@ export function PurchaseDialog({ item, onOpenChange, onItemPurchased }: Purchase
   const handleOpenChange = (isOpen: boolean) => {
       if (!isOpen) {
         reset();
-        // @ts-ignore
-        formAction(new FormData()); // Reset server state
+        startTransition(() => {
+          // @ts-ignore
+          formAction(new FormData()); // Reset server state
+        });
       }
       onOpenChange(isOpen);
   }

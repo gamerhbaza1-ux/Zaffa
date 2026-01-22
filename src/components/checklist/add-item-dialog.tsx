@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useEffect, useRef } from 'react';
+import { useActionState, useEffect, useRef, useTransition } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -60,6 +60,7 @@ export function AddItemDialog({ open, onOpenChange, onItemAdded, categories }: A
   const [state, formAction] = React.useActionState(addItem, { errors: {} });
   const formRef = useRef<HTMLFormElement>(null);
   const { toast } = useToast();
+  const [, startTransition] = useTransition();
 
   const form = useForm<FormValues>({
     resolver: zodResolver(itemSchema),
@@ -70,7 +71,7 @@ export function AddItemDialog({ open, onOpenChange, onItemAdded, categories }: A
     }
   });
   
-  const availableCategories = categories;
+  const availableCategories = categories.filter(c => c.parentId);
 
 
   useEffect(() => {
@@ -94,8 +95,10 @@ export function AddItemDialog({ open, onOpenChange, onItemAdded, categories }: A
   const handleOpenChange = (isOpen: boolean) => {
     if (!isOpen) {
       form.reset();
-      // @ts-ignore
-      formAction(new FormData()); // Reset server state
+      startTransition(() => {
+        // @ts-ignore
+        formAction(new FormData()); // Reset server state
+      });
     }
     onOpenChange(isOpen);
   }
