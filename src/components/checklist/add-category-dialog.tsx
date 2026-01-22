@@ -20,7 +20,10 @@ import { Input } from "@/components/ui/input";
 import {
   Select,
   SelectContent,
+  SelectGroup,
   SelectItem,
+  SelectLabel,
+  SelectSeparator,
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
@@ -32,7 +35,6 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
-import { Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import React from 'react';
 import { SubmitButton } from '../submit-button';
@@ -91,6 +93,9 @@ export function AddCategoryDialog({ open, onOpenChange, onCategoryAdded, categor
     onOpenChange(isOpen);
   }
 
+  const sections = categories.filter(c => !c.parentId).sort((a, b) => a.name.localeCompare(b.name));
+  const otherCategories = categories.filter(c => c.parentId).sort((a, b) => a.name.localeCompare(b.name));
+
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent className="sm:max-w-[425px]">
@@ -134,11 +139,27 @@ export function AddCategoryDialog({ open, onOpenChange, onCategoryAdded, categor
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                        {categories.map((category) => (
-                            <SelectItem key={category.id} value={category.id}>
-                            {category.name}
-                            </SelectItem>
-                        ))}
+                        <SelectGroup>
+                          <SelectLabel>الأقسام</SelectLabel>
+                          {sections.map((category) => (
+                              <SelectItem key={category.id} value={category.id}>
+                              {category.name}
+                              </SelectItem>
+                          ))}
+                        </SelectGroup>
+                        {otherCategories.length > 0 && (
+                          <>
+                            <SelectSeparator />
+                            <SelectGroup>
+                                <SelectLabel>الفئات</SelectLabel>
+                                {otherCategories.map((category) => (
+                                    <SelectItem key={category.id} value={category.id}>
+                                    {category.name}
+                                    </SelectItem>
+                                ))}
+                            </SelectGroup>
+                          </>
+                        )}
                     </SelectContent>
                   </Select>
                   <FormMessage />

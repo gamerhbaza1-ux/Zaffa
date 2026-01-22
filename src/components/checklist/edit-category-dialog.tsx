@@ -29,13 +29,17 @@ import {
 import {
   Select,
   SelectContent,
+  SelectGroup,
   SelectItem,
+  SelectLabel,
+  SelectSeparator,
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
 import { Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import React from 'react';
+import { SubmitButton } from '../submit-button';
 
 const categorySchema = z.object({
   id: z.string(),
@@ -44,16 +48,6 @@ const categorySchema = z.object({
 });
 
 type FormValues = z.infer<typeof categorySchema>;
-
-function SubmitButton() {
-  const { pending } = useFormStatus();
-  return (
-    <Button type="submit" disabled={pending}>
-      {pending && <Loader2 className="ml-2 h-4 w-4 animate-spin" />}
-      حفظ التغييرات
-    </Button>
-  );
-}
 
 type EditCategoryDialogProps = {
   category: Category | null;
@@ -113,6 +107,8 @@ export function EditCategoryDialog({ category, categories, onOpenChange, onCateg
   }
   
   const filteredCategories = categories.filter(c => c.id !== category?.id);
+  const sections = filteredCategories.filter(c => !c.parentId).sort((a, b) => a.name.localeCompare(b.name));
+  const otherCategories = filteredCategories.filter(c => c.parentId).sort((a, b) => a.name.localeCompare(b.name));
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
@@ -159,11 +155,28 @@ export function EditCategoryDialog({ category, categories, onOpenChange, onCateg
                     </FormControl>
                     <SelectContent>
                         <SelectItem value="null">لا شيء (جعله قسمًا رئيسيًا)</SelectItem>
-                        {filteredCategories.map((c) => (
-                            <SelectItem key={c.id} value={c.id}>
-                            {c.name}
-                            </SelectItem>
-                        ))}
+                        <SelectSeparator />
+                        <SelectGroup>
+                          <SelectLabel>الأقسام</SelectLabel>
+                          {sections.map((c) => (
+                              <SelectItem key={c.id} value={c.id}>
+                              {c.name}
+                              </SelectItem>
+                          ))}
+                        </SelectGroup>
+                        {otherCategories.length > 0 && (
+                          <>
+                            <SelectSeparator />
+                            <SelectGroup>
+                                <SelectLabel>الفئات</SelectLabel>
+                                {otherCategories.map((c) => (
+                                    <SelectItem key={c.id} value={c.id}>
+                                    {c.name}
+                                    </SelectItem>
+                                ))}
+                            </SelectGroup>
+                          </>
+                        )}
                     </SelectContent>
                   </Select>
                   <FormMessage />
@@ -173,7 +186,7 @@ export function EditCategoryDialog({ category, categories, onOpenChange, onCateg
 
             <DialogFooter className="pt-4">
               <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>إلغاء</Button>
-              <SubmitButton />
+              <SubmitButton label="حفظ التغييرات" />
             </DialogFooter>
           </form>
         </Form>
