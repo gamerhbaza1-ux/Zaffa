@@ -48,11 +48,12 @@ export default function ChecklistClient({ initialItems, initialCategories }: Che
   const [isAddSectionDialogOpen, setAddSectionDialogOpen] = useState(false);
   const [isAddCategoryDialogOpen, setAddCategoryDialogOpen] = useState(false);
   const [itemToPurchase, setItemToPurchase] = useState<ChecklistItem | null>(null);
+  const [itemToUnpurchase, setItemToUnpurchase] = useState<ChecklistItem | null>(null);
   const [categoryToEdit, setCategoryToEdit] = useState<Category | null>(null);
   const [categoryToDelete, setCategoryToDelete] = useState<Category | null>(null);
   const { toast } = useToast();
   
-  const refreshData = async () => {
+  const refreshData = () => {
     startTransition(async () => {
       const newItems = await getItems();
       const newCategories = await getCategories();
@@ -69,14 +70,28 @@ export default function ChecklistClient({ initialItems, initialCategories }: Che
     const item = items.find(i => i.id === id);
     if (item) {
       if (item.isPurchased) {
-        startTransition(async () => {
-          await unpurchaseItem(id);
-          refreshData();
-        });
+        setItemToUnpurchase(item);
       } else {
         setItemToPurchase(item);
       }
     }
+  };
+
+  const handleUnpurchaseConfirm = () => {
+    if (!itemToUnpurchase) return;
+
+    startTransition(async () => {
+      await unpurchaseItem(itemToUnpurchase.id);
+      
+      const newItems = await getItems();
+      setItems(newItems);
+      
+      toast({
+        title: "تم إلغاء الشراء",
+        description: `تم إرجاع "${itemToUnpurchase.name}" إلى القائمة.`,
+      });
+      setItemToUnpurchase(null);
+    });
   };
 
   const handleDeleteItem = (id: string) => {
@@ -159,8 +174,6 @@ export default function ChecklistClient({ initialItems, initialCategories }: Che
                 ))}
             </TabsList>
             {topLevelCategories.map(topLevelCategory => {
-                const allSubCategoryIds = [topLevelCategory.id, ...categories.filter(c => c.parentId === topLevelCategory.id).map(c => c.id)];
-                
                 const getDescendantIds = (catId: string): string[] => {
                     let ids = [catId];
                     const children = categories.filter(c => c.parentId === catId);
@@ -230,7 +243,7 @@ export default function ChecklistClient({ initialItems, initialCategories }: Che
                                                 item={item}
                                                 onToggle={() => handleToggle(item.id)}
                                                 onDelete={() => handleDeleteItem(item.id)}
-                                                isPending={isPending && (item.id === itemToPurchase?.id)}
+                                                isPending={isPending}
                                             />
                                         ))}
                                     </div>
@@ -345,6 +358,26 @@ export default function ChecklistClient({ initialItems, initialCategories }: Che
               disabled={isPending}
             >
               {isPending ? <Loader2 className="ml-2 h-4 w-4 animate-spin" /> : "حذف"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+      
+      <AlertDialog open={!!itemToUnpurchase} onOpenChange={(open) => !open && setItemToUnpurchase(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>هل أنت متأكد؟</AlertDialogTitle>
+            <AlertDialogDescription>
+              سيؤدي هذا إلى إرجاع العنصر "{itemToUnpurchase?.name}" إلى قائمة العناصر التي لم يتم شراؤها، وسيتم حذف السعر النهائي المسجل.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>إلغاء</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleUnpurchaseConfirm}
+              disabled={isPending}
+            >
+              {isPending ? <Loader2 className="ml-2 h-4 w-4 animate-spin" /> : "تأكيد"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
