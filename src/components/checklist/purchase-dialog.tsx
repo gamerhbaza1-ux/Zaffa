@@ -1,7 +1,6 @@
 "use client";
 
 import { useActionState, useEffect, useRef } from 'react';
-import { useFormStatus } from 'react-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -19,8 +18,8 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { SubmitButton } from '../submit-button';
 
 const purchaseSchema = z.object({
   itemId: z.string(),
@@ -29,22 +28,13 @@ const purchaseSchema = z.object({
 
 type FormValues = z.infer<typeof purchaseSchema>;
 
-function SubmitButton() {
-  const { pending } = useFormStatus();
-  return (
-    <Button type="submit" disabled={pending}>
-      {pending && <Loader2 className="ml-2 h-4 w-4 animate-spin" />}
-      تأكيد الشراء
-    </Button>
-  );
-}
-
 type PurchaseDialogProps = {
   item: ChecklistItem | null;
   onOpenChange: (open: boolean) => void;
+  onItemPurchased: () => void;
 };
 
-export function PurchaseDialog({ item, onOpenChange }: PurchaseDialogProps) {
+export function PurchaseDialog({ item, onOpenChange, onItemPurchased }: PurchaseDialogProps) {
   const [state, formAction] = useActionState(purchaseItem, { errors: {} });
   const formRef = useRef<HTMLFormElement>(null);
   const { toast } = useToast();
@@ -62,11 +52,12 @@ export function PurchaseDialog({ item, onOpenChange }: PurchaseDialogProps) {
         description: "تم تحديث العنصر كـ 'تم شراؤه'.",
       });
       reset();
+      onItemPurchased();
       onOpenChange(false);
     } else if (state?.errors?.finalPrice) {
        setError("finalPrice", { type: "server", message: state.errors.finalPrice[0] });
     }
-  }, [state, reset, onOpenChange, toast, setError]);
+  }, [state, reset, onOpenChange, toast, setError, onItemPurchased]);
 
   useEffect(() => {
     if (item) {
@@ -77,13 +68,17 @@ export function PurchaseDialog({ item, onOpenChange }: PurchaseDialogProps) {
     }
   }, [item, setValue, reset]);
 
-  return (
-    <Dialog open={open} onOpenChange={(isOpen) => {
+  const handleOpenChange = (isOpen: boolean) => {
       if (!isOpen) {
         reset();
+        // @ts-ignore
+        formAction(new FormData()); // Reset server state
       }
       onOpenChange(isOpen);
-    }}>
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
           <DialogTitle className="font-headline">تأكيد شراء: {item?.name}</DialogTitle>
@@ -109,7 +104,7 @@ export function PurchaseDialog({ item, onOpenChange }: PurchaseDialogProps) {
           </div>
           <DialogFooter>
             <Button variant="outline" type="button" onClick={() => onOpenChange(false)}>إلغاء</Button>
-            <SubmitButton />
+            <SubmitButton label="تأكيد الشراء" />
           </DialogFooter>
         </form>
       </DialogContent>

@@ -1,7 +1,6 @@
 "use client";
 
 import { useActionState, useEffect, useRef } from 'react';
-import { useFormStatus } from 'react-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -25,25 +24,15 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
-import { Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import React from 'react';
+import { SubmitButton } from '../submit-button';
 
 const sectionSchema = z.object({
   name: z.string().min(1, "اسم القسم مطلوب."),
 });
 
 type FormValues = z.infer<typeof sectionSchema>;
-
-function SubmitButton() {
-  const { pending } = useFormStatus();
-  return (
-    <Button type="submit" disabled={pending}>
-      {pending && <Loader2 className="ml-2 h-4 w-4 animate-spin" />}
-      إضافة قسم
-    </Button>
-  );
-}
 
 type AddSectionDialogProps = {
   open: boolean;
@@ -80,6 +69,8 @@ export function AddSectionDialog({ open, onOpenChange, onSectionAdded }: AddSect
   const handleOpenChange = (isOpen: boolean) => {
     if (!isOpen) {
       form.reset();
+      // @ts-ignore
+      formAction(new FormData()); // Reset server state
     }
     onOpenChange(isOpen);
   }
@@ -120,7 +111,7 @@ export function AddSectionDialog({ open, onOpenChange, onSectionAdded }: AddSect
 
             <DialogFooter className="pt-4">
               <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>إلغاء</Button>
-              <SubmitButton />
+              <SubmitButton label="إضافة قسم" />
             </DialogFooter>
           </form>
         </Form>

@@ -1,7 +1,6 @@
 "use client";
 
 import { useActionState, useEffect, useRef } from 'react';
-import { useFormStatus } from 'react-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -33,9 +32,9 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
-import { Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import React from 'react';
+import { SubmitButton } from '../submit-button';
 
 const itemSchema = z.object({
   name: z.string().min(1, "اسم العنصر مطلوب."),
@@ -49,15 +48,6 @@ const itemSchema = z.object({
 
 type FormValues = z.infer<typeof itemSchema>;
 
-function SubmitButton() {
-  const { pending } = useFormStatus();
-  return (
-    <Button type="submit" disabled={pending}>
-      {pending && <Loader2 className="ml-2 h-4 w-4 animate-spin" />}
-      إضافة عنصر
-    </Button>
-  );
-}
 
 type AddItemDialogProps = {
   open: boolean;
@@ -80,7 +70,7 @@ export function AddItemDialog({ open, onOpenChange, onItemAdded, categories }: A
     }
   });
   
-  const availableCategories = categories.filter(c => c.parentId);
+  const availableCategories = categories;
 
 
   useEffect(() => {
@@ -104,6 +94,8 @@ export function AddItemDialog({ open, onOpenChange, onItemAdded, categories }: A
   const handleOpenChange = (isOpen: boolean) => {
     if (!isOpen) {
       form.reset();
+      // @ts-ignore
+      formAction(new FormData()); // Reset server state
     }
     onOpenChange(isOpen);
   }
@@ -200,7 +192,7 @@ export function AddItemDialog({ open, onOpenChange, onItemAdded, categories }: A
 
             <DialogFooter className="pt-4">
               <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>إلغاء</Button>
-              <SubmitButton />
+              <SubmitButton label="إضافة عنصر" />
             </DialogFooter>
           </form>
         </Form>
