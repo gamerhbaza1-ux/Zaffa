@@ -19,11 +19,16 @@ function getValueFromLocalStorage<T>(key: string, initialValue: T): T {
 
 export function useLocalStorage<T>(key: string, initialValue: T): [T, Dispatch<SetStateAction<T>>] {
     
-    // State to store our value
-    // Pass initial state function to useState so logic is only executed once
-    const [storedValue, setStoredValue] = useState<T>(() => {
-        return getValueFromLocalStorage(key, initialValue);
-    });
+    // Initialize with initialValue to ensure server and client match on first render.
+    const [storedValue, setStoredValue] = useState<T>(initialValue);
+
+    // This effect runs only on the client, after the component has mounted.
+    // It updates the state with the value from localStorage, triggering a re-render.
+    useEffect(() => {
+        setStoredValue(getValueFromLocalStorage(key, initialValue));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [key]);
+
 
     // Return a wrapped version of useState's setter function that ...
     // ... persists the new value to localStorage.
