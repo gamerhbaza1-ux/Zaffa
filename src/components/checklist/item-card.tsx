@@ -27,9 +27,9 @@ export function ItemCard({ item, onToggle, onDelete, onEdit, onPriorityChange }:
   };
 
   const priorityConfig: Record<Priority, { label: string; Icon: React.ElementType; className: string }> = {
-    important: { label: 'مهم', Icon: AlertTriangle, className: 'text-destructive' },
+    important: { label: 'مهم', Icon: AlertTriangle, className: 'text-red-600' },
     nice_to_have: { label: 'لو الدنيا تمام', Icon: Star, className: 'text-yellow-500' },
-    not_important: { label: 'مش مهم', Icon: MinusCircle, className: 'text-muted-foreground' },
+    not_important: { label: 'مش مهم', Icon: MinusCircle, className: 'text-gray-500' },
   };
 
   const currentPriority = priorityConfig[item.priority || 'important'];
