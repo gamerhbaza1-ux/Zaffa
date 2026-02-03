@@ -1,6 +1,6 @@
 'use client';
 
-import { useTheme } from "@/hooks/use-theme";
+import { useTheme } from "@/context/theme-context";
 import { Button } from "@/components/ui/button";
 
 // These are hardcoded to match the primary colors of the themes.

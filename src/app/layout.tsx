@@ -3,7 +3,7 @@ import './globals.css';
 import { Toaster } from "@/components/ui/toaster";
 import { cn } from '@/lib/utils';
 import { FirebaseClientProvider } from '@/firebase';
-import { ThemeManager } from '@/components/theme-manager';
+import { ThemeProvider } from '@/context/theme-context';
 
 export const metadata: Metadata = {
   title: 'زفة',
@@ -24,8 +24,9 @@ export default function RootLayout({
       </head>
       <body className={cn("font-body antialiased", "min-h-screen bg-background")}>
         <FirebaseClientProvider>
-          <ThemeManager />
-          {children}
+          <ThemeProvider>
+            {children}
+          </ThemeProvider>
         </FirebaseClientProvider>
         <Toaster />
       </body>
