@@ -3,7 +3,7 @@
 import { useState, useTransition, useMemo, useCallback } from 'react';
 import type { ChecklistItem, Category } from '@/lib/types';
 import { deleteItem, unpurchaseItem, deleteCategory } from '@/lib/actions';
-import { useFirebase, useCollection } from '@/firebase';
+import { useUser, useFirestore, useCollection } from '@/firebase';
 import { collection } from 'firebase/firestore';
 
 import { Button } from '@/components/ui/button';
@@ -37,7 +37,8 @@ import {
 import { useToast } from '@/hooks/use-toast';
 
 export default function ChecklistClient() {
-  const { user, userProfile, isProfileLoading, household, isHouseholdLoading, firestore } = useFirebase();
+  const { isProfileLoading, household, isHouseholdLoading } = useUser();
+  const firestore = useFirestore();
 
   const householdId = household?.id;
 
