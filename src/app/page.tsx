@@ -3,9 +3,9 @@ import Image from 'next/image';
 import { PlaceHolderImages } from '@/lib/placeholder-images';
 import ChecklistClient from '@/components/checklist/checklist-client';
 import { Card, CardContent } from '@/components/ui/card';
-import { useUser } from '@/firebase';
+import { useFirestore, useUser } from '@/firebase';
 import { useRouter } from 'next/navigation';
-import { useEffect, useState, useTransition } from 'react';
+import { useEffect, useTransition } from 'react';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -19,9 +19,9 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { getAuth } from 'firebase/auth';
 import { PartnerDisplay } from '@/components/partner-display';
 import { InvitationNotification } from '@/components/invitation-notification';
-import { setupSingleUserHousehold } from '@/lib/actions';
 import { Home as HomeIcon, Loader2, LogOut } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { collection, doc, runTransaction } from 'firebase/firestore';
 
 function Header() {
   const { user, userProfile, isUserLoading, isProfileLoading } = useUser();
@@ -80,27 +80,54 @@ function Header() {
 
 function AutomaticHouseholdSetup() {
   const { user } = useUser();
+  const firestore = useFirestore();
   const [isPending, startTransition] = useTransition();
   const { toast } = useToast();
   
   useEffect(() => {
-    // This effect runs when a user is logged in but has no household.
+    // This effect runs on the client when a user is logged in but has no household.
     // It automatically creates a single-user household for them.
-    if (user && !isPending) {
+    if (user && firestore && !isPending) {
       startTransition(async () => {
-        const result = await setupSingleUserHousehold(user.uid);
-        if (result.error) {
+        try {
+          await runTransaction(firestore, async (transaction) => {
+            const userRef = doc(firestore, "users", user.uid);
+            const userSnap = await transaction.get(userRef);
+
+            if (!userSnap.exists()) {
+              throw new Error("لم يتم العثور على حسابك. حاول تسجيل الخروج والدخول مرة أخرى.");
+            }
+
+            if (userSnap.data().householdId) {
+              // User already has a household, no action needed.
+              // The component will unmount on the next render as useUser updates.
+              return;
+            }
+
+            // 1. Create a new household document
+            const householdRef = doc(collection(firestore, "households"));
+            transaction.set(householdRef, {
+              memberIds: [user.uid],
+            });
+
+            // 2. Update the user's profile with the new householdId
+            transaction.update(userRef, { householdId: householdRef.id });
+          });
+          // On success, the useUser hook's onSnapshot listener will re-fetch
+          // userProfile. This will cause this component to unmount and the
+          // main app content to show. No success toast is needed.
+        } catch (e) {
+           const message = e instanceof Error ? e.message : "An unknown error occurred";
            toast({
             variant: "destructive",
             title: "فشلت عملية الإعداد",
-            description: result.error,
+            description: message,
           });
+           console.error("Automatic household setup failed:", e);
         }
-        // On success, the useUser hook re-fetches userProfile, which will
-        // cause the Home component to re-render and show the main app content.
       });
     }
-  }, [user, isPending, startTransition, toast]);
+  }, [user, firestore, isPending, startTransition, toast]);
 
   return (
      <div className="flex h-screen flex-col items-center justify-center bg-background p-4 text-center">

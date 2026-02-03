@@ -484,39 +484,3 @@ export async function respondToInvitation(prevState: any, formData: FormData) {
     return { error: message };
   }
 }
-
-export async function setupSingleUserHousehold(userId: string) {
-  if (!userId) {
-    return { success: false, error: "User ID is required." };
-  }
-
-  try {
-    await runTransaction(firestore, async (transaction) => {
-      const userRef = doc(firestore, "users", userId);
-      const userSnap = await transaction.get(userRef);
-      if (!userSnap.exists()) {
-        throw new Error("User not found.");
-      }
-      if (userSnap.data().householdId) {
-        // Already has a household, do nothing.
-        return;
-      }
-
-      // Create a new household
-      const householdRef = doc(collection(firestore, "households"));
-      transaction.set(householdRef, {
-        memberIds: [userId],
-      });
-
-      // Update the user's profile with the new householdId
-      transaction.update(userRef, { householdId: householdRef.id });
-    });
-
-    revalidatePath("/");
-    return { success: true };
-  } catch (e) {
-    const message = e instanceof Error ? e.message : "An unknown error occurred";
-    console.error("Setup single user household failed:", e);
-    return { success: false, error: message };
-  }
-}
