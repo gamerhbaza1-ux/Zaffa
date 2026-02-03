@@ -1,11 +1,13 @@
 "use client";
 
-import { useActionState, useEffect, useRef } from "react";
+import { useEffect, useTransition, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { sendInvitation } from "@/lib/actions";
-import { useUser } from "@/firebase";
+import { useFirestore, useUser } from "@/firebase";
+import { collection, doc, getDoc, getDocs, query, where, addDoc } from "firebase/firestore";
+import type { Invitation, UserProfile } from "@/lib/types";
+
 
 import {
   Dialog,
@@ -26,7 +28,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
-import { SubmitButton } from "./submit-button";
+import { Loader2 } from "lucide-react";
 
 const inviteSchema = z.object({
   inviteeEmail: z.string().email("لازم نكتب إيميل صحيح."),
@@ -43,10 +45,10 @@ export function InviteDialog({
   open,
   onOpenChange,
 }: InviteDialogProps) {
-  const { user } = useUser();
+  const { user, userProfile } = useUser();
+  const firestore = useFirestore();
   const { toast } = useToast();
-  const [state, formAction] = useActionState(sendInvitation, { error: null, success: false });
-  const formRef = useRef<HTMLFormElement>(null);
+  const [isPending, startTransition] = useTransition();
 
   const form = useForm<FormValues>({
     resolver: zodResolver(inviteSchema),
@@ -54,26 +56,75 @@ export function InviteDialog({
   });
 
   useEffect(() => {
-    if (state.success) {
-      toast({
-        title: "تمام!",
-        description: "بعتنا الدعوة لشريكك.",
-      });
-      onOpenChange(false);
+    if (!open) {
       form.reset();
-    } else if (state.error) {
-      form.setError("inviteeEmail", { type: "server", message: state.error });
     }
-  }, [state, form, onOpenChange, toast]);
+  }, [open, form]);
 
-  const handleFormAction = (formData: FormData) => {
-    if (user) {
-      formData.append('inviterId', user.uid);
-      formAction(formData);
-    } else {
-      toast({ variant: 'destructive', title: 'خطأ', description: 'لازم تسجل دخول الأول.'})
+  const handleInvite = (values: FormValues) => {
+    if (!user || !userProfile || !firestore) {
+      toast({ variant: 'destructive', title: 'خطأ', description: 'لازم تسجل دخول الأول.' });
+      return;
     }
-  }
+
+    startTransition(async () => {
+      try {
+        const { inviteeEmail } = values;
+
+        if (userProfile.email.toLowerCase() === inviteeEmail.toLowerCase()) {
+            throw new Error("مينفعش تبعت دعوة لنفسك.");
+        }
+
+        const usersRef = collection(firestore, "users");
+        const inviteeQuery = query(usersRef, where("email", "==", inviteeEmail));
+        const inviteeSnap = await getDocs(inviteeQuery);
+        if (inviteeSnap.empty) {
+          throw new Error("معندناش حساب بالإيميل ده.");
+        }
+        const invitee = inviteeSnap.docs[0].data() as UserProfile;
+
+        if (invitee.householdId) {
+            const inviteeHouseholdRef = doc(firestore, "households", invitee.householdId);
+            const inviteeHouseholdSnap = await getDoc(inviteeHouseholdRef);
+            if (inviteeHouseholdSnap.exists() && inviteeHouseholdSnap.data().memberIds.length > 1) {
+                throw new Error("الشخص ده موجود في أسرة تانية أصلاً.");
+            }
+        }
+        
+        if (!userProfile.householdId) {
+             throw new Error("معرفناش نلاقي الأسرة بتاعتك. حاول تحدث الصفحة.");
+        }
+        const householdId = userProfile.householdId;
+
+        const invitationsRef = collection(firestore, "invitations");
+        const existingInviteQuery = query(invitationsRef, where("inviteeEmail", "==", inviteeEmail), where("householdId", "==", householdId), where("status", "==", "pending"));
+        const existingInviteSnap = await getDocs(existingInviteQuery);
+        if (!existingInviteSnap.empty) {
+            throw new Error("انت باعت للشخص ده دعوة ولسه مردش عليها.");
+        }
+
+        const newInvitation: Omit<Invitation, 'id'> = {
+          inviterId: user.uid,
+          inviterName: `${userProfile.firstName} ${userProfile.lastName}`,
+          inviterRole: userProfile.role,
+          inviteeEmail: inviteeEmail,
+          householdId: householdId,
+          status: 'pending',
+        };
+
+        await addDoc(invitationsRef, newInvitation);
+
+        toast({
+          title: "تمام!",
+          description: "بعتنا الدعوة لشريكك.",
+        });
+        onOpenChange(false);
+      } catch (e) {
+        const message = e instanceof Error ? e.message : "An unknown error occurred";
+        form.setError("inviteeEmail", { type: "server", message });
+      }
+    });
+  };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -89,8 +140,7 @@ export function InviteDialog({
 
         <Form {...form}>
           <form
-            ref={formRef}
-            action={handleFormAction}
+            onSubmit={form.handleSubmit(handleInvite)}
             className="space-y-4"
           >
             <FormField
@@ -111,7 +161,10 @@ export function InviteDialog({
             />
             <DialogFooter>
               <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>نلغي</Button>
-              <SubmitButton label="نبعت الدعوة" />
+              <Button type="submit" disabled={isPending}>
+                {isPending && <Loader2 className="ml-2 h-4 w-4 animate-spin" />}
+                نبعت الدعوة
+              </Button>
             </DialogFooter>
           </form>
         </Form>

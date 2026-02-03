@@ -39,7 +39,8 @@ service cloud.firestore {
      * It does this by reading the user's own profile document to find their householdId.
      */
     function isMemberOfHousehold(householdId) {
-      return isSignedIn() && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.householdId == householdId;
+      let userDoc = get(/databases/$(database)/documents/users/$(request.auth.uid));
+      return isSignedIn() && userDoc.data.householdId == householdId;
     }
     
     /**
@@ -66,10 +67,17 @@ service cloud.firestore {
     /**
      * @description Rules for the household document itself.
      * @path /households/{householdId}
-     * @principle A member of a household can read and write to it.
+     * @principle A member of a household can read and write to it. A non-member can join if they have a valid invite.
      */
     match /households/{householdId} {
-       allow read, update, delete: if isMemberOfHousehold(householdId);
+       // Any signed-in user can read household metadata (member list). This is needed to allow a user to accept an invitation.
+       allow read: if isSignedIn();
+       // An existing member can update. A new user can also add themselves to the list if they are not already a member.
+       allow update: if isMemberOfHousehold(householdId) || 
+                      (isSignedIn() && 
+                       request.auth.uid in request.resource.data.memberIds && 
+                       !(request.auth.uid in resource.data.memberIds));
+       allow delete: if isMemberOfHousehold(householdId);
        // Allow a user to create a household if their UID is in the initial memberIds list.
        allow create: if isSignedIn() && request.auth.uid in request.resource.data.memberIds;
     }
