@@ -124,20 +124,16 @@ export function InvitationNotification() {
           setOpen(false);
         })
         .catch((e) => {
-          if (e && (e.name === 'FirebaseError' || e.code === 'permission-denied')) {
-            errorEmitter.emit('permission-error', new FirestorePermissionError({
-              path: `transaction to join household ${pendingInvitation.householdId}`,
-              operation: 'write'
-            }));
-          } else {
-            console.error("Respond to invitation failed:", e);
-            const message = e instanceof Error ? e.message : "An unknown error occurred";
-            toast({
-                variant: "destructive",
-                title: "معرفناش نرد على الدعوة",
-                description: message,
-            });
-          }
+          // The user reported that the transaction may succeed even if this catch block is hit.
+          // Instead of throwing a fatal permission error, we'll log it for debugging
+          // and show a less intrusive toast notification.
+          console.error("Transaction to join household failed on the client, but may have succeeded on the backend:", e);
+          const message = e instanceof Error ? e.message : "An unknown error occurred";
+          toast({
+              variant: "destructive",
+              title: "حدث خطأ أثناء قبول الدعوة",
+              description: "قد تكون الدعوة قبلت بنجاح. يرجى تحديث الصفحة للتأكد.",
+          });
         });
       }
     });
