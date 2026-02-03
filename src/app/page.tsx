@@ -3,7 +3,7 @@ import Image from 'next/image';
 import { PlaceHolderImages } from '@/lib/placeholder-images';
 import ChecklistClient from '@/components/checklist/checklist-client';
 import { Card } from '@/components/ui/card';
-import { Home as HomeIcon, LogOut } from 'lucide-react';
+import { Home as HomeIcon, LogOut, History } from 'lucide-react';
 import { useUser } from '@/hooks/use-user';
 import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';
@@ -12,6 +12,7 @@ import { PartnerDisplay } from '@/components/partner-display';
 import { InvitationNotification } from '@/components/invitation-notification';
 import { getAuth, signOut } from 'firebase/auth';
 import { Button } from '@/components/ui/button';
+import Link from 'next/link';
 
 function Header() {
   const { user } = useUser();
@@ -34,9 +35,16 @@ function Header() {
             </h1>
           </div>
           {user && (
-            <Button variant="ghost" size="icon" onClick={handleSignOut} aria-label="تسجيل الخروج">
-              <LogOut className="h-5 w-5 text-muted-foreground" />
-            </Button>
+            <div className="flex items-center gap-2">
+              <Button variant="ghost" size="icon" asChild>
+                <Link href="/log" aria-label="عرض سجل النشاط">
+                    <History className="h-5 w-5 text-muted-foreground" />
+                </Link>
+              </Button>
+              <Button variant="ghost" size="icon" onClick={handleSignOut} aria-label="تسجيل الخروج">
+                <LogOut className="h-5 w-5 text-muted-foreground" />
+              </Button>
+            </div>
           )}
         </div>
       </header>

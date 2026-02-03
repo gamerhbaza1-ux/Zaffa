@@ -1,3 +1,5 @@
+import type { Timestamp } from 'firebase/firestore';
+
 export type Category = {
   id:string;
   name: string;
@@ -36,4 +38,13 @@ export type Invitation = {
     inviteeEmail: string;
     householdId: string;
     status: 'pending' | 'accepted' | 'declined';
+};
+
+export type ActivityLog = {
+  id: string;
+  userId: string;
+  userName: string;
+  action: string;
+  details: string;
+  timestamp: Timestamp;
 };

@@ -187,6 +187,40 @@
         "isPurchased",
         "categoryId"
       ]
+    },
+    "ActivityLog": {
+      "title": "Activity Log",
+      "type": "object",
+      "description": "Represents a single log entry for an action taken within a household.",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "userId": {
+          "type": "string"
+        },
+        "userName": {
+          "type": "string"
+        },
+        "action": {
+          "type": "string"
+        },
+        "details": {
+          "type": "string"
+        },
+        "timestamp": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "userId",
+        "userName",
+        "action",
+        "details",
+        "timestamp"
+      ]
     }
   },
   "auth": {
@@ -281,6 +315,26 @@
             {
               "name": "checklistItemId",
               "description": "The unique identifier of the checklist item."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/households/{householdId}/activityLogs/{activityLogId}",
+        "definition": {
+          "entityName": "ActivityLog",
+          "schema": {
+            "$ref": "#/backend/entities/ActivityLog"
+          },
+          "description": "Stores a log of all actions performed within the household.",
+          "params": [
+            {
+              "name": "householdId",
+              "description": "The household this log belongs to."
+            },
+            {
+              "name": "activityLogId",
+              "description": "The unique ID of the log entry."
             }
           ]
         }

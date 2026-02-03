@@ -4,7 +4,7 @@ import { useState, useMemo, useCallback } from 'react';
 import type { ChecklistItem, Category } from '@/lib/types';
 import { useUser } from '@/hooks/use-user';
 import { useCollection, useFirestore } from '@/firebase';
-import { collection, doc, addDoc, updateDoc, deleteDoc, writeBatch } from 'firebase/firestore';
+import { collection, doc, addDoc, updateDoc, deleteDoc, writeBatch, serverTimestamp } from 'firebase/firestore';
 
 import { Button } from '@/components/ui/button';
 import { Plus, Upload, ListPlus, MoreVertical, Pencil, Trash2, FolderPlus, Search } from 'lucide-react';
@@ -41,7 +41,7 @@ import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
 
 export default function ChecklistClient() {
-    const { household, isHouseholdLoading } = useUser();
+    const { userProfile, household, isHouseholdLoading } = useUser();
     const firestore = useFirestore();
     const { toast } = useToast();
     const [searchQuery, setSearchQuery] = useState('');
@@ -65,7 +65,20 @@ export default function ChecklistClient() {
     const [itemToDelete, setItemToDelete] = useState<ChecklistItem | null>(null);
     const [categoryToEdit, setCategoryToEdit] = useState<Category | null>(null);
     const [categoryToDelete, setCategoryToDelete] = useState<Category | null>(null);
-  
+    
+    const logActivity = useCallback((action: string, details: string) => {
+        if (!firestore || !household || !userProfile) return;
+        const activityLogsRef = collection(firestore, `households/${household.id}/activityLogs`);
+        const logEntry = {
+            userId: userProfile.id,
+            userName: userProfile.firstName,
+            action,
+            details,
+            timestamp: serverTimestamp(),
+        };
+        addDoc(activityLogsRef, logEntry).catch(e => console.error("Failed to log activity:", e));
+    }, [firestore, household, userProfile]);
+
     const formatPrice = useCallback((price: number) => {
         return new Intl.NumberFormat('ar-EG', { style: 'currency', currency: 'EGP', minimumFractionDigits: 0 }).format(price);
     }, []);
@@ -83,10 +96,14 @@ export default function ChecklistClient() {
   
     const handlePurchase = (itemId: string, finalPrice: number) => {
         if (!itemsRef) return;
+        const item = items.find(i => i.id === itemId);
         const itemDocRef = doc(itemsRef, itemId);
         updateDoc(itemDocRef, { isPurchased: true, finalPrice })
             .then(() => {
                 toast({ title: "تمام!", description: "علمنا على الحاجة دي انها اتجابت خلاص." });
+                if (item) {
+                  logActivity('purchase_item', `شراء "${item.name}" بسعر ${formatPrice(finalPrice)}`);
+                }
             })
             .catch(() => errorEmitter.emit('permission-error', new FirestorePermissionError({ path: itemDocRef.path, operation: 'update', requestResourceData: { isPurchased: true, finalPrice } })));
         setItemToPurchase(null);
@@ -99,6 +116,7 @@ export default function ChecklistClient() {
         updateDoc(itemDocRef, { isPurchased: false, finalPrice: undefined })
              .then(() => {
                 toast({ title: "رجعناها القائمة", description: `رجعنا "${itemName}" للحاجات اللي لسه هنجيبها.` });
+                logActivity('unpurchase_item', `إلغاء شراء "${itemName}"`);
             })
             .catch(() => errorEmitter.emit('permission-error', new FirestorePermissionError({ path: itemDocRef.path, operation: 'update', requestResourceData: { isPurchased: false } })));
         setItemToUnpurchase(null);
@@ -111,6 +129,7 @@ export default function ChecklistClient() {
         deleteDoc(itemDocRef)
             .then(() => {
                 toast({ title: "اتمسحت", description: `مسحنا الحاجة "${itemName}".` });
+                logActivity('delete_item', `حذف "${itemName}"`);
             })
             .catch(() => errorEmitter.emit('permission-error', new FirestorePermissionError({ path: itemDocRef.path, operation: 'delete' })));
         setItemToDelete(null);
@@ -125,6 +144,7 @@ export default function ChecklistClient() {
         addDoc(categoriesRef, newSection)
             .then(() => {
                 toast({ title: 'تمام!', description: 'ضفنا القسم الجديد.' });
+                logActivity('create_section', `إنشاء قسم جديد: "${name}"`);
                 setAddSectionDialogOpen(false);
             })
             .catch(() => errorEmitter.emit('permission-error', new FirestorePermissionError({ path: categoriesRef.path, operation: 'create', requestResourceData: newSection })));
@@ -140,6 +160,8 @@ export default function ChecklistClient() {
         addDoc(categoriesRef, newCategory)
             .then(() => {
                 toast({ title: 'تمام!', description: 'ضفنا الفئة الجديدة.' });
+                const parentName = categories.find(c => c.id === parentId)?.name || '';
+                logActivity('create_category', `إنشاء فئة جديدة: "${name}" تحت "${parentName}"`);
                 setAddCategoryDialogOpen(false);
             })
             .catch(() => errorEmitter.emit('permission-error', new FirestorePermissionError({ path: categoriesRef.path, operation: 'create', requestResourceData: newCategory })));
@@ -161,6 +183,7 @@ export default function ChecklistClient() {
         updateDoc(catDocRef, { name, parentId: parentId || null })
             .then(() => {
                 toast({ title: 'تمام!', description: 'حدثنا القسم/الفئة.' });
+                logActivity('update_category', `تعديل القسم/الفئة إلى "${name}"`);
                 setCategoryToEdit(null);
             })
             .catch(() => errorEmitter.emit('permission-error', new FirestorePermissionError({ path: catDocRef.path, operation: 'update', requestResourceData: { name, parentId } })));
@@ -182,7 +205,10 @@ export default function ChecklistClient() {
         const categoryName = categoryToDelete.name;
         const catDocRef = doc(categoriesRef, categoryToDelete.id);
         deleteDoc(catDocRef)
-            .then(() => toast({ title: 'اتمسحت', description: `مسحنا "${categoryName}".` }))
+            .then(() => {
+                toast({ title: 'اتمسحت', description: `مسحنا "${categoryName}".` })
+                logActivity('delete_category', `حذف القسم/الفئة "${categoryName}"`);
+            })
             .catch(() => errorEmitter.emit('permission-error', new FirestorePermissionError({ path: catDocRef.path, operation: 'delete' })));
         setCategoryToDelete(null);
     };
@@ -213,6 +239,7 @@ export default function ChecklistClient() {
         await batch.commit()
             .then(() => {
                 toast({ title: "تمام!", description: `تم استيراد ${importedData.length} حاجة بنجاح.` });
+                logActivity('import_items', `استيراد ${importedData.length} حاجة من ملف.`);
                 setImportDialogOpen(false);
             })
             .catch(() => errorEmitter.emit('permission-error', new FirestorePermissionError({ path: `batch write to household ${household?.id}`, operation: 'write' })));
@@ -223,6 +250,8 @@ export default function ChecklistClient() {
         addDoc(itemsRef, { ...newItem, isPurchased: false })
             .then(() => {
                 toast({ title: 'تمام!', description: 'ضفنا الحاجة الجديدة.'});
+                const categoryName = categories.find(c => c.id === newItem.categoryId)?.name || '';
+                logActivity('create_item', `إضافة "${newItem.name}" إلى "${categoryName}"`);
                 setAddDialogOpen(false);
             })
             .catch(() => errorEmitter.emit('permission-error', new FirestorePermissionError({ path: itemsRef.path, operation: 'create', requestResourceData: newItem })));
