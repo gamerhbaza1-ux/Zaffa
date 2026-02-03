@@ -7,7 +7,7 @@ import { z } from "zod";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { createUserWithEmailAndPassword } from "firebase/auth";
-import { setDoc, doc, collection, writeBatch } from "firebase/firestore";
+import { setDoc, doc } from "firebase/firestore";
 import { useAuth, useFirestore } from "@/firebase";
 
 import { Button } from "@/components/ui/button";
@@ -115,30 +115,18 @@ export default function SignupPage() {
       );
       const user = userCredential.user;
 
-      // 2. Create user profile and household in Firestore
-      const batch = writeBatch(firestore);
-
-      // 2a. Create a new household for the user
-      const householdRef = doc(collection(firestore, "households"));
-      batch.set(householdRef, {
-        memberIds: [user.uid],
-      });
-
-      // 2b. Create the user's profile document, linking it to the household
+      // 2. Create the user's profile document with a null householdId
       const userDocRef = doc(firestore, "users", user.uid);
-      batch.set(userDocRef, {
+      await setDoc(userDocRef, {
         id: user.uid,
         firstName: values.firstName,
         lastName: values.lastName,
         email: values.email,
         role: selectedRole,
-        householdId: householdRef.id,
+        householdId: null, // User will choose setup on the home page
       });
 
-      // 3. Commit the batch write
-      await batch.commit();
-
-      // 4. Redirect to home page
+      // 3. Redirect to home page for setup choice
       router.push("/");
     } catch (error: any) {
       if (error.code === "auth/email-already-in-use") {

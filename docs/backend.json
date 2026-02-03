@@ -31,7 +31,10 @@
           ]
         },
         "householdId": {
-          "type": "string",
+          "type": [
+            "string",
+            "null"
+          ],
           "description": "The ID of the household this user belongs to."
         }
       },
@@ -40,8 +43,7 @@
         "email",
         "firstName",
         "lastName",
-        "role",
-        "householdId"
+        "role"
       ]
     },
     "Household": {

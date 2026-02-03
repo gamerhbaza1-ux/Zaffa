@@ -4,7 +4,7 @@ export type UserProfile = {
   lastName: string;
   email: string;
   role: 'groom' | 'bride';
-  householdId: string;
+  householdId: string | null;
 };
 
 export type Household = {

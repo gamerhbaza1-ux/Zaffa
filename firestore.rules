@@ -45,14 +45,27 @@ service cloud.firestore {
      function userEmail() {
         return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.email;
     }
+
+    /**
+     * Checks if the requesting user is a partner of the user specified by userId.
+     * Partners are users who share the same non-null householdId.
+     */
+    function isPartner(userId) {
+      let userHouseholdId = get(/databases/$(database)/documents/users/$(request.auth.uid)).data.householdId;
+      let otherUserHouseholdId = get(/databases/$(database)/documents/users/$(userId)).data.householdId;
+      return isSignedIn() && userHouseholdId != null && userHouseholdId == otherUserHouseholdId;
+    }
     
     /**
      * @description Rules for a user's own profile data.
      * @path /users/{userId}
-     * @principle A user can read and update their own profile. Creation is handled securely, and deletion is not allowed.
+     * @principle A user can read and update their own profile. Creation is handled securely, and deletion is not allowed. Partners can also read each other's profiles.
      */
     match /users/{userId} {
-      allow read, update: if isOwner(userId);
+      allow read: if isOwner(userId) || isPartner(userId);
+      allow update: if isOwner(userId);
+      // Create is handled by server-side logic (or backend function) upon signup.
+      // Delete is not allowed from the client for data integrity.
     }
     
     /**

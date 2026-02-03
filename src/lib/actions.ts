@@ -325,14 +325,37 @@ export async function sendInvitation(prevState: any, formData: FormData) {
 
   try {
     const inviterRef = doc(firestore, "users", inviterId);
+    let householdId: string | null;
+    
+    // Use a transaction to safely read inviter and create a household if needed
+    householdId = await runTransaction(firestore, async (transaction) => {
+        const inviterSnap = await transaction.get(inviterRef);
+        if (!inviterSnap.exists()) {
+            throw new Error("الحساب بتاعك مش موجود.");
+        }
+        const inviter = inviterSnap.data() as UserProfile;
+
+        if (inviter.email.toLowerCase() === inviteeEmail.toLowerCase()) {
+            throw new Error("مينفعش تبعت دعوة لنفسك.");
+        }
+        
+        if (inviter.householdId) {
+            return inviter.householdId;
+        } else {
+            // If inviter doesn't have a household, create one and update their profile.
+            const newHouseholdRef = doc(collection(firestore, "households"));
+            transaction.set(newHouseholdRef, { memberIds: [inviterId] });
+            transaction.update(inviterRef, { householdId: newHouseholdRef.id });
+            return newHouseholdRef.id;
+        }
+    });
+
+    if (!householdId) {
+        throw new Error("معرفناش نجهز الأسرة. حاول تاني.");
+    }
+    
     const inviterSnap = await getDoc(inviterRef);
-    if (!inviterSnap.exists()) {
-      return { error: "الحساب بتاعك مش موجود." };
-    }
     const inviter = inviterSnap.data() as UserProfile;
-    if (inviter.email.toLowerCase() === inviteeEmail.toLowerCase()) {
-        return { error: "مينفعش تبعت دعوة لنفسك." };
-    }
 
     const usersRef = collection(firestore, "users");
     const inviteeQuery = query(usersRef, where("email", "==", inviteeEmail));
@@ -342,11 +365,14 @@ export async function sendInvitation(prevState: any, formData: FormData) {
     }
     const invitee = inviteeSnap.docs[0].data() as UserProfile;
 
-    const inviteeHouseholdRef = doc(firestore, "households", invitee.householdId);
-    const inviteeHouseholdSnap = await getDoc(inviteeHouseholdRef);
-    if (inviteeHouseholdSnap.exists() && inviteeHouseholdSnap.data().memberIds.length > 1) {
-      return { error: "الشخص ده موجود في أسرة تانية أصلاً." };
+    if (invitee.householdId) {
+        const inviteeHouseholdRef = doc(firestore, "households", invitee.householdId);
+        const inviteeHouseholdSnap = await getDoc(inviteeHouseholdRef);
+        if (inviteeHouseholdSnap.exists() && inviteeHouseholdSnap.data().memberIds.length > 1) {
+            return { error: "الشخص ده موجود في أسرة تانية أصلاً." };
+        }
     }
+
 
     const invitationsRef = collection(firestore, "invitations");
     const existingInviteQuery = query(invitationsRef, where("inviteeEmail", "==", inviteeEmail), where("status", "==", "pending"));
@@ -360,7 +386,7 @@ export async function sendInvitation(prevState: any, formData: FormData) {
       inviterName: `${inviter.firstName} ${inviter.lastName}`,
       inviterRole: inviter.role,
       inviteeEmail: inviteeEmail,
-      householdId: inviter.householdId,
+      householdId: householdId,
       status: 'pending',
     };
 
@@ -369,8 +395,9 @@ export async function sendInvitation(prevState: any, formData: FormData) {
     revalidatePath("/");
     return { success: true };
   } catch (e) {
+    const message = e instanceof Error ? e.message : "An unknown error occurred";
     console.error("Send invitation failed:", e);
-    return { error: "معرفناش نبعت الدعوة. حاول تاني." };
+    return { error: message };
   }
 }
 
@@ -430,6 +457,7 @@ export async function respondToInvitation(prevState: any, formData: FormData) {
       if (oldHouseholdId) {
         const oldHouseholdRef = doc(firestore, "households", oldHouseholdId);
         const oldHouseholdSnap = await transaction.get(oldHouseholdRef);
+        // Only delete if it was a single-person household
         if (oldHouseholdSnap.exists() && oldHouseholdSnap.data().memberIds.length === 1) {
           transaction.delete(oldHouseholdRef);
         }
@@ -454,5 +482,41 @@ export async function respondToInvitation(prevState: any, formData: FormData) {
     console.error("Respond to invitation failed:", e);
     const message = e instanceof Error ? e.message : "An unknown error occurred";
     return { error: message };
+  }
+}
+
+export async function setupSingleUserHousehold(userId: string) {
+  if (!userId) {
+    return { success: false, error: "User ID is required." };
+  }
+
+  try {
+    await runTransaction(firestore, async (transaction) => {
+      const userRef = doc(firestore, "users", userId);
+      const userSnap = await transaction.get(userRef);
+      if (!userSnap.exists()) {
+        throw new Error("User not found.");
+      }
+      if (userSnap.data().householdId) {
+        // Already has a household, do nothing.
+        return;
+      }
+
+      // Create a new household
+      const householdRef = doc(collection(firestore, "households"));
+      transaction.set(householdRef, {
+        memberIds: [userId],
+      });
+
+      // Update the user's profile with the new householdId
+      transaction.update(userRef, { householdId: householdRef.id });
+    });
+
+    revalidatePath("/");
+    return { success: true };
+  } catch (e) {
+    const message = e instanceof Error ? e.message : "An unknown error occurred";
+    console.error("Setup single user household failed:", e);
+    return { success: false, error: message };
   }
 }

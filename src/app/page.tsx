@@ -22,6 +22,7 @@ import { getAuth } from 'firebase/auth';
 import { InviteDialog } from '@/components/invite-dialog';
 import { PartnerDisplay } from '@/components/partner-display';
 import { InvitationNotification } from '@/components/invitation-notification';
+import { SetupChoice } from '@/components/setup-choice';
 
 function Header() {
   const { user, userProfile, isUserLoading, isProfileLoading } = useUser();
@@ -79,7 +80,7 @@ function Header() {
 }
 
 export default function Home() {
-  const { user, isUserLoading, household, isHouseholdLoading } = useUser();
+  const { user, isUserLoading, userProfile, isProfileLoading, household, isHouseholdLoading } = useUser();
   const router = useRouter();
   const [isInviteDialogOpen, setInviteDialogOpen] = useState(false);
   
@@ -91,8 +92,19 @@ export default function Home() {
 
   const heroImage = PlaceHolderImages.find(p => p.id === 'hero');
   
-  if (isUserLoading || !user) {
+  // Primary loading state
+  if (isUserLoading || isProfileLoading || !user) {
     return <div className="flex h-screen items-center justify-center">جاري التحميل...</div>;
+  }
+  
+  // This can happen for a brief moment while profile is loading after auth
+  if (!userProfile) {
+    return <div className="flex h-screen items-center justify-center">جاري تحميل حسابك...</div>;
+  }
+
+  // If user has not completed setup, show the choice screen
+  if (!userProfile.householdId) {
+    return <SetupChoice />;
   }
 
   return (
