@@ -1,0 +1,78 @@
+/**
+ * Core Philosophy: This ruleset enforces a strict user-ownership model. All user-related data is private and can only be accessed by the user who owns it. The default security posture is to deny all access unless explicitly granted.
+ *
+ * Data Structure: The data is organized hierarchically. Each user has a primary document in the top-level `/users` collection. All of their associated data, such as checklist items, is stored in subcollections under their user document (e.g., `/users/{userId}/checklistItems/...`).
+ *
+ * Key Security Decisions:
+ * - User Isolation: A user can only ever read or write data within their own document tree (`/users/{userId}/...`).
+ * - No User Listing: It is not possible for any client to list all documents in the `/users` collection, protecting user privacy.
+ * - Ownership Integrity: On creation, documents must include an ownership field (e.g., `userId`) that matches the authenticated user's ID. This field is immutable and cannot be changed on update, ensuring ownership can never be transferred.
+ *
+ * Denormalization for Authorization: The `ChecklistItem` document contains a denormalized `userId` field. This allows security rules to authorize access by checking a field on the document itself, which is significantly more performant and scalable than checking its parent document.
+ *
+ * Structural Segregation: User data is naturally segregated by the `/users/{userId}` path, which provides a secure and efficient way to manage and query user-specific information without any risk of data leakage between users.
+ */
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Helper Functions for re-usable logic
+
+    /**
+     * Checks if a user is authenticated.
+     */
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    /**
+     * Checks if the currently authenticated user's UID matches the provided userId.
+     * This is the primary function for establishing document ownership.
+     */
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+    
+    /**
+     * Checks for ownership on an existing document. Used for update/delete operations
+     * to prevent acting on documents that do not exist.
+     */
+    function isExistingOwner(userId) {
+      return isOwner(userId) && resource != null;
+    }
+
+    /**
+     * @description Rules for a user's own profile document.
+     * @path /users/{userId}
+     * @allow (create) An authenticated user creating their own user document for the first time.
+     * @allow (get) An authenticated user reading their own profile.
+     * @deny (list) Any user, authenticated or not, attempting to list all users.
+     * @deny (update) An authenticated user trying to modify another user's profile.
+     * @principle Restricts access to a user's own profile document and prevents user enumeration.
+     */
+    match /users/{userId} {
+      allow get: if isOwner(userId);
+      allow list: if false;
+      allow create: if isOwner(userId) && request.resource.data.id == userId;
+      allow update: if isExistingOwner(userId) && request.resource.data.id == resource.data.id;
+      allow delete: if isExistingOwner(userId);
+    }
+
+    /**
+     * @description Rules for a user's private checklist items.
+     * @path /users/{userId}/checklistItems/{checklistItemId}
+     * @allow (create) An authenticated user creating a checklist item for themselves.
+     * @allow (list) An authenticated user listing their own checklist items.
+     * @deny (get) An authenticated user trying to read another user's checklist item.
+     * @deny (create) An authenticated user trying to create a checklist item for another user.
+     * @principle Enforces strict ownership on a subcollection, ensuring a user can only manage their own data.
+     */
+    match /users/{userId}/checklistItems/{checklistItemId} {
+      allow get: if isOwner(userId);
+      allow list: if isOwner(userId);
+      allow create: if isOwner(userId) && request.resource.data.userId == userId;
+      allow update: if isExistingOwner(userId) && request.resource.data.userId == resource.data.userId;
+      allow delete: if isExistingOwner(userId);
+    }
+  }
+}

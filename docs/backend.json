@@ -1,0 +1,117 @@
+{
+  "entities": {
+    "User": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "User",
+      "type": "object",
+      "description": "Represents a user of the Nest Planner application.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the User entity."
+        },
+        "email": {
+          "type": "string",
+          "description": "Email address of the user.",
+          "format": "email"
+        },
+        "username": {
+          "type": "string",
+          "description": "Username of the user."
+        }
+      },
+      "required": [
+        "id",
+        "email",
+        "username"
+      ]
+    },
+    "ChecklistItem": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "ChecklistItem",
+      "type": "object",
+      "description": "Represents an item in the apartment preparation checklist.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the ChecklistItem entity."
+        },
+        "name": {
+          "type": "string",
+          "description": "Name of the item to be purchased."
+        },
+        "minPrice": {
+          "type": "number",
+          "description": "Minimum estimated price of the item."
+        },
+        "maxPrice": {
+          "type": "number",
+          "description": "Maximum estimated price of the item."
+        },
+        "purchased": {
+          "type": "boolean",
+          "description": "Indicates whether the item has been purchased."
+        },
+        "userId": {
+          "type": "string",
+          "description": "Reference to User. (Relationship: User 1:N ChecklistItem)"
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "minPrice",
+        "maxPrice",
+        "purchased",
+        "userId"
+      ]
+    }
+  },
+  "auth": {
+    "providers": [
+      "password",
+      "anonymous"
+    ]
+  },
+  "firestore": {
+    "structure": [
+      {
+        "path": "/users/{userId}",
+        "definition": {
+          "entityName": "User",
+          "schema": {
+            "$ref": "#/backend/entities/User"
+          },
+          "description": "Stores user profile information. The 'userId' is the Firebase Authentication UID.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The Firebase Authentication UID of the user."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/users/{userId}/checklistItems/{checklistItemId}",
+        "definition": {
+          "entityName": "ChecklistItem",
+          "schema": {
+            "$ref": "#/backend/entities/ChecklistItem"
+          },
+          "description": "Stores checklist items owned by a specific user. Includes denormalized 'userId' for authorization independence.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The Firebase Authentication UID of the user who owns the checklist item."
+            },
+            {
+              "name": "checklistItemId",
+              "description": "The unique identifier of the checklist item."
+            }
+          ]
+        }
+      }
+    ],
+    "reasoning": "The Firestore structure is designed to ensure Authorization Independence, support QAPs, and maintain data clarity. User data and checklist items are stored in separate collections to enforce distinct security rules and improve query performance. User-owned checklist items are stored in a hierarchical path for straightforward ownership-based security rules.\n\nAuthorization Independence is achieved by storing the `userId` within each `ChecklistItem` document. This eliminates the need for security rules to perform `get()` operations on parent `User` documents to authorize access, thus supporting atomic operations (transactions/batches). The user id represents the owner id.\n\nQAPs are supported because the checklist items are segregated under the user's document, preventing the need to filter based on user ID in security rules.  Listing checklist items will only return the items associated with the authenticated user."
+  }
+}
