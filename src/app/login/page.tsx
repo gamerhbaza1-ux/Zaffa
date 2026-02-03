@@ -20,7 +20,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Separator } from '@/components/ui/separator';
 import { Loader2 } from 'lucide-react';
-import { doc, getDoc, setDoc, addDoc, collection, writeBatch } from 'firebase/firestore';
+import { doc, getDoc, setDoc } from 'firebase/firestore';
 
 const GoogleIcon = () => (
   <svg className="mr-2 h-4 w-4" aria-hidden="true" focusable="false" data-prefix="fab" data-icon="google" role="img" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 488 512">
@@ -66,25 +66,14 @@ export default function LoginPage() {
       if (!docSnap.exists()) {
         const [firstName, lastName] = user.displayName?.split(' ') || ['', ''];
         
-        const batch = writeBatch(firestore);
-
-        // 1. Create a new household
-        const householdRef = doc(collection(firestore, 'households'));
-        batch.set(householdRef, {
-          memberIds: [user.uid],
-        });
-
-        // 2. Create the user profile
-        batch.set(userDocRef, {
+        await setDoc(userDocRef, {
           id: user.uid,
           email: user.email,
           firstName: firstName,
           lastName: lastName || '',
           role: 'groom', // Default role
-          householdId: householdRef.id,
+          householdId: null, // User will choose setup on the home page
         });
-        
-        await batch.commit();
       }
       router.push('/');
     } catch (error) {
