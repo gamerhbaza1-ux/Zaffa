@@ -3,9 +3,10 @@
 import { useState, useMemo, useCallback } from 'react';
 import type { ChecklistItem, Category } from '@/lib/types';
 import { nanoid } from 'nanoid';
+import { useLocalStorage } from '@/hooks/use-local-storage';
 
 import { Button } from '@/components/ui/button';
-import { Plus, Upload, ListPlus, MoreVertical, Pencil, Trash2, Loader2, FolderPlus } from 'lucide-react';
+import { Plus, Upload, ListPlus, MoreVertical, Pencil, Trash2, FolderPlus } from 'lucide-react';
 import { ItemCard } from './item-card';
 import { ProgressSummary } from './progress-summary';
 import { AddItemDialog } from './add-item-dialog';
@@ -34,14 +35,9 @@ import {
 } from "@/components/ui/alert-dialog";
 import { useToast } from '@/hooks/use-toast';
 
-const INITIAL_CATEGORIES: Category[] = [];
-
-const INITIAL_ITEMS: ChecklistItem[] = [];
-
-
 export default function ChecklistClient() {
-  const [categories, setCategories] = useState<Category[]>(INITIAL_CATEGORIES);
-  const [items, setItems] = useState<ChecklistItem[]>(INITIAL_ITEMS);
+  const [categories, setCategories] = useLocalStorage<Category[]>('zaffa-categories', []);
+  const [items, setItems] = useLocalStorage<ChecklistItem[]>('zaffa-items', []);
 
   const [isAddDialogOpen, setAddDialogOpen] = useState(false);
   const [isImportDialogOpen, setImportDialogOpen] = useState(false);
