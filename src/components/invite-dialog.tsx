@@ -29,6 +29,7 @@ import { SubmitButton } from "./submit-button";
 import { Copy, Check } from "lucide-react";
 import { useState } from "react";
 import { Separator } from "./ui/separator";
+import { Skeleton } from "./ui/skeleton";
 
 const joinSchema = z.object({
   inviteCode: z.string().min(1, "لازم نكتب كود الدعوة."),
@@ -107,12 +108,16 @@ export function InviteDialog({
                 ادي الكود ده لشريكك عشان ينضم للأسرة بتاعتك.
             </p>
             <div className="flex items-center space-x-2 dir-ltr">
+              {inviteCode ? (
                 <Input
                     id="invite-code"
                     readOnly
-                    value={inviteCode || "جاري التحميل..."}
+                    value={inviteCode}
                     className="flex-1 text-lg tracking-widest text-center font-mono bg-muted border-dashed"
                 />
+              ) : (
+                <Skeleton className="h-10 flex-1" />
+              )}
                 <Button type="button" size="icon" className="h-10 w-10 shrink-0" onClick={handleCopy} disabled={!inviteCode}>
                     {hasCopied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
                     <span className="sr-only">ننسخ الكود</span>
