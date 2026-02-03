@@ -3,7 +3,7 @@
 import { useState, useTransition, useMemo, useCallback } from 'react';
 import type { ChecklistItem, Category } from '@/lib/types';
 import { deleteItem, unpurchaseItem, deleteCategory } from '@/lib/actions';
-import { useFirebase, useMemoFirebase, useCollection } from '@/firebase';
+import { useFirebase, useCollection } from '@/firebase';
 import { collection } from 'firebase/firestore';
 
 import { Button } from '@/components/ui/button';
@@ -41,12 +41,12 @@ export default function ChecklistClient() {
 
   const householdId = household?.id;
 
-  const categoriesQuery = useMemoFirebase(() => {
+  const categoriesQuery = useMemo(() => {
     if (!householdId || !firestore) return null;
     return collection(firestore, `households/${householdId}/categories`);
   }, [firestore, householdId]);
 
-  const itemsQuery = useMemoFirebase(() => {
+  const itemsQuery = useMemo(() => {
     if (!householdId || !firestore) return null;
     return collection(firestore, `households/${householdId}/checklistItems`);
   }, [firestore, householdId]);
