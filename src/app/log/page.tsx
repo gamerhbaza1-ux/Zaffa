@@ -64,6 +64,7 @@ export default function LogPage() {
         unpurchase_item: 'إلغاء شراء',
         delete_item: 'حذف حاجة',
         update_item: 'تعديل حاجة',
+        update_item_priority: 'تغيير الأولوية',
         create_section: 'إنشاء قسم',
         create_category: 'إنشاء فئة',
         update_category: 'تعديل قسم/فئة',

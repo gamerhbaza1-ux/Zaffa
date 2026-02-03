@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { z } from 'zod';
-import type { Category, ChecklistItem } from '@/lib/types';
+import type { Category, ChecklistItem, Priority } from '@/lib/types';
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -14,6 +14,7 @@ const itemSchema = z.object({
   categoryId: z.string().min(1, "لازم نختار فئة."),
   minPrice: z.coerce.number().min(0, "السعر لازم يكون رقم."),
   maxPrice: z.coerce.number().min(0, "السعر لازم يكون رقم."),
+  priority: z.enum(['important', 'nice_to_have', 'not_important']),
 }).refine(data => data.maxPrice >= data.minPrice, {
   message: "أقصى سعر لازم يكون أكبر من أو بيساوي أقل سعر.",
   path: ["maxPrice"],
@@ -31,6 +32,7 @@ export function EditItemDialog({ item, onOpenChange, onItemUpdated, categories }
   const [categoryId, setCategoryId] = useState('');
   const [minPrice, setMinPrice] = useState(0);
   const [maxPrice, setMaxPrice] = useState(0);
+  const [priority, setPriority] = useState<Priority>('important');
   const [errors, setErrors] = useState<any>({});
 
   const open = !!item;
@@ -41,6 +43,7 @@ export function EditItemDialog({ item, onOpenChange, onItemUpdated, categories }
       setCategoryId(item.categoryId);
       setMinPrice(item.minPrice);
       setMaxPrice(item.maxPrice);
+      setPriority(item.priority || 'important');
       setErrors({});
     }
   }, [item]);
@@ -51,7 +54,7 @@ export function EditItemDialog({ item, onOpenChange, onItemUpdated, categories }
     e.preventDefault();
     if (!item) return;
 
-    const data = { name, categoryId, minPrice, maxPrice };
+    const data = { name, categoryId, minPrice, maxPrice, priority };
     const result = itemSchema.safeParse(data);
 
     if (!result.success) {
@@ -117,6 +120,21 @@ export function EditItemDialog({ item, onOpenChange, onItemUpdated, categories }
                 <Input id='edit-maxPrice' type="number" value={maxPrice} onChange={e => setMaxPrice(Number(e.target.value))} />
                 {errors.maxPrice && <p className="text-sm font-medium text-destructive">{errors.maxPrice}</p>}
               </div>
+            </div>
+
+            <div>
+              <Label>الأولوية</Label>
+              <Select onValueChange={(v: Priority) => setPriority(v)} value={priority}>
+                <SelectTrigger>
+                  <SelectValue placeholder="تحديد الأولوية" />
+                </SelectTrigger>
+                <SelectContent>
+                    <SelectItem value="important">مهم</SelectItem>
+                    <SelectItem value="nice_to_have">لو الدنيا تمام</SelectItem>
+                    <SelectItem value="not_important">مش مهم</SelectItem>
+                </SelectContent>
+              </Select>
+              {errors.priority && <p className="text-sm font-medium text-destructive">{errors.priority}</p>}
             </div>
 
             <DialogFooter className="pt-4">

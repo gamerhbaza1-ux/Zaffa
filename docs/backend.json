@@ -177,6 +177,15 @@
         },
         "finalPrice": {
           "type": "number"
+        },
+        "priority": {
+          "type": "string",
+          "description": "The priority of the checklist item.",
+          "enum": [
+            "important",
+            "nice_to_have",
+            "not_important"
+          ]
         }
       },
       "required": [
@@ -185,7 +194,8 @@
         "minPrice",
         "maxPrice",
         "isPurchased",
-        "categoryId"
+        "categoryId",
+        "priority"
       ]
     },
     "ActivityLog": {

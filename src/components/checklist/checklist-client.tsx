@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useMemo, useCallback } from 'react';
-import type { ChecklistItem, Category } from '@/lib/types';
+import type { ChecklistItem, Category, Priority } from '@/lib/types';
 import { useUser } from '@/hooks/use-user';
 import { useCollection, useFirestore } from '@/firebase';
 import { collection, doc, addDoc, updateDoc, deleteDoc, writeBatch, serverTimestamp } from 'firebase/firestore';
@@ -235,7 +235,7 @@ export default function ChecklistClient() {
             const section = getOrCreateCategory(record.section, null);
             const category = getOrCreateCategory(record.category, section.id);
             const newItemRef = doc(itemsRef);
-            batch.set(newItemRef, { name: record.name, categoryId: category.id, minPrice: record.minPrice, maxPrice: record.maxPrice, isPurchased: false });
+            batch.set(newItemRef, { name: record.name, categoryId: category.id, minPrice: record.minPrice, maxPrice: record.maxPrice, isPurchased: false, priority: 'important' });
         }
         
         await batch.commit()
@@ -273,6 +273,21 @@ export default function ChecklistClient() {
                 setItemToEdit(null);
             })
             .catch(() => errorEmitter.emit('permission-error', new FirestorePermissionError({ path: itemDocRef.path, operation: 'update', requestResourceData: data })));
+    };
+    
+    const handleUpdatePriority = (itemId: string, priority: Priority) => {
+        if (!itemsRef) return;
+        const itemDocRef = doc(itemsRef, itemId);
+        const item = items.find(i => i.id === itemId);
+
+        updateDoc(itemDocRef, { priority })
+            .then(() => {
+                toast({ title: "تمام!", description: "تم تحديث الأولوية." });
+                if (item) {
+                    logActivity('update_item_priority', `تغيير أولوية "${item.name}"`);
+                }
+            })
+            .catch(() => errorEmitter.emit('permission-error', new FirestorePermissionError({ path: itemDocRef.path, operation: 'update', requestResourceData: { priority } })));
     };
   
     const isLoading = isHouseholdLoading || areCategoriesLoading || areItemsLoading;
@@ -347,6 +362,7 @@ export default function ChecklistClient() {
                             onToggle={() => handleToggle(item.id)}
                             onDelete={() => setItemToDelete(item)}
                             onEdit={() => setItemToEdit(item)}
+                            onPriorityChange={(priority) => handleUpdatePriority(item.id, priority)}
                         />
                     ))
                 ) : (
@@ -444,6 +460,7 @@ export default function ChecklistClient() {
                                                         onToggle={() => handleToggle(item.id)}
                                                         onDelete={() => setItemToDelete(item)}
                                                         onEdit={() => setItemToEdit(item)}
+                                                        onPriorityChange={(priority) => handleUpdatePriority(item.id, priority)}
                                                     />
                                                 ))}
                                             </div>
