@@ -3,6 +3,7 @@ import Image from 'next/image';
 import { PlaceHolderImages } from '@/lib/placeholder-images';
 import ChecklistClient from '@/components/checklist/checklist-client';
 import { Card, CardContent } from '@/components/ui/card';
+import { Skeleton } from '@/components/ui/skeleton';
 import { Home as HomeIcon, LogOut, UserPlus } from 'lucide-react';
 import { useUser } from '@/firebase';
 import { useRouter } from 'next/navigation';
@@ -94,8 +95,6 @@ export default function Home() {
     return <div className="flex h-screen items-center justify-center">جاري التحميل...</div>;
   }
 
-  const canInvite = !isHouseholdLoading && household && household.memberIds.length < 2;
-
   return (
     <div className="flex flex-col min-h-screen bg-background">
       <Header />
@@ -128,7 +127,20 @@ export default function Home() {
           
           <div className="mb-8 space-y-4">
             <PartnerDisplay />
-            {canInvite && (
+            
+            {isHouseholdLoading ? (
+              <Card className="bg-primary-foreground border-2 border-dashed border-primary/20">
+                 <CardContent className="p-6">
+                    <div className="flex items-center justify-between gap-4">
+                      <div className="space-y-2 flex-grow">
+                         <Skeleton className="h-5 w-48" />
+                         <Skeleton className="h-4 w-full max-w-md" />
+                      </div>
+                      <Skeleton className="h-10 w-32" />
+                    </div>
+                 </CardContent>
+              </Card>
+            ) : household && household.memberIds.length < 2 ? (
                <Card className="bg-primary-foreground border-2 border-dashed border-primary/20">
                 <CardContent className="p-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                   <div className="flex-grow">
@@ -143,7 +155,7 @@ export default function Home() {
                   </Button>
                 </CardContent>
               </Card>
-            )}
+            ) : null}
           </div>
 
           <ChecklistClient />
