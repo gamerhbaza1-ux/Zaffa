@@ -3,7 +3,7 @@
 import { useState, useTransition, useMemo, useCallback } from 'react';
 import type { ChecklistItem, Category } from '@/lib/types';
 import { deleteItem, unpurchaseItem, deleteCategory } from '@/lib/actions';
-import { useFirebase, useMemoFirebase } from '@/firebase';
+import { useFirebase, useMemoFirebase, useCollection } from '@/firebase';
 import { collection } from 'firebase/firestore';
 
 import { Button } from '@/components/ui/button';
