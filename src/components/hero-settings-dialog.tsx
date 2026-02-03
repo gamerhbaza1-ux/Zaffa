@@ -29,6 +29,7 @@ import { Input } from '@/components/ui/input';
 import { Loader2 } from 'lucide-react';
 import type { HeroConfig } from '@/lib/types';
 import { Slider } from '@/components/ui/slider';
+import { Label } from '@/components/ui/label';
 
 
 // --- Image Cropping Utilities ---
