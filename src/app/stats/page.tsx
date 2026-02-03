@@ -13,6 +13,8 @@ import type { Category, ChecklistItem } from '@/lib/types';
 import { Progress } from '@/components/ui/progress';
 import { nanoid } from 'nanoid';
 import { AnalysisSetupDialog } from '@/components/stats/analysis-setup-dialog';
+import { AnalysisItemsDialog } from '@/components/stats/analysis-items-dialog';
+import { cn } from '@/lib/utils';
 
 
 const ZaytounaIcon = (props: React.ComponentProps<'svg'>) => (
@@ -50,9 +52,9 @@ function StatsHeader() {
   );
 }
 
-function StatCard({ title, value, icon: Icon }: { title: string, value: string, icon: React.ElementType }) {
+function StatCard({ title, value, icon: Icon, onClick, className }: { title: string, value: string, icon: React.ElementType, onClick?: () => void, className?: string }) {
     return (
-        <Card>
+        <Card onClick={onClick} className={cn(className, onClick && "cursor-pointer transition-colors hover:bg-card/95")}>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium">{title}</CardTitle>
                 <Icon className="h-4 w-4 text-muted-foreground" />
@@ -64,7 +66,7 @@ function StatCard({ title, value, icon: Icon }: { title: string, value: string, 
     );
 }
 
-function AnalysisResultCard({ analysis, onRemove }: { analysis: any, onRemove: (id: string) => void }) {
+function AnalysisResultCard({ analysis, onRemove, onShowItems }: { analysis: any, onRemove: (id: string) => void, onShowItems: () => void }) {
     const { title, stats } = analysis;
 
     const formatPrice = (price: number) => {
@@ -85,7 +87,7 @@ function AnalysisResultCard({ analysis, onRemove }: { analysis: any, onRemove: (
                 <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
                     <StatCard title="إجمالي المتوقع" value={formatPrice(stats.totalExpected)} icon={Target} />
                     <StatCard title="إجمالي المدفوع" value={formatPrice(stats.totalPaid)} icon={ShoppingCart} />
-                    <StatCard title="إجمالي البنود" value={stats.totalItems.toString()} icon={ListTree} />
+                    <StatCard title="إجمالي البنود" value={stats.totalItems.toString()} icon={ListTree} onClick={onShowItems} />
                     <StatCard title="نسبة الإنجاز" value={`${Math.round(stats.progress)}%`} icon={TrendingUp} />
                 </div>
                 <div>
@@ -104,6 +106,7 @@ export default function StatsPage() {
   
   const [analyses, setAnalyses] = useState<any[]>([]);
   const [isAnalysisDialogOpen, setAnalysisDialogOpen] = useState(false);
+  const [itemsToShow, setItemsToShow] = useState<{title: string, items: ChecklistItem[]} | null>(null);
 
   useEffect(() => {
     if (!isUserLoading && !user) {
@@ -158,7 +161,7 @@ export default function StatsPage() {
         .filter(Boolean);
     const title = `تحليل: ${selectedNames.join('، ')}`;
 
-    const newAnalysis = { id: nanoid(), title, stats };
+    const newAnalysis = { id: nanoid(), title, stats, items: relevantItems };
 
     setAnalyses(prev => [newAnalysis, ...prev]);
     setAnalysisDialogOpen(false);
@@ -206,10 +209,22 @@ export default function StatsPage() {
                 onAnalyze={handleCreateAnalysis}
             />
 
+            <AnalysisItemsDialog
+                open={!!itemsToShow}
+                onOpenChange={() => setItemsToShow(null)}
+                title={itemsToShow?.title || 'البنود'}
+                items={itemsToShow?.items || []}
+            />
+
             {analyses.length > 0 ? (
                 <div className="space-y-6">
                     {analyses.map(analysis => (
-                        <AnalysisResultCard key={analysis.id} analysis={analysis} onRemove={handleRemoveAnalysis} />
+                        <AnalysisResultCard 
+                            key={analysis.id} 
+                            analysis={analysis} 
+                            onRemove={handleRemoveAnalysis} 
+                            onShowItems={() => setItemsToShow({ title: analysis.title, items: analysis.items })}
+                        />
                     ))}
                 </div>
             ) : (
