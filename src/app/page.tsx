@@ -3,9 +3,25 @@ import Image from 'next/image';
 import { PlaceHolderImages } from '@/lib/placeholder-images';
 import ChecklistClient from '@/components/checklist/checklist-client';
 import { Card } from '@/components/ui/card';
-import { Home as HomeIcon } from 'lucide-react';
+import { Home as HomeIcon, LogOut } from 'lucide-react';
+import { useUser } from '@/hooks/use-user';
+import { useRouter } from 'next/navigation';
+import { useEffect } from 'react';
+import { SetupHandler } from '@/components/setup-handler';
+import { PartnerDisplay } from '@/components/partner-display';
+import { InvitationNotification } from '@/components/invitation-notification';
+import { getAuth, signOut } from 'firebase/auth';
+import { Button } from '@/components/ui/button';
 
 function Header() {
+  const { user } = useUser();
+  const router = useRouter();
+
+  const handleSignOut = async () => {
+    await signOut(getAuth());
+    router.push('/login');
+  };
+
   return (
       <header className="bg-background/95 backdrop-blur-sm border-b sticky top-0 z-10">
         <div className="container mx-auto px-4 py-3 flex items-center justify-between gap-4">
@@ -17,6 +33,11 @@ function Header() {
               زفة
             </h1>
           </div>
+          {user && (
+            <Button variant="ghost" size="icon" onClick={handleSignOut} aria-label="تسجيل الخروج">
+              <LogOut className="h-5 w-5 text-muted-foreground" />
+            </Button>
+          )}
         </div>
       </header>
   );
@@ -24,9 +45,22 @@ function Header() {
 
 export default function Home() {
   const heroImage = PlaceHolderImages.find(p => p.id === 'hero');
+  const { user, isUserLoading } = useUser();
+  const router = useRouter();
+
+  useEffect(() => {
+    if (!isUserLoading && !user) {
+      router.push('/login');
+    }
+  }, [user, isUserLoading, router]);
+
+  if (isUserLoading || !user) {
+    return <div className="flex h-screen items-center justify-center">جاري التحميل...</div>;
+  }
 
   return (
     <div className="flex flex-col min-h-screen bg-background">
+      <InvitationNotification />
       <Header />
       <main className="flex-1">
         <div className="container mx-auto p-4 md:p-8 max-w-4xl">
@@ -54,7 +88,13 @@ export default function Home() {
             )}
           </Card>
 
-          <ChecklistClient />
+          <div className="space-y-8">
+             <PartnerDisplay />
+             <SetupHandler>
+                <ChecklistClient />
+             </SetupHandler>
+          </div>
+
         </div>
       </main>
       <footer className="py-8 border-t mt-12">

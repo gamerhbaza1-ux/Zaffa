@@ -13,3 +13,27 @@ export type ChecklistItem = {
   isPurchased: boolean;
   finalPrice?: number;
 };
+
+export type UserProfile = {
+    id: string;
+    email: string;
+    firstName: string;
+    lastName: string;
+    role: 'groom' | 'bride';
+    householdId: string | null;
+};
+
+export type Household = {
+    id: string;
+    memberIds: string[];
+};
+
+export type Invitation = {
+    id: string;
+    inviterId: string;
+    inviterName: string;
+    inviterRole: 'groom' | 'bride';
+    inviteeEmail: string;
+    householdId: string;
+    status: 'pending' | 'accepted' | 'declined';
+};
