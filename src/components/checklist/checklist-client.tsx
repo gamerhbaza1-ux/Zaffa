@@ -7,7 +7,8 @@ import { useCollection, useFirestore } from '@/firebase';
 import { collection, doc, addDoc, updateDoc, deleteDoc, writeBatch } from 'firebase/firestore';
 
 import { Button } from '@/components/ui/button';
-import { Plus, Upload, ListPlus, MoreVertical, Pencil, Trash2, FolderPlus } from 'lucide-react';
+import { Plus, Upload, ListPlus, MoreVertical, Pencil, Trash2, FolderPlus, Search } from 'lucide-react';
+import { Input } from '@/components/ui/input';
 import { ItemCard } from './item-card';
 import { ProgressSummary } from './progress-summary';
 import { AddItemDialog } from './add-item-dialog';
@@ -43,6 +44,7 @@ export default function ChecklistClient() {
     const { household, isHouseholdLoading } = useUser();
     const firestore = useFirestore();
     const { toast } = useToast();
+    const [searchQuery, setSearchQuery] = useState('');
 
     // Data fetching
     const categoriesRef = useMemo(() => household ? collection(firestore, `households/${household.id}/categories`) : null, [household, firestore]);
@@ -233,6 +235,13 @@ export default function ChecklistClient() {
     const topLevelCategories = useMemo(() => {
         return categories.filter(c => !c.parentId).sort((a, b) => a.name.localeCompare(b.name));
     }, [categories]);
+
+    const filteredItems = useMemo(() => {
+        if (!searchQuery) return [];
+        return items.filter(item =>
+            item.name.toLowerCase().includes(searchQuery.toLowerCase())
+        );
+    }, [items, searchQuery]);
   
     const getCategoryDepth = useCallback((catId: string, depth = 0): number => {
         const category = categoriesById.get(catId);
@@ -269,10 +278,39 @@ export default function ChecklistClient() {
                 <ListPlus className="ml-2 h-4 w-4" /> نضيف فئة
               </Button>
             </div>
+            <div className="relative">
+                <Search className="absolute right-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                    placeholder="ابحث عن حاجة في القائمة..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="w-full pr-10"
+                />
+            </div>
             <ProgressSummary purchasedCount={purchasedCount} totalCount={totalCount} />
           </div>
     
-          {totalCount > 0 || categories.length > 0 ? (
+          {searchQuery ? (
+            <div className="space-y-2">
+                {filteredItems.length > 0 ? (
+                    filteredItems.map(item => (
+                        <ItemCard
+                            key={item.id}
+                            item={item}
+                            onToggle={() => handleToggle(item.id)}
+                            onDelete={() => setItemToDelete(item)}
+                        />
+                    ))
+                ) : (
+                    <div className="text-center py-10 px-4 border-2 border-dashed rounded-lg">
+                        <h3 className="text-lg font-medium text-foreground">لا توجد نتائج</h3>
+                        <p className="text-muted-foreground mt-1">
+                            حاول البحث بكلمة مختلفة.
+                        </p>
+                    </div>
+                )}
+            </div>
+          ) : (totalCount > 0 || categories.length > 0) ? (
             <Tabs defaultValue={topLevelCategories[0]?.id} className="w-full" dir="rtl">
                 <div className="flex items-center flex-wrap gap-2">
                   <TabsList className="flex-wrap h-auto justify-start flex-grow gap-2">
