@@ -4,7 +4,8 @@ import { useActionState, useEffect, useRef } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { joinHousehold } from "@/lib/actions";
+import { sendInvitation } from "@/lib/actions";
+import { useUser } from "@/firebase";
 
 import {
   Dialog,
@@ -26,106 +27,65 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { SubmitButton } from "./submit-button";
-import { Copy, Check } from "lucide-react";
-import { useState } from "react";
-import { Separator } from "./ui/separator";
-import { Skeleton } from "./ui/skeleton";
 
-const joinSchema = z.object({
-  inviteCode: z.string().min(1, "لازم نكتب كود الدعوة."),
+const inviteSchema = z.object({
+  inviteeEmail: z.string().email("لازم نكتب إيميل صحيح."),
 });
 
-type FormValues = z.infer<typeof joinSchema>;
+type FormValues = z.infer<typeof inviteSchema>;
 
 type InviteDialogProps = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  inviteCode?: string;
-  userId?: string;
 };
 
 export function InviteDialog({
   open,
   onOpenChange,
-  inviteCode,
-  userId,
 }: InviteDialogProps) {
+  const { user } = useUser();
   const { toast } = useToast();
-  const [state, formAction] = useActionState(joinHousehold, { error: null, success: false });
-  const [hasCopied, setHasCopied] = useState(false);
+  const [state, formAction] = useActionState(sendInvitation, { error: null, success: false });
   const formRef = useRef<HTMLFormElement>(null);
 
   const form = useForm<FormValues>({
-    resolver: zodResolver(joinSchema),
-    defaultValues: { inviteCode: "" },
+    resolver: zodResolver(inviteSchema),
+    defaultValues: { inviteeEmail: "" },
   });
 
   useEffect(() => {
     if (state.success) {
       toast({
         title: "تمام!",
-        description: "انضميت للأسرة الجديدة بنجاح. القائمة هتتحدث دلوقتي.",
+        description: "بعتنا الدعوة لشريكك.",
       });
       onOpenChange(false);
+      form.reset();
     } else if (state.error) {
-      form.setError("inviteCode", { type: "server", message: state.error });
+      form.setError("inviteeEmail", { type: "server", message: state.error });
     }
   }, [state, form, onOpenChange, toast]);
 
-  const handleCopy = () => {
-    if (!inviteCode) return;
-    navigator.clipboard.writeText(inviteCode);
-    setHasCopied(true);
-    setTimeout(() => setHasCopied(false), 2000);
-  };
-  
   const handleFormAction = (formData: FormData) => {
-    if (userId) {
-      formData.append('userId', userId);
+    if (user) {
+      formData.append('inviterId', user.uid);
       formAction(formData);
     } else {
       toast({ variant: 'destructive', title: 'خطأ', description: 'لازم تسجل دخول الأول.'})
     }
   }
 
-
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle className="font-headline">
-            نضيف شريك ونشارك القائمة
+            ندعي شريك عشان يشاركنا القائمة
           </DialogTitle>
           <DialogDescription>
-            هنا ممكن تدي كود الدعوة لشريكك، أو تستخدم الكود بتاعه عشان
-            تشاركوا نفس القائمة.
+            اكتب إيميل شريكك عشان نبعتله دعوة ينضم ليك في التخطيط.
           </DialogDescription>
         </DialogHeader>
-
-        <div className="space-y-4 py-2">
-            <h3 className="font-medium">الكود بتاعك</h3>
-            <p className="text-sm text-muted-foreground">
-                ادي الكود ده لشريكك عشان ينضم للأسرة بتاعتك.
-            </p>
-            <div className="flex items-center space-x-2 dir-ltr">
-              {inviteCode ? (
-                <Input
-                    id="invite-code"
-                    readOnly
-                    value={inviteCode}
-                    className="flex-1 text-lg tracking-widest text-center font-mono bg-muted border-dashed"
-                />
-              ) : (
-                <Skeleton className="h-10 flex-1" />
-              )}
-                <Button type="button" size="icon" className="h-10 w-10 shrink-0" onClick={handleCopy} disabled={!inviteCode}>
-                    {hasCopied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
-                    <span className="sr-only">ننسخ الكود</span>
-                </Button>
-            </div>
-        </div>
-
-        <Separator className="my-4" />
 
         <Form {...form}>
           <form
@@ -133,21 +93,16 @@ export function InviteDialog({
             action={handleFormAction}
             className="space-y-4"
           >
-            <h3 className="font-medium">أو ننضم لأسرة شريكنا</h3>
-             <p className="text-sm text-muted-foreground !mt-2">
-                لو شريكك ادالك كود، اكتبه هنا عشان تنضم لأسرته.
-            </p>
             <FormField
               control={form.control}
-              name="inviteCode"
+              name="inviteeEmail"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>كود دعوة الشريك</FormLabel>
+                  <FormLabel>إيميل الشريك</FormLabel>
                   <FormControl>
                     <Input
-                      placeholder="XXXXXX"
+                      placeholder="partner@example.com"
                       {...field}
-                      className="dir-ltr text-center tracking-widest font-mono"
                     />
                   </FormControl>
                   <FormMessage />
@@ -155,7 +110,8 @@ export function InviteDialog({
               )}
             />
             <DialogFooter>
-              <SubmitButton label="ننضم للأسرة" />
+              <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>نلغي</Button>
+              <SubmitButton label="نبعت الدعوة" />
             </DialogFooter>
           </form>
         </Form>

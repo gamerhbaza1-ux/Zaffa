@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import type { ChecklistItem, Category, Household } from "./types";
+import type { ChecklistItem, Category, Household, UserProfile, Invitation } from "./types";
 import { z } from "zod";
 import { collection, writeBatch, getDocs, query, where, getDoc, doc, deleteDoc, setDoc, addDoc, updateDoc, Firestore, runTransaction } from "firebase/firestore";
 import { initializeApp, getApp, getApps } from "firebase/app";
@@ -309,70 +309,150 @@ export async function deleteCategory(householdId: string, id: string) {
   return { success: true };
 }
 
-export async function joinHousehold(prevState: any, formData: FormData) {
-    const schema = z.object({
-        inviteCode: z.string().min(1, "لازم نكتب كود الدعوة."),
-        userId: z.string(),
+export async function sendInvitation(prevState: any, formData: FormData) {
+  const schema = z.object({
+    inviteeEmail: z.string().email("الإيميل مش صحيح."),
+    inviterId: z.string(),
+  });
+
+  const validatedFields = schema.safeParse(Object.fromEntries(formData));
+
+  if (!validatedFields.success) {
+    return { error: validatedFields.error.flatten().fieldErrors.inviteeEmail?.[0] };
+  }
+
+  const { inviteeEmail, inviterId } = validatedFields.data;
+
+  try {
+    const inviterRef = doc(firestore, "users", inviterId);
+    const inviterSnap = await getDoc(inviterRef);
+    if (!inviterSnap.exists()) {
+      return { error: "الحساب بتاعك مش موجود." };
+    }
+    const inviter = inviterSnap.data() as UserProfile;
+    if (inviter.email.toLowerCase() === inviteeEmail.toLowerCase()) {
+        return { error: "مينفعش تبعت دعوة لنفسك." };
+    }
+
+    const usersRef = collection(firestore, "users");
+    const inviteeQuery = query(usersRef, where("email", "==", inviteeEmail));
+    const inviteeSnap = await getDocs(inviteeQuery);
+    if (inviteeSnap.empty) {
+      return { error: "معندناش حساب بالإيميل ده." };
+    }
+    const invitee = inviteeSnap.docs[0].data() as UserProfile;
+
+    const inviteeHouseholdRef = doc(firestore, "households", invitee.householdId);
+    const inviteeHouseholdSnap = await getDoc(inviteeHouseholdRef);
+    if (inviteeHouseholdSnap.exists() && inviteeHouseholdSnap.data().memberIds.length > 1) {
+      return { error: "الشخص ده موجود في أسرة تانية أصلاً." };
+    }
+
+    const invitationsRef = collection(firestore, "invitations");
+    const existingInviteQuery = query(invitationsRef, where("inviteeEmail", "==", inviteeEmail), where("status", "==", "pending"));
+    const existingInviteSnap = await getDocs(existingInviteQuery);
+    if (!existingInviteSnap.empty) {
+        return { error: "انت باعت للشخص ده دعوة ولسه مردش عليها." };
+    }
+
+    const newInvitation: Omit<Invitation, 'id'> = {
+      inviterId: inviter.id,
+      inviterName: `${inviter.firstName} ${inviter.lastName}`,
+      inviterRole: inviter.role,
+      inviteeEmail: inviteeEmail,
+      householdId: inviter.householdId,
+      status: 'pending',
+    };
+
+    await addDoc(invitationsRef, newInvitation);
+
+    revalidatePath("/");
+    return { success: true };
+  } catch (e) {
+    console.error("Send invitation failed:", e);
+    return { error: "معرفناش نبعت الدعوة. حاول تاني." };
+  }
+}
+
+export async function respondToInvitation(prevState: any, formData: FormData) {
+  const schema = z.object({
+    invitationId: z.string(),
+    userId: z.string(),
+    action: z.enum(['accept', 'decline']),
+  });
+
+  const validatedFields = schema.safeParse(Object.fromEntries(formData));
+  if (!validatedFields.success) {
+    return { error: "البيانات اللي باعتها مش صح." };
+  }
+
+  const { invitationId, userId, action } = validatedFields.data;
+  const invitationRef = doc(firestore, "invitations", invitationId);
+
+  try {
+    if (action === 'decline') {
+      await deleteDoc(invitationRef);
+      revalidatePath("/");
+      return { success: true };
+    }
+
+    // Handle 'accept'
+    await runTransaction(firestore, async (transaction) => {
+      const invitationSnap = await transaction.get(invitationRef);
+      if (!invitationSnap.exists()) {
+        throw new Error("الدعوة دي مبقتش موجودة.");
+      }
+      const invitation = invitationSnap.data() as Invitation;
+      
+      const userRef = doc(firestore, "users", userId);
+      const userSnap = await transaction.get(userRef);
+      if (!userSnap.exists()) {
+        throw new Error("حسابك مش موجود.");
+      }
+      const userProfile = userSnap.data() as UserProfile;
+
+      if (userProfile.email.toLowerCase() !== invitation.inviteeEmail.toLowerCase()) {
+        throw new Error("الدعوة دي مش ليك أصلاً.");
+      }
+
+      const targetHouseholdRef = doc(firestore, "households", invitation.householdId);
+      const targetHouseholdSnap = await transaction.get(targetHouseholdRef);
+      if (!targetHouseholdSnap.exists()) {
+          throw new Error("الأسرة اللي بتحاول تنضم ليها مش موجودة.");
+      }
+      const targetHousehold = targetHouseholdSnap.data() as Household;
+      if (targetHousehold.memberIds.length >= 2) {
+          throw new Error("الأسرة دي مكتملة خلاص.");
+      }
+
+      // Delete the user's old, now empty household
+      const oldHouseholdId = userProfile.householdId;
+      if (oldHouseholdId) {
+        const oldHouseholdRef = doc(firestore, "households", oldHouseholdId);
+        const oldHouseholdSnap = await transaction.get(oldHouseholdRef);
+        if (oldHouseholdSnap.exists() && oldHouseholdSnap.data().memberIds.length === 1) {
+          transaction.delete(oldHouseholdRef);
+        }
+      }
+
+      // Update user's profile to new household
+      transaction.update(userRef, { householdId: invitation.householdId });
+
+      // Add user to the new household's members list
+      transaction.update(targetHouseholdRef, {
+        memberIds: [...targetHousehold.memberIds, userId]
+      });
+
+      // Delete the invitation
+      transaction.delete(invitationRef);
     });
 
-    const validatedFields = schema.safeParse(Object.fromEntries(formData));
+    revalidatePath("/");
+    return { success: true };
 
-    if (!validatedFields.success) {
-        return { error: validatedFields.error.flatten().fieldErrors.inviteCode?.[0] };
-    }
-
-    const { inviteCode, userId } = validatedFields.data;
-
-    try {
-        const householdsRef = collection(firestore, "households");
-        const q = query(householdsRef, where("inviteCode", "==", inviteCode.toUpperCase()));
-        const querySnapshot = await getDocs(q);
-
-        if (querySnapshot.empty) {
-            return { error: "كود الدعوة ده مش صح." };
-        }
-
-        const targetHouseholdDoc = querySnapshot.docs[0];
-        const targetHouseholdId = targetHouseholdDoc.id;
-        const targetHouseholdData = targetHouseholdDoc.data() as Household;
-
-        if (targetHouseholdData.memberIds.includes(userId)) {
-            return { error: "انت موجود في الأسرة دي أصلاً." };
-        }
-        
-        await runTransaction(firestore, async (transaction) => {
-            const userRef = doc(firestore, "users", userId);
-            const userDoc = await transaction.get(userRef);
-
-            if (!userDoc.exists()) {
-                throw new Error("User not found");
-            }
-            
-            // Delete the user's old, now empty household
-            const oldHouseholdId = userDoc.data().householdId;
-            if (oldHouseholdId) {
-                const oldHouseholdRef = doc(firestore, "households", oldHouseholdId);
-                const oldHouseholdDoc = await transaction.get(oldHouseholdRef);
-                if (oldHouseholdDoc.exists() && oldHouseholdDoc.data().memberIds.length === 1) {
-                    transaction.delete(oldHouseholdRef);
-                }
-            }
-
-            // Update user's profile to new household
-            transaction.update(userRef, { householdId: targetHouseholdId });
-
-            // Add user to the new household's members list
-            transaction.update(targetHouseholdDoc.ref, {
-                memberIds: [...targetHouseholdData.memberIds, userId]
-            });
-        });
-
-        revalidatePath("/");
-        return { success: true };
-
-    } catch (e) {
-        console.error("Join household failed:", e);
-        const message = e instanceof Error ? e.message : "An unknown error occurred";
-        return { error: "معرفناش ننضم للأسرة دي. حاول تاني." };
-    }
+  } catch (e) {
+    console.error("Respond to invitation failed:", e);
+    const message = e instanceof Error ? e.message : "An unknown error occurred";
+    return { error: message };
+  }
 }

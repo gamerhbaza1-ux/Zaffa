@@ -59,16 +59,64 @@
             "type": "string"
           },
           "description": "A list of user UIDs that belong to this household."
-        },
-        "inviteCode": {
-          "type": "string",
-          "description": "A short, unique, shareable code for inviting a partner."
         }
       },
       "required": [
         "id",
-        "memberIds",
-        "inviteCode"
+        "memberIds"
+      ]
+    },
+    "Invitation": {
+      "title": "Invitation",
+      "type": "object",
+      "description": "Represents an invitation for a user to join a household.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the Invitation."
+        },
+        "inviterId": {
+          "type": "string",
+          "description": "The UID of the user who sent the invitation."
+        },
+        "inviterName": {
+          "type": "string",
+          "description": "The name of the user who sent the invitation."
+        },
+        "inviterRole": {
+          "type": "string",
+          "enum": [
+            "groom",
+            "bride"
+          ]
+        },
+        "inviteeEmail": {
+          "type": "string",
+          "format": "email",
+          "description": "The email of the user being invited."
+        },
+        "householdId": {
+          "type": "string",
+          "description": "The ID of the household to join."
+        },
+        "status": {
+          "type": "string",
+          "description": "The status of the invitation.",
+          "enum": [
+            "pending",
+            "accepted",
+            "declined"
+          ]
+        }
+      },
+      "required": [
+        "id",
+        "inviterId",
+        "inviterName",
+        "inviterRole",
+        "inviteeEmail",
+        "householdId",
+        "status"
       ]
     },
     "Category": {
@@ -126,7 +174,7 @@
           "description": "The ID of the category this item belongs to."
         },
         "finalPrice": {
-            "type": "number"
+          "type": "number"
         }
       },
       "required": [
@@ -180,6 +228,22 @@
         }
       },
       {
+        "path": "/invitations/{invitationId}",
+        "definition": {
+          "entityName": "Invitation",
+          "schema": {
+            "$ref": "#/backend/entities/Invitation"
+          },
+          "description": "Stores pending invitations for users to join households.",
+          "params": [
+            {
+              "name": "invitationId",
+              "description": "The unique ID of the invitation."
+            }
+          ]
+        }
+      },
+      {
         "path": "/households/{householdId}/categories/{categoryId}",
         "definition": {
           "entityName": "Category",
@@ -220,6 +284,6 @@
         }
       }
     ],
-    "reasoning": "The Firestore structure is designed around a shared 'household' model. User profiles are stored in a top-level `/users` collection, with each user document containing a `householdId` to link them to their shared data. All collaborative data (categories, checklist items) is stored in subcollections under a top-level `/households/{householdId}` path. This enforces a clear separation between individual user data and shared household data. Security rules can efficiently grant access to an entire household's data tree by checking if the requesting user's `householdId` (from their profile) matches the `householdId` in the path, enabling secure data sharing between partners."
+    "reasoning": "The Firestore structure is designed around a shared 'household' model. User profiles are stored in a top-level `/users` collection, with each user document containing a `householdId` to link them to their shared data. All collaborative data (categories, checklist items) is stored in subcollections under a top-level `/households/{householdId}` path. This enforces a clear separation between individual user data and shared household data. Security rules can efficiently grant access to an entire household's data tree by checking if the requesting user's `householdId` (from their profile) matches the `householdId` in the path, enabling secure data sharing between partners. A new top-level `/invitations` collection is added to manage the email-based invitation flow between users."
   }
 }

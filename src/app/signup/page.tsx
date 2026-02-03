@@ -9,7 +9,6 @@ import Link from "next/link";
 import { createUserWithEmailAndPassword } from "firebase/auth";
 import { setDoc, doc, collection, writeBatch } from "firebase/firestore";
 import { useAuth, useFirestore } from "@/firebase";
-import { nanoid } from 'nanoid';
 
 import { Button } from "@/components/ui/button";
 import {
@@ -121,10 +120,8 @@ export default function SignupPage() {
 
       // 2a. Create a new household for the user
       const householdRef = doc(collection(firestore, "households"));
-      const inviteCode = nanoid(6).toUpperCase();
       batch.set(householdRef, {
         memberIds: [user.uid],
-        inviteCode: inviteCode,
       });
 
       // 2b. Create the user's profile document, linking it to the household

@@ -10,7 +10,8 @@ export type UserProfile = {
 export type Household = {
   id: string;
   memberIds: string[];
-  inviteCode: string;
+  // inviteCode is deprecated but might exist on old documents
+  inviteCode?: string;
 };
 
 export type Category = {
@@ -27,4 +28,14 @@ export type ChecklistItem = {
   maxPrice: number;
   isPurchased: boolean;
   finalPrice?: number;
+};
+
+export type Invitation = {
+  id: string;
+  inviterId: string;
+  inviterName: string;
+  inviterRole: 'groom' | 'bride';
+  inviteeEmail: string;
+  householdId: string;
+  status: 'pending' | 'accepted' | 'declined';
 };

@@ -2,10 +2,10 @@
 
 import React, { DependencyList, createContext, useContext, ReactNode, useMemo, useState, useEffect } from 'react';
 import { FirebaseApp } from 'firebase/app';
-import { Firestore, doc, onSnapshot } from 'firebase/firestore';
+import { Firestore, doc, onSnapshot, collection, query, where } from 'firebase/firestore';
 import { Auth, User, onAuthStateChanged } from 'firebase/auth';
 import { FirebaseErrorListener } from '@/components/FirebaseErrorListener';
-import type { UserProfile, Household } from '@/lib/types';
+import type { UserProfile, Household, Invitation } from '@/lib/types';
 
 interface FirebaseProviderProps {
   children: ReactNode;
@@ -35,6 +35,11 @@ interface HouseholdState {
   isHouseholdLoading: boolean;
 }
 
+interface InvitationsState {
+  invitations: Invitation[] | null;
+  isLoadingInvitations: boolean;
+}
+
 export interface FirebaseContextState {
   areServicesAvailable: boolean;
   firebaseApp: FirebaseApp | null;
@@ -49,6 +54,8 @@ export interface FirebaseContextState {
   isHouseholdLoading: boolean;
   partnerProfile: UserProfile | null;
   isPartnerLoading: boolean;
+  invitations: Invitation[] | null;
+  isLoadingInvitations: boolean;
 }
 
 export interface FirebaseServicesAndUser extends Omit<FirebaseContextState, 'areServicesAvailable'> {
@@ -67,6 +74,8 @@ export interface UserHookResult {
   isHouseholdLoading: boolean;
   partnerProfile: UserProfile | null;
   isPartnerLoading: boolean;
+  invitations: Invitation[] | null;
+  isLoadingInvitations: boolean;
 }
 
 export const FirebaseContext = createContext<FirebaseContextState | undefined>(undefined);
@@ -97,6 +106,12 @@ export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
     partnerProfile: null,
     isPartnerLoading: true,
   });
+
+  const [invitationsState, setInvitationsState] = useState<InvitationsState>({
+    invitations: null,
+    isLoadingInvitations: true,
+  });
+
 
   useEffect(() => {
     if (!auth) {
@@ -195,6 +210,30 @@ export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
     return () => unsubscribe();
   }, [userAuthState.user, householdState.household, firestore]);
 
+  useEffect(() => {
+    if (!userAuthState.user?.email || !firestore) {
+      setInvitationsState({ invitations: null, isLoadingInvitations: false });
+      return;
+    }
+
+    setInvitationsState(s => ({ ...s, isLoadingInvitations: true }));
+    const invitationsQuery = query(
+      collection(firestore, 'invitations'),
+      where('inviteeEmail', '==', userAuthState.user.email),
+      where('status', '==', 'pending')
+    );
+
+    const unsubscribe = onSnapshot(invitationsQuery, (snap) => {
+      const invs = snap.docs.map(d => ({ ...d.data(), id: d.id } as Invitation));
+      setInvitationsState({ invitations: invs, isLoadingInvitations: false });
+    }, (error) => {
+      console.error("FirebaseProvider: invitations snapshot error:", error);
+      setInvitationsState({ invitations: null, isLoadingInvitations: false });
+    });
+
+    return () => unsubscribe();
+  }, [userAuthState.user, firestore]);
+
   const contextValue = useMemo((): FirebaseContextState => {
     const servicesAvailable = !!(firebaseApp && firestore && auth);
     return {
@@ -211,8 +250,10 @@ export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
       isHouseholdLoading: householdState.isHouseholdLoading,
       partnerProfile: partnerState.partnerProfile,
       isPartnerLoading: partnerState.isPartnerLoading,
+      invitations: invitationsState.invitations,
+      isLoadingInvitations: invitationsState.isLoadingInvitations,
     };
-  }, [firebaseApp, firestore, auth, userAuthState, profileState, householdState, partnerState]);
+  }, [firebaseApp, firestore, auth, userAuthState, profileState, householdState, partnerState, invitationsState]);
 
   return (
     <FirebaseContext.Provider value={contextValue}>
@@ -246,6 +287,8 @@ export const useFirebase = (): FirebaseServicesAndUser => {
     isHouseholdLoading: context.isHouseholdLoading,
     partnerProfile: context.partnerProfile,
     isPartnerLoading: context.isPartnerLoading,
+    invitations: context.invitations,
+    isLoadingInvitations: context.isLoadingInvitations,
   };
 };
 
@@ -276,6 +319,6 @@ export function useMemoFirebase<T>(factory: () => T, deps: DependencyList): T | 
 }
 
 export const useUser = (): UserHookResult => {
-  const { user, isUserLoading, userError, userProfile, isProfileLoading, household, isHouseholdLoading, partnerProfile, isPartnerLoading } = useFirebase();
-  return { user, isUserLoading, userError, userProfile, isProfileLoading, household, isHouseholdLoading, partnerProfile, isPartnerLoading };
+  const { user, isUserLoading, userError, userProfile, isProfileLoading, household, isHouseholdLoading, partnerProfile, isPartnerLoading, invitations, isLoadingInvitations } = useFirebase();
+  return { user, isUserLoading, userError, userProfile, isProfileLoading, household, isHouseholdLoading, partnerProfile, isPartnerLoading, invitations, isLoadingInvitations };
 };

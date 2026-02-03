@@ -21,6 +21,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { getAuth } from 'firebase/auth';
 import { InviteDialog } from '@/components/invite-dialog';
 import { PartnerDisplay } from '@/components/partner-display';
+import { InvitationNotification } from '@/components/invitation-notification';
 
 function Header() {
   const { user, userProfile, isUserLoading, isProfileLoading, household, isHouseholdLoading } = useUser();
@@ -33,6 +34,7 @@ function Header() {
     ? `${userProfile.firstName?.charAt(0)}${userProfile.lastName?.charAt(0)}` 
     : user?.displayName?.charAt(0) || user?.email?.charAt(0) || 'U';
 
+  const canInvite = household && household.memberIds.length < 2;
 
   return (
     <>
@@ -67,10 +69,12 @@ function Header() {
                     </div>
                   </DropdownMenuLabel>
                   <DropdownMenuSeparator />
-                   <DropdownMenuItem onSelect={() => setInviteDialogOpen(true)} disabled={isHouseholdLoading}>
-                    <UserPlus className="ml-2 h-4 w-4" />
-                    <span>ندعي شريك</span>
-                  </DropdownMenuItem>
+                   {canInvite && (
+                    <DropdownMenuItem onSelect={() => setInviteDialogOpen(true)}>
+                      <UserPlus className="ml-2 h-4 w-4" />
+                      <span>ندعي شريك</span>
+                    </DropdownMenuItem>
+                   )}
                   <DropdownMenuSeparator />
                   <DropdownMenuItem onClick={() => auth.signOut()}>
                     <LogOut className="ml-2 h-4 w-4" />
@@ -85,8 +89,6 @@ function Header() {
        <InviteDialog
         open={isInviteDialogOpen}
         onOpenChange={setInviteDialogOpen}
-        inviteCode={household?.inviteCode}
-        userId={user?.uid}
       />
     </>
   );
@@ -112,6 +114,7 @@ export default function Home() {
   return (
     <div className="flex flex-col min-h-screen bg-background">
       <Header />
+      <InvitationNotification />
       <main className="flex-1">
         <div className="container mx-auto p-4 md:p-8 max-w-4xl">
           <Card className="overflow-hidden mb-8 shadow-md border-0 rounded-xl">

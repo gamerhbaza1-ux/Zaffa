@@ -42,6 +42,10 @@ service cloud.firestore {
       return isSignedIn() && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.householdId == householdId;
     }
     
+     function userEmail() {
+        return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.email;
+    }
+    
     /**
      * @description Rules for a user's own profile data.
      * @path /users/{userId}
@@ -58,6 +62,16 @@ service cloud.firestore {
      */
     match /households/{householdId}/{document=**} {
       allow read, write: if isMemberOfHousehold(householdId);
+    }
+
+    match /invitations/{invitationId} {
+      allow create: if isSignedIn() && request.resource.data.inviterId == request.auth.uid;
+      
+      allow read: if isSignedIn() && 
+                  (request.auth.uid == resource.data.inviterId || userEmail() == resource.data.inviteeEmail);
+
+      allow delete: if isSignedIn() && 
+                    (request.auth.uid == resource.data.inviterId || userEmail() == resource.data.inviteeEmail);
     }
   }
 }

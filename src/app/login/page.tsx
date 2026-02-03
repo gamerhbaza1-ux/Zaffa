@@ -21,7 +21,6 @@ import { Input } from "@/components/ui/input";
 import { Separator } from '@/components/ui/separator';
 import { Loader2 } from 'lucide-react';
 import { doc, getDoc, setDoc, addDoc, collection, writeBatch } from 'firebase/firestore';
-import { nanoid } from 'nanoid';
 
 const GoogleIcon = () => (
   <svg className="mr-2 h-4 w-4" aria-hidden="true" focusable="false" data-prefix="fab" data-icon="google" role="img" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 488 512">
@@ -71,10 +70,8 @@ export default function LoginPage() {
 
         // 1. Create a new household
         const householdRef = doc(collection(firestore, 'households'));
-        const inviteCode = nanoid(6).toUpperCase();
         batch.set(householdRef, {
           memberIds: [user.uid],
-          inviteCode: inviteCode,
         });
 
         // 2. Create the user profile
