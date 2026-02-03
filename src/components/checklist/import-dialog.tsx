@@ -19,6 +19,7 @@ import { Loader2 } from 'lucide-react';
 type ImportDialogProps = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  onImportCompleted: () => void;
 };
 
 export function ImportDialog({ open, onOpenChange }: ImportDialogProps) {
@@ -36,8 +37,8 @@ export function ImportDialog({ open, onOpenChange }: ImportDialogProps) {
     if (!file) {
       toast({
         variant: "destructive",
-        title: "لم يتم تحديد ملف",
-        description: "الرجاء تحديد ملف .csv للاستيراد.",
+        title: "مفيش ملف",
+        description: "لازم نختار ملف .csv الأول.",
       });
       return;
     }
@@ -46,19 +47,21 @@ export function ImportDialog({ open, onOpenChange }: ImportDialogProps) {
       const reader = new FileReader();
       reader.onload = async (e) => {
         const text = e.target?.result as string;
+        // onItemAdded is now onImportCompleted
         const result = await importItems(text);
         if (result.success) {
           toast({
-            title: "نجاح الاستيراد!",
-            description: `تمت إضافة ${result.count} عناصر جديدة إلى قائمتك.`,
+            title: "نجحنا!",
+            description: `ضفنا ${result.count} حاجات جديدة للقائمة.`,
           });
           onOpenChange(false);
           setFile(null);
+          onImportCompleted();
         } else {
           toast({
             variant: "destructive",
-            title: "فشل الاستيراد",
-            description: result.error || "كانت هناك مشكلة في معالجة ملفك.",
+            title: "معرفناش نستورد",
+            description: result.error || "حصلت مشكلة في الملف.",
           });
         }
       };
@@ -70,9 +73,9 @@ export function ImportDialog({ open, onOpenChange }: ImportDialogProps) {
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
-          <DialogTitle className="font-headline">استيراد من Excel/CSV</DialogTitle>
+          <DialogTitle className="font-headline">نستورد من ملف Excel/CSV</DialogTitle>
           <DialogDescription>
-            قم بتحميل ملف .csv لإضافة عناصر بشكل جماعي. يجب أن يحتوي الملف على الأعمدة: `name`, `minPrice`, `maxPrice`, `category`.
+            ممكن نرفع ملف .csv عشان نضيف حاجات كتير مرة واحدة. الملف لازم يكون فيه الأعمدة دي: `name`, `minPrice`, `maxPrice`, `category`.
           </DialogDescription>
         </DialogHeader>
         <div className="grid gap-4 py-4">
@@ -81,14 +84,14 @@ export function ImportDialog({ open, onOpenChange }: ImportDialogProps) {
             <Input id="import-file" type="file" accept=".csv" onChange={handleFileChange} />
           </div>
           <p className="text-xs text-muted-foreground">
-            تأكد من أن الصف الأول هو صف رأس، والذي سيتم تجاهله.
+            متنسوش، أول صف في الملف مش هيتحسب (عشان أسماء الأعمدة).
           </p>
         </div>
         <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={isPending}>إلغاء</Button>
+          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={isPending}>نلغي</Button>
           <Button onClick={handleImport} disabled={!file || isPending}>
             {isPending && <Loader2 className="ml-2 h-4 w-4 animate-spin" />}
-            استيراد العناصر
+            يلا نستورد
           </Button>
         </DialogFooter>
       </DialogContent>

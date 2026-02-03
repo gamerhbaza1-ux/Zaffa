@@ -44,10 +44,10 @@ export default async function Home() {
                 <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent" />
                 <div className="absolute bottom-0 right-0 p-6 md:p-8 text-right">
                   <h2 className="text-3xl md:text-4xl font-bold text-white font-headline tracking-tight">
-                    نبني مستقبلنا، عنصرًا بعنصر
+                    بنبني مستقبلنا، حاجة حاجة
                   </h2>
                    <p className="mt-2 text-lg text-white/80 max-w-lg">
-                    خططوا لكل تفصيلة في منزلكم الجديد بسهولة ويسر.
+                    نخطط لكل تفصيلة في بيتنا الجديد بسهولة.
                   </p>
                 </div>
               </div>
@@ -59,7 +59,7 @@ export default async function Home() {
       </main>
       <footer className="py-8 border-t mt-12">
         <p className="text-center text-sm text-muted-foreground">
-          صُنع بـ <span className="text-primary">♡</span> لبداية جديدة.
+          اتعمل بـ <span className="text-primary">♡</span> لبداية جديدة.
         </p>
       </footer>
     </div>

@@ -82,8 +82,8 @@ export function EditCategoryDialog({ category, categories, onOpenChange, onCateg
   useEffect(() => {
     if (state?.success) {
       toast({
-        title: "نجاح!",
-        description: "تم تحديث القسم/الفئة.",
+        title: "تمام!",
+        description: "حدثنا القسم/الفئة.",
       });
       onCategoryUpdated();
       onOpenChange(false);
@@ -117,9 +117,9 @@ export function EditCategoryDialog({ category, categories, onOpenChange, onCateg
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
-          <DialogTitle className="font-headline">تعديل القسم أو الفئة</DialogTitle>
+          <DialogTitle className="font-headline">نعدل القسم أو الفئة</DialogTitle>
           <DialogDescription>
-            قم بتعديل الاسم أو انقله إلى قسم/فئة أخرى.
+            ممكن نغير الاسم أو ننقله لقسم أو فئة تانية.
           </DialogDescription>
         </DialogHeader>
         <Form {...form}>
@@ -149,15 +149,15 @@ export function EditCategoryDialog({ category, categories, onOpenChange, onCateg
               name="parentId"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>تابع لـ</FormLabel>
+                  <FormLabel>تبع</FormLabel>
                    <Select onValueChange={field.onChange} value={field.value || "null"}>
                     <FormControl>
                       <SelectTrigger>
-                        <SelectValue placeholder="اختر قسمًا أو فئة" />
+                        <SelectValue placeholder="نختار قسم أو فئة" />
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                        <SelectItem value="null">لا شيء (جعله قسمًا رئيسيًا)</SelectItem>
+                        <SelectItem value="null">مش تبع حاجة (نخليه قسم لوحده)</SelectItem>
                         <SelectSeparator />
                         <SelectGroup>
                           <SelectLabel>الأقسام</SelectLabel>
@@ -188,8 +188,8 @@ export function EditCategoryDialog({ category, categories, onOpenChange, onCateg
             />
 
             <DialogFooter className="pt-4">
-              <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>إلغاء</Button>
-              <SubmitButton label="حفظ التغييرات" />
+              <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>نلغي</Button>
+              <SubmitButton label="نحفظ التغييرات" />
             </DialogFooter>
           </form>
         </Form>

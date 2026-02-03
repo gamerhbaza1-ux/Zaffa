@@ -29,7 +29,7 @@ import React from 'react';
 import { SubmitButton } from '../submit-button';
 
 const sectionSchema = z.object({
-  name: z.string().min(1, "اسم القسم مطلوب."),
+  name: z.string().min(1, "لازم نكتب اسم القسم."),
 });
 
 type FormValues = z.infer<typeof sectionSchema>;
@@ -56,8 +56,8 @@ export function AddSectionDialog({ open, onOpenChange, onSectionAdded }: AddSect
   useEffect(() => {
     if (state?.success) {
       toast({
-        title: "نجاح!",
-        description: "تمت إضافة القسم الجديد.",
+        title: "تمام!",
+        description: "ضفنا القسم الجديد.",
       });
       form.reset();
       onSectionAdded();
@@ -87,9 +87,9 @@ export function AddSectionDialog({ open, onOpenChange, onSectionAdded }: AddSect
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
-          <DialogTitle className="font-headline">إضافة قسم جديد</DialogTitle>
+          <DialogTitle className="font-headline">نضيف قسم جديد</DialogTitle>
           <DialogDescription>
-            الأقسام هي الفئات الرئيسية التي تنظم قائمتك (مثال: أثاث، أجهزة).
+            الأقسام هي اللي بتنظم القائمة بتاعتنا (زي عفش، أجهزة).
           </DialogDescription>
         </DialogHeader>
         <Form {...form}>
@@ -105,7 +105,7 @@ export function AddSectionDialog({ open, onOpenChange, onSectionAdded }: AddSect
                 <FormItem>
                   <FormLabel>اسم القسم</FormLabel>
                   <FormControl>
-                    <Input placeholder="مثال: أثاث" {...field} />
+                    <Input placeholder="مثال: عفش" {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -113,8 +113,8 @@ export function AddSectionDialog({ open, onOpenChange, onSectionAdded }: AddSect
             />
 
             <DialogFooter className="pt-4">
-              <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>إلغاء</Button>
-              <SubmitButton label="إضافة قسم" />
+              <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>نلغي</Button>
+              <SubmitButton label="نضيف القسم" />
             </DialogFooter>
           </form>
         </Form>

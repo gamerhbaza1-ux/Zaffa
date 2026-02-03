@@ -31,7 +31,7 @@ export function ItemCard({ item, onToggle, onDelete, isPending }: ItemCardProps)
         id={`item-${item.id}`}
         checked={item.isPurchased}
         onCheckedChange={onToggle}
-        aria-label={`تحديد ${item.name} كعنصر تم شراؤه`}
+        aria-label={`نعلم على ${item.name} انها اتجابت`}
         className="h-5 w-5 rounded"
       />
       <div className="flex-1 grid gap-1">
@@ -46,22 +46,22 @@ export function ItemCard({ item, onToggle, onDelete, isPending }: ItemCardProps)
         </label>
         {item.isPurchased && typeof item.finalPrice === 'number' ? (
             <p className="text-sm text-primary">
-                السعر النهائي: {formatPrice(item.finalPrice)}
+                جبناها بكام: {formatPrice(item.finalPrice)}
             </p>
         ) : (
             <p className={cn("text-sm text-muted-foreground", item.isPurchased && 'line-through')}>
-              السعر التقديري: {formatPrice(item.minPrice)} - {formatPrice(item.maxPrice)}
+              السعر المتوقع: {formatPrice(item.minPrice)} - {formatPrice(item.maxPrice)}
             </p>
         )}
       </div>
       {item.isPurchased && (
-        <Badge variant="secondary" className="bg-green-100 text-green-800 border-green-200 dark:bg-green-900/50 dark:text-green-300 dark:border-green-800/50">تم الشراء</Badge>
+        <Badge variant="secondary" className="bg-green-100 text-green-800 border-green-200 dark:bg-green-900/50 dark:text-green-300 dark:border-green-800/50">جبناها</Badge>
       )}
       <Button
         variant="ghost"
         size="icon"
         onClick={onDelete}
-        aria-label={`حذف ${item.name}`}
+        aria-label={`نمسح ${item.name}`}
         className="text-muted-foreground hover:bg-destructive/10 hover:text-destructive h-8 w-8 rounded-full"
       >
         <Trash2 className="h-4 w-4" />

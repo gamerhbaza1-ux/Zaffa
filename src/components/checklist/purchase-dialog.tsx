@@ -23,7 +23,7 @@ import { SubmitButton } from '../submit-button';
 
 const purchaseSchema = z.object({
   itemId: z.string(),
-  finalPrice: z.coerce.number().min(0, "يجب أن يكون السعر رقمًا موجبًا."),
+  finalPrice: z.coerce.number().min(0, "السعر لازم يكون رقم."),
 });
 
 type FormValues = z.infer<typeof purchaseSchema>;
@@ -49,8 +49,8 @@ export function PurchaseDialog({ item, onOpenChange, onItemPurchased }: Purchase
   useEffect(() => {
     if (state?.success) {
       toast({
-        title: "تم!",
-        description: "تم تحديث العنصر كـ 'تم شراؤه'.",
+        title: "تمام!",
+        description: "علمنا على الحاجة دي انها اتجابت خلاص.",
       });
       reset();
       onItemPurchased();
@@ -84,9 +84,9 @@ export function PurchaseDialog({ item, onOpenChange, onItemPurchased }: Purchase
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
-          <DialogTitle className="font-headline">تأكيد شراء: {item?.name}</DialogTitle>
+          <DialogTitle className="font-headline">اشترينا: {item?.name}</DialogTitle>
           <DialogDescription>
-            الرجاء إدخال السعر النهائي الذي اشتريت به هذا العنصر.
+            نكتب جبنا الحاجة دي بكام بالظبط.
           </DialogDescription>
         </DialogHeader>
         <form
@@ -98,7 +98,7 @@ export function PurchaseDialog({ item, onOpenChange, onItemPurchased }: Purchase
           <input type="hidden" {...register('itemId')} />
           <div className="grid grid-cols-4 items-center gap-4">
             <Label htmlFor="finalPrice" className="text-right">
-              السعر النهائي
+              جبناها بكام؟
             </Label>
             <div className="col-span-3">
               <Input id="finalPrice" type="number" {...register('finalPrice')} name="finalPrice" className="w-full" />
@@ -106,8 +106,8 @@ export function PurchaseDialog({ item, onOpenChange, onItemPurchased }: Purchase
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" type="button" onClick={() => onOpenChange(false)}>إلغاء</Button>
-            <SubmitButton label="تأكيد الشراء" />
+            <Button variant="outline" type="button" onClick={() => onOpenChange(false)}>نلغي</Button>
+            <SubmitButton label="تمام، اشترينا" />
           </DialogFooter>
         </form>
       </DialogContent>

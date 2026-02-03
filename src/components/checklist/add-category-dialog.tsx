@@ -40,8 +40,8 @@ import React from 'react';
 import { SubmitButton } from '../submit-button';
 
 const categorySchema = z.object({
-  name: z.string().min(1, "اسم الفئة مطلوب."),
-  parentId: z.string({ required_error: "يجب اختيار قسم أو فئة رئيسية."}).min(1, "يجب اختيار قسم أو فئة رئيسية."),
+  name: z.string().min(1, "لازم نكتب اسم الفئة."),
+  parentId: z.string({ required_error: "لازم نختار قسم أو فئة رئيسية."}).min(1, "لازم نختار قسم أو فئة رئيسية."),
 });
 
 type FormValues = z.infer<typeof categorySchema>;
@@ -70,8 +70,8 @@ export function AddCategoryDialog({ open, onOpenChange, onCategoryAdded, categor
   useEffect(() => {
     if (state?.success) {
       toast({
-        title: "نجاح!",
-        description: "تمت إضافة الفئة الجديدة.",
+        title: "تمام!",
+        description: "ضفنا الفئة الجديدة.",
       });
       form.reset();
       onCategoryAdded();
@@ -103,9 +103,9 @@ export function AddCategoryDialog({ open, onOpenChange, onCategoryAdded, categor
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
-          <DialogTitle className="font-headline">إضافة فئة جديدة</DialogTitle>
+          <DialogTitle className="font-headline">نضيف فئة جديدة</DialogTitle>
           <DialogDescription>
-            اختر القسم أو الفئة الرئيسية التي ستنتمي إليها هذه الفئة الجديدة.
+            نختار القسم أو الفئة اللي هتبقى تبعها الفئة الجديدة دي.
           </DialogDescription>
         </DialogHeader>
         <Form {...form}>
@@ -122,7 +122,7 @@ export function AddCategoryDialog({ open, onOpenChange, onCategoryAdded, categor
                 <FormItem>
                   <FormLabel>اسم الفئة</FormLabel>
                   <FormControl>
-                    <Input placeholder="مثال: غرفة المعيشة" {...field} />
+                    <Input placeholder="مثال: الصالة" {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -134,11 +134,11 @@ export function AddCategoryDialog({ open, onOpenChange, onCategoryAdded, categor
               name="parentId"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>تابعة لـ</FormLabel>
+                  <FormLabel>تبع</FormLabel>
                    <Select onValueChange={field.onChange} value={field.value || undefined}>
                     <FormControl>
                       <SelectTrigger>
-                        <SelectValue placeholder="اختر قسم أو فئة رئيسية" />
+                        <SelectValue placeholder="نختار قسم أو فئة" />
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
@@ -171,8 +171,8 @@ export function AddCategoryDialog({ open, onOpenChange, onCategoryAdded, categor
             />
 
             <DialogFooter className="pt-4">
-              <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>إلغاء</Button>
-              <SubmitButton label="إضافة فئة" />
+              <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>نلغي</Button>
+              <SubmitButton label="نضيف الفئة" />
             </DialogFooter>
           </form>
         </Form>

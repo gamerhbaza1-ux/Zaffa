@@ -5,29 +5,29 @@ import type { ChecklistItem, Category } from "./types";
 import { z } from "zod";
 
 const itemSchema = z.object({
-  name: z.string().min(1, "اسم العنصر مطلوب."),
-  categoryId: z.string({ required_error: "الفئة مطلوبة."}).min(1, "الفئة مطلوبة."),
-  minPrice: z.coerce.number().min(0, "يجب أن يكون السعر رقمًا موجبًا."),
-  maxPrice: z.coerce.number().min(0, "يجب أن يكون السعر رقمًا موجبًا."),
+  name: z.string().min(1, "لازم نكتب اسم الحاجة."),
+  categoryId: z.string({ required_error: "لازم نختار فئة."}).min(1, "لازم نختار فئة."),
+  minPrice: z.coerce.number().min(0, "السعر لازم يكون رقم."),
+  maxPrice: z.coerce.number().min(0, "السعر لازم يكون رقم."),
 }).refine(data => data.maxPrice >= data.minPrice, {
-  message: "يجب أن يكون السعر الأقصى أكبر من أو يساوي السعر الأدنى.",
+  message: "أقصى سعر لازم يكون أكبر من أو بيساوي أقل سعر.",
   path: ["maxPrice"],
 });
 
 const categorySchema = z.object({
-  name: z.string().min(1, "اسم القسم أو الفئة مطلوب."),
+  name: z.string().min(1, "لازم نكتب اسم القسم أو الفئة."),
   parentId: z.string().nullable().optional(),
 });
 
 const purchaseSchema = z.object({
   itemId: z.string(),
-  finalPrice: z.coerce.number().min(0, "يجب أن يكون السعر رقمًا موجبًا."),
+  finalPrice: z.coerce.number().min(0, "السعر لازم يكون رقم."),
 });
 
 // In-memory store for demonstration purposes
 let categories: Category[] = [
   // === الأقسام الرئيسية ===
-  { id: "1", name: "أثاث", parentId: null },
+  { id: "1", name: "عفش", parentId: null },
   { id: "2", name: "أجهزة كهربائية", parentId: null },
   { id: "3", name: "مطبخ", parentId: null },
   { id: "4", name: "ديكور", parentId: null },
@@ -85,7 +85,7 @@ let categories: Category[] = [
 
 let items: ChecklistItem[] = [
   // --- عناصر غرفة المعيشة (فئة 7) ---
-  { id: "1", name: "أريكة", categoryId: "7", minPrice: 15000, maxPrice: 30000, isPurchased: false },
+  { id: "1", name: "كنبة", categoryId: "7", minPrice: 15000, maxPrice: 30000, isPurchased: false },
   { id: "1-1", name: "كرسي بذراعين (فوتيه)", categoryId: "7", minPrice: 4000, maxPrice: 8000, isPurchased: false },
   { id: "1-2", name: "طاولة قهوة", categoryId: "7", minPrice: 2000, maxPrice: 5000, isPurchased: true, finalPrice: 2200 },
   { id: "1-3", name: "وحدة تلفزيون", categoryId: "7", minPrice: 3000, maxPrice: 7000, isPurchased: false },
@@ -192,7 +192,7 @@ export async function addCategory(prevState: any, formData: FormData) {
     return { success: true };
   } else {
     return {
-      errors: { name: ["هذا الاسم موجود بالفعل ضمن نفس القسم/الفئة."] },
+      errors: { name: ["الاسم ده موجود قبل كده في نفس المكان."] },
     };
   }
 }
@@ -289,7 +289,7 @@ export async function importItems(fileContent: string) {
     revalidatePath("/");
     return { success: true, count: newItems.length };
   } catch (error) {
-    return { success: false, error: "فشل في تحليل الملف." };
+    return { success: false, error: "معرفناش نقرا الملف." };
   }
 }
 
@@ -319,7 +319,7 @@ export async function updateCategory(prevState: any, formData: FormData) {
 
   if (categories.some(c => c.name === name && c.parentId === newParentId && c.id !== id)) {
      return {
-      errors: { name: ["هذا الاسم موجود بالفعل ضمن نفس القسم/الفئة."] },
+      errors: { name: ["الاسم ده موجود قبل كده في نفس المكان."] },
     };
   }
 
@@ -328,7 +328,7 @@ export async function updateCategory(prevState: any, formData: FormData) {
   while(currentParentId) {
       if (currentParentId === id) {
           return {
-              errors: { parentId: ["لا يمكن جعل الفئة فئة فرعية لنفسها أو لأحد فروعها."] },
+              errors: { parentId: ["مينفعش نخلي الفئة تبع نفسها."] },
           };
       }
       currentParentId = categories.find(c => c.id === currentParentId)?.parentId || null;
@@ -350,7 +350,7 @@ export async function deleteCategory(id: string) {
   const hasItems = items.some(i => i.categoryId === id);
 
   if (hasSubcategories || hasItems) {
-    return { success: false, error: "لا يمكن الحذف لأن هذا القسم/الفئة يحتوي على عناصر أو فئات فرعية." };
+    return { success: false, error: "مينفعش نمسحها عشان جواها حاجات تانية." };
   }
 
   categories = categories.filter(c => c.id !== id);

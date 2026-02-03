@@ -5,7 +5,7 @@ import { cn } from '@/lib/utils';
 
 export const metadata: Metadata = {
   title: 'عش المخطط',
-  description: 'خططوا لمنزلكم الجديد معًا.',
+  description: 'نخطط لبيتنا الجديد سوا.',
 };
 
 export default function RootLayout({

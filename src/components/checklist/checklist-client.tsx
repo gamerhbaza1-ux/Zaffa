@@ -88,8 +88,8 @@ export default function ChecklistClient({ initialItems, initialCategories }: Che
       setItems(newItems);
       
       toast({
-        title: "تم إلغاء الشراء",
-        description: `تم إرجاع "${itemToUnpurchase.name}" إلى القائمة.`,
+        title: "رجعناها القائمة",
+        description: `رجعنا "${itemToUnpurchase.name}" للحاجات اللي لسه هنجيبها.`,
       });
       setItemToUnpurchase(null);
     });
@@ -100,8 +100,8 @@ export default function ChecklistClient({ initialItems, initialCategories }: Che
     startTransition(async () => {
       await deleteItem(itemToDelete.id);
       toast({
-        title: "تم الحذف",
-        description: `تم حذف العنصر "${itemToDelete.name}".`,
+        title: "اتمسحت",
+        description: `مسحنا العنصر "${itemToDelete.name}".`,
       });
       refreshData();
       setItemToDelete(null);
@@ -115,16 +115,16 @@ export default function ChecklistClient({ initialItems, initialCategories }: Che
       const result = await deleteCategory(categoryToDelete.id);
       if (result?.success) {
         toast({
-          title: "تم الحذف",
-          description: `تم حذف "${categoryToDelete.name}".`,
+          title: "اتمسحت",
+          description: `مسحنا "${categoryToDelete.name}".`,
         });
         refreshData();
         setCategoryToDelete(null);
       } else {
         toast({
           variant: "destructive",
-          title: "فشل الحذف",
-          description: result?.error || "حدث خطأ غير متوقع.",
+          title: "معرفناش نمسح",
+          description: result?.error || "حصلت مشكلة.",
         });
       }
     });
@@ -156,13 +156,13 @@ export default function ChecklistClient({ initialItems, initialCategories }: Che
       <div className="mb-6 space-y-4">
         <div className="flex flex-col sm:flex-row gap-2 flex-wrap">
           <Button onClick={() => setAddDialogOpen(true)}>
-            <Plus className="ml-2 h-4 w-4" /> إضافة عنصر
+            <Plus className="ml-2 h-4 w-4" /> نضيف حاجة
           </Button>
           <Button variant="secondary" onClick={() => setImportDialogOpen(true)}>
-            <Upload className="ml-2 h-4 w-4" /> استيراد
+            <Upload className="ml-2 h-4 w-4" /> نستورد
           </Button>
            <Button variant="outline" onClick={() => setAddCategoryDialogOpen(true)}>
-            <ListPlus className="ml-2 h-4 w-4" /> إضافة فئة
+            <ListPlus className="ml-2 h-4 w-4" /> نضيف فئة
           </Button>
         </div>
         <ProgressSummary purchasedCount={purchasedCount} totalCount={totalCount} />
@@ -179,7 +179,7 @@ export default function ChecklistClient({ initialItems, initialCategories }: Che
                   ))}
               </TabsList>
               <Button variant="outline" onClick={() => setAddSectionDialogOpen(true)} className="shrink-0">
-                  <ListPlus className="ml-2 h-4 w-4" /> إضافة قسم
+                  <ListPlus className="ml-2 h-4 w-4" /> نضيف قسم
               </Button>
             </div>
             {topLevelCategories.map(topLevelCategory => {
@@ -228,17 +228,17 @@ export default function ChecklistClient({ initialItems, initialCategories }: Che
                                     <DropdownMenuTrigger asChild>
                                         <Button variant="ghost" size="icon" className="h-8 w-8 flex-shrink-0">
                                             <MoreVertical className="h-4 w-4" />
-                                            <span className="sr-only">إجراءات {category.name}</span>
+                                            <span className="sr-only">خيارات لـ {category.name}</span>
                                         </Button>
                                     </DropdownMenuTrigger>
                                     <DropdownMenuContent align="end">
                                         <DropdownMenuItem onSelect={() => setCategoryToEdit(category)}>
                                             <Pencil className="ml-2 h-4 w-4" />
-                                            <span>تعديل</span>
+                                            <span>نعدّل</span>
                                         </DropdownMenuItem>
                                         <DropdownMenuItem onSelect={() => setCategoryToDelete(category)} className="text-destructive focus:text-destructive">
                                             <Trash2 className="ml-2 h-4 w-4" />
-                                            <span>حذف</span>
+                                            <span>نمسح</span>
                                         </DropdownMenuItem>
                                     </DropdownMenuContent>
                                 </DropdownMenu>
@@ -288,7 +288,7 @@ export default function ChecklistClient({ initialItems, initialCategories }: Che
                                     </div>
                                 ) : (
                                     <p className="text-muted-foreground text-center py-10">
-                                        لا توجد فئات في هذا القسم بعد. أضف فئة لتبدأ.
+                                        القسم ده فاضي. ممكن نضيف فئة عشان نبدأ.
                                     </p>
                                 )}
                             </CardContent>
@@ -299,13 +299,13 @@ export default function ChecklistClient({ initialItems, initialCategories }: Che
         </Tabs>
       ) : (
         <div className="text-center py-10 px-4 border-2 border-dashed rounded-lg">
-            <h3 className="text-lg font-medium text-foreground">قائمة المراجعة الخاصة بك فارغة!</h3>
+            <h3 className="text-lg font-medium text-foreground">القائمة بتاعتنا فاضية!</h3>
             <p className="text-muted-foreground mt-1">
-              ابدأ بإضافة عنصر تحتاجه لمنزلك الجديد.
+              يلا نبدأ نضيف الحاجات اللي محتاجينها لبيتنا الجديد.
             </p>
             <Button className="mt-4" onClick={() => setAddDialogOpen(true)}>
               <Plus className="ml-2 h-4 w-4" />
-              أضف أول عنصر لك
+              نضيف أول حاجة
             </Button>
           </div>
       )}
@@ -356,19 +356,19 @@ export default function ChecklistClient({ initialItems, initialCategories }: Che
       <AlertDialog open={!!categoryToDelete} onOpenChange={(open) => !open && setCategoryToDelete(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>هل أنت متأكد من الحذف؟</AlertDialogTitle>
+            <AlertDialogTitle>متأكدين اننا هنمسح؟</AlertDialogTitle>
             <AlertDialogDescription>
-              سيتم حذف "{categoryToDelete?.name}". هذا الإجراء لا يمكن التراجع عنه. لن يتم الحذف إلا إذا كان القسم/الفئة فارغًا (لا يحتوي على عناصر أو فئات فرعية).
+              القسم ده "{categoryToDelete?.name}" هيتمسح ومش هنعرف نرجعه تاني. مش هينفع يتمسح لو جواه فئات تانية أو حاجات.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>إلغاء</AlertDialogCancel>
+            <AlertDialogCancel>لأ، نرجع</AlertDialogCancel>
             <AlertDialogAction
               onClick={handleDeleteCategory}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
               disabled={isPending}
             >
-              {isPending ? <Loader2 className="ml-2 h-4 w-4 animate-spin" /> : "حذف"}
+              {isPending ? <Loader2 className="ml-2 h-4 w-4 animate-spin" /> : "أه، نمسح"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -377,18 +377,18 @@ export default function ChecklistClient({ initialItems, initialCategories }: Che
       <AlertDialog open={!!itemToUnpurchase} onOpenChange={(open) => !open && setItemToUnpurchase(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>هل أنت متأكد؟</AlertDialogTitle>
+            <AlertDialogTitle>متأكدين؟</AlertDialogTitle>
             <AlertDialogDescription>
-              سيؤدي هذا إلى إرجاع العنصر "{itemToUnpurchase?.name}" إلى قائمة العناصر التي لم يتم شراؤها، وسيتم حذف السعر النهائي المسجل.
+              بكده هنرجع "{itemToUnpurchase?.name}" للحاجات اللي لسه هنجيبها، وهنمسح السعر اللي سجلناه.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>إلغاء</AlertDialogCancel>
+            <AlertDialogCancel>لأ، نرجع</AlertDialogCancel>
             <AlertDialogAction
               onClick={handleUnpurchaseConfirm}
               disabled={isPending}
             >
-              {isPending ? <Loader2 className="ml-2 h-4 w-4 animate-spin" /> : "تأكيد"}
+              {isPending ? <Loader2 className="ml-2 h-4 w-4 animate-spin" /> : "تمام، نرجعها"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -397,19 +397,19 @@ export default function ChecklistClient({ initialItems, initialCategories }: Che
       <AlertDialog open={!!itemToDelete} onOpenChange={(open) => !open && setItemToDelete(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>هل أنت متأكد من الحذف؟</AlertDialogTitle>
+            <AlertDialogTitle>متأكدين اننا هنمسح؟</AlertDialogTitle>
             <AlertDialogDescription>
-              سيتم حذف العنصر "{itemToDelete?.name}" نهائيًا. لا يمكن التراجع عن هذا الإجراء.
+              الحاجة دي "{itemToDelete?.name}" هتتمسح خالص ومش هنعرف نرجعها تاني.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>إلغاء</AlertDialogCancel>
+            <AlertDialogCancel>لأ، نرجع</AlertDialogCancel>
             <AlertDialogAction
               onClick={handleDeleteItemConfirm}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
               disabled={isPending}
             >
-              {isPending ? <Loader2 className="ml-2 h-4 w-4 animate-spin" /> : "حذف"}
+              {isPending ? <Loader2 className="ml-2 h-4 w-4 animate-spin" /> : "أه، نمسح"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

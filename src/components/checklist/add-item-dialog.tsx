@@ -37,12 +37,12 @@ import React from 'react';
 import { SubmitButton } from '../submit-button';
 
 const itemSchema = z.object({
-  name: z.string().min(1, "اسم العنصر مطلوب."),
-  categoryId: z.string({ required_error: "الفئة مطلوبة."}).min(1, "الفئة مطلوبة."),
-  minPrice: z.coerce.number().min(0, "يجب أن يكون السعر رقمًا موجبًا."),
-  maxPrice: z.coerce.number().min(0, "يجب أن يكون السعر رقمًا موجبًا."),
+  name: z.string().min(1, "لازم نكتب اسم الحاجة."),
+  categoryId: z.string({ required_error: "لازم نختار فئة."}).min(1, "لازم نختار فئة."),
+  minPrice: z.coerce.number().min(0, "السعر لازم يكون رقم."),
+  maxPrice: z.coerce.number().min(0, "السعر لازم يكون رقم."),
 }).refine(data => data.maxPrice >= data.minPrice, {
-  message: "يجب أن يكون السعر الأقصى أكبر من أو يساوي السعر الأدنى.",
+  message: "أقصى سعر لازم يكون أكبر من أو بيساوي أقل سعر.",
   path: ["maxPrice"],
 });
 
@@ -77,8 +77,8 @@ export function AddItemDialog({ open, onOpenChange, onItemAdded, categories }: A
   useEffect(() => {
     if (state?.success) {
       toast({
-        title: "نجاح!",
-        description: "تمت إضافة العنصر الخاص بك إلى القائمة.",
+        title: "تمام!",
+        description: "ضفنا الحاجة الجديدة للقائمة.",
       });
       form.reset();
       onItemAdded();
@@ -107,9 +107,9 @@ export function AddItemDialog({ open, onOpenChange, onItemAdded, categories }: A
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
-          <DialogTitle className="font-headline">إضافة عنصر جديد</DialogTitle>
+          <DialogTitle className="font-headline">نضيف حاجة جديدة</DialogTitle>
           <DialogDescription>
-            أضف عنصرًا جديدًا إلى قائمة مراجعة شقتك. املأ التفاصيل أدناه.
+            يلا نضيف حاجة جديدة لقائمة بيتنا. املوا البيانات دي.
           </DialogDescription>
         </DialogHeader>
         <Form {...form}>
@@ -124,9 +124,9 @@ export function AddItemDialog({ open, onOpenChange, onItemAdded, categories }: A
               name="name"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>اسم العنصر</FormLabel>
+                  <FormLabel>اسم الحاجة</FormLabel>
                   <FormControl>
-                    <Input placeholder="مثال: أريكة" {...field} />
+                    <Input placeholder="مثال: كنبة" {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -138,11 +138,11 @@ export function AddItemDialog({ open, onOpenChange, onItemAdded, categories }: A
               name="categoryId"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>الفئة</FormLabel>
+                  <FormLabel>تبع أنهي فئة</FormLabel>
                    <Select onValueChange={field.onChange} defaultValue={field.value}>
                     <FormControl>
                       <SelectTrigger>
-                        <SelectValue placeholder="اختر فئة" />
+                        <SelectValue placeholder="نختار فئة" />
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
@@ -154,7 +154,7 @@ export function AddItemDialog({ open, onOpenChange, onItemAdded, categories }: A
                         ))
                       ) : (
                         <div className="p-4 text-center text-sm text-muted-foreground">
-                          الرجاء إضافة فئة أولاً.
+                          لازم نضيف فئة الأول.
                         </div>
                       )}
                     </SelectContent>
@@ -170,7 +170,7 @@ export function AddItemDialog({ open, onOpenChange, onItemAdded, categories }: A
                 name="minPrice"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>الحد الأدنى للسعر</FormLabel>
+                    <FormLabel>أقل سعر متوقع</FormLabel>
                     <FormControl>
                       <Input type="number" placeholder="0" {...field} value={field.value ?? ""} />
                     </FormControl>
@@ -183,7 +183,7 @@ export function AddItemDialog({ open, onOpenChange, onItemAdded, categories }: A
                 name="maxPrice"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>الحد الأقصى للسعر</FormLabel>
+                    <FormLabel>أقصى سعر متوقع</FormLabel>
                     <FormControl>
                       <Input type="number" placeholder="0" {...field} value={field.value ?? ""} />
                     </FormControl>
@@ -194,8 +194,8 @@ export function AddItemDialog({ open, onOpenChange, onItemAdded, categories }: A
             </div>
 
             <DialogFooter className="pt-4">
-              <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>إلغاء</Button>
-              <SubmitButton label="إضافة عنصر" />
+              <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>نلغي</Button>
+              <SubmitButton label="نضيف الحاجة" />
             </DialogFooter>
           </form>
         </Form>

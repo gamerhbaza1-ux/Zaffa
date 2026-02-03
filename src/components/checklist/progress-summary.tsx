@@ -17,13 +17,13 @@ export function ProgressSummary({ purchasedCount, totalCount }: ProgressSummaryP
       <CardContent className="p-4">
         <div className="flex justify-between items-center mb-2">
           <p className="text-lg font-semibold text-foreground">
-            {remainingCount > 0 ? `${remainingCount} عناصر متبقية` : 'تم شراء جميع العناصر! 🎉'}
+            {remainingCount > 0 ? `${remainingCount} حاجات باقية` : 'اشترينا كل حاجة! 🎉'}
           </p>
           <p className="text-sm text-muted-foreground">
-            تم شراء {purchasedCount} من {totalCount}
+            اشترينا {purchasedCount} من {totalCount}
           </p>
         </div>
-        <Progress value={progressPercentage} aria-label={`${Math.round(progressPercentage)}% مكتمل`} />
+        <Progress value={progressPercentage} aria-label={`${Math.round(progressPercentage)}% خلص`} />
       </CardContent>
     </Card>
   );
