@@ -51,3 +51,9 @@ export type ActivityLog = {
   details: string;
   timestamp: Timestamp;
 };
+
+export type Analysis = {
+  id: string;
+  title: string;
+  categoryIds: string[];
+};

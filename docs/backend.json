@@ -231,6 +231,31 @@
         "details",
         "timestamp"
       ]
+    },
+    "Analysis": {
+      "title": "Analysis",
+      "type": "object",
+      "description": "Represents a saved analysis configuration for the stats page.",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "title": {
+          "type": "string"
+        },
+        "categoryIds": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "An array of category or section IDs included in the analysis."
+        }
+      },
+      "required": [
+        "id",
+        "title",
+        "categoryIds"
+      ]
     }
   },
   "auth": {
@@ -348,8 +373,28 @@
             }
           ]
         }
+      },
+      {
+        "path": "/households/{householdId}/analyses/{analysisId}",
+        "definition": {
+          "entityName": "Analysis",
+          "schema": {
+            "$ref": "#/backend/entities/Analysis"
+          },
+          "description": "Stores saved analysis configurations for a household.",
+          "params": [
+            {
+              "name": "householdId",
+              "description": "The household this analysis belongs to."
+            },
+            {
+              "name": "analysisId",
+              "description": "The unique ID of the analysis."
+            }
+          ]
+        }
       }
     ],
-    "reasoning": "The Firestore structure is designed around a shared 'household' model. User profiles are stored in a top-level `/users` collection, with each user document containing a `householdId` to link them to their shared data. All collaborative data (categories, checklist items) is stored in subcollections under a top-level `/households/{householdId}` path. This enforces a clear separation between individual user data and shared household data. Security rules can efficiently grant access to an entire household's data tree by checking if the requesting user's `householdId` (from their profile) matches the `householdId` in the path, enabling secure data sharing between partners. A new top-level `/invitations` collection is added to manage the email-based invitation flow between users."
+    "reasoning": "The Firestore structure is designed around a shared 'household' model. User profiles are stored in a top-level `/users` collection, with each user document containing a `householdId` to link them to their shared data. All collaborative data (categories, checklist items, activity logs, and saved analyses) is stored in subcollections under a top-level `/households/{householdId}` path. This enforces a clear separation between individual user data and shared household data. Security rules can efficiently grant access to an entire household's data tree by checking if the requesting user's `householdId` (from their profile) matches the `householdId` in the path, enabling secure data sharing between partners. A new top-level `/invitations` collection is added to manage the email-based invitation flow between users."
   }
 }

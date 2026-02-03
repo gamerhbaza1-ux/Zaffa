@@ -4,17 +4,19 @@ import { useMemo, useEffect, useState, useCallback } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useUser, useCollection, useFirestore } from '@/firebase';
-import { collection } from 'firebase/firestore';
+import { collection, addDoc, deleteDoc, doc } from 'firebase/firestore';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ArrowRight, ListTree, ShoppingCart, Target, TrendingUp, X, PlusCircle } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
-import type { Category, ChecklistItem } from '@/lib/types';
+import type { Category, ChecklistItem, Analysis } from '@/lib/types';
 import { Progress } from '@/components/ui/progress';
-import { nanoid } from 'nanoid';
 import { AnalysisSetupDialog } from '@/components/stats/analysis-setup-dialog';
 import { AnalysisItemsDialog } from '@/components/stats/analysis-items-dialog';
 import { cn } from '@/lib/utils';
+import { useToast } from '@/hooks/use-toast';
+import { errorEmitter } from '@/firebase/error-emitter';
+import { FirestorePermissionError } from '@/firebase/errors';
 
 
 const ZaytounaIcon = (props: React.ComponentProps<'svg'>) => (
@@ -103,8 +105,8 @@ export default function StatsPage() {
   const { user, household, isHouseholdLoading, isUserLoading } = useUser();
   const firestore = useFirestore();
   const router = useRouter();
+  const { toast } = useToast();
   
-  const [analyses, setAnalyses] = useState<any[]>([]);
   const [isAnalysisDialogOpen, setAnalysisDialogOpen] = useState(false);
   const [itemsToShow, setItemsToShow] = useState<{title: string, items: ChecklistItem[]} | null>(null);
 
@@ -116,13 +118,16 @@ export default function StatsPage() {
 
   const categoriesRef = useMemo(() => household ? collection(firestore, `households/${household.id}/categories`) : null, [household, firestore]);
   const itemsRef = useMemo(() => household ? collection(firestore, `households/${household.id}/checklistItems`) : null, [household, firestore]);
+  const analysesRef = useMemo(() => household ? collection(firestore, `households/${household.id}/analyses`) : null, [household, firestore]);
 
   const { data: categoriesData, isLoading: areCategoriesLoading } = useCollection<Category>(categoriesRef);
   const { data: itemsData, isLoading: areItemsLoading } = useCollection<ChecklistItem>(itemsRef);
+  const { data: savedAnalyses, isLoading: areAnalysesLoading } = useCollection<Analysis>(analysesRef);
+  
   const categories = useMemo(() => categoriesData || [], [categoriesData]);
   const items = useMemo(() => itemsData || [], [itemsData]);
 
-  const isLoading = isUserLoading || isHouseholdLoading || areCategoriesLoading || areItemsLoading;
+  const isLoading = isUserLoading || isHouseholdLoading || areCategoriesLoading || areItemsLoading || areAnalysesLoading;
 
   const { sections, subCategories } = useMemo(() => {
     const sections = categories.filter(c => !c.parentId).sort((a,b) => a.name.localeCompare(b.name));
@@ -130,45 +135,74 @@ export default function StatsPage() {
     return { sections, subCategories };
   }, [categories]);
 
-  const handleCreateAnalysis = useCallback((selection: string[]) => {
-    if (selection.length === 0) return;
+  const analyses = useMemo(() => {
+    if (!savedAnalyses) return [];
 
-    const getDescendantIds = (catId: string): string[] => {
-        let ids = [catId];
-        const children = categories.filter(c => c.parentId === catId);
-        children.forEach(child => {
-            ids = [...ids, ...getDescendantIds(child.id)];
+    return savedAnalyses.map(saved => {
+        const selection = saved.categoryIds;
+        
+        const getDescendantIds = (catId: string): string[] => {
+            let ids = [catId];
+            const children = categories.filter(c => c.parentId === catId);
+            children.forEach(child => {
+                ids = [...ids, ...getDescendantIds(child.id)];
+            });
+            return ids;
+        };
+        
+        const allRelevantCategoryIds = new Set<string>();
+        selection.forEach(id => {
+            getDescendantIds(id).forEach(descId => allRelevantCategoryIds.add(descId));
         });
-        return ids;
-    };
-    
-    const allRelevantCategoryIds = new Set<string>();
-    selection.forEach(id => {
-        getDescendantIds(id).forEach(descId => allRelevantCategoryIds.add(descId));
-    });
 
-    const relevantItems = items.filter(item => allRelevantCategoryIds.has(item.categoryId));
-    const totalItems = relevantItems.length;
-    const purchasedItems = relevantItems.filter(i => i.isPurchased).length;
-    const totalExpected = relevantItems.reduce((sum, item) => sum + (item.minPrice + item.maxPrice) / 2, 0);
-    const totalPaid = relevantItems.filter(i => i.isPurchased).reduce((sum, item) => sum + (item.finalPrice ?? 0), 0);
-    const progress = totalItems > 0 ? (purchasedItems / totalItems) * 100 : 0;
-    
-    const stats = { totalItems, purchasedItems, totalExpected, totalPaid, progress };
-    
+        const relevantItems = items.filter(item => allRelevantCategoryIds.has(item.categoryId));
+        const totalItems = relevantItems.length;
+        const purchasedItems = relevantItems.filter(i => i.isPurchased).length;
+        const totalExpected = relevantItems.reduce((sum, item) => sum + (item.minPrice + item.maxPrice) / 2, 0);
+        const totalPaid = relevantItems.filter(i => i.isPurchased).reduce((sum, item) => sum + (item.finalPrice ?? 0), 0);
+        const progress = totalItems > 0 ? (purchasedItems / totalItems) * 100 : 0;
+        
+        const stats = { totalItems, purchasedItems, totalExpected, totalPaid, progress };
+        
+        return {
+            id: saved.id,
+            title: saved.title,
+            stats,
+            items: relevantItems,
+        };
+    }).sort((a, b) => a.title.localeCompare(b.title));
+  }, [savedAnalyses, categories, items]);
+
+  const handleCreateAnalysis = useCallback((selection: string[]) => {
+    if (selection.length === 0 || !analysesRef) return;
+
     const selectedNames = selection
         .map(id => categories.find(c => c.id === id)?.name)
         .filter(Boolean);
     const title = `تحليل: ${selectedNames.join('، ')}`;
+    
+    const newAnalysisData: Omit<Analysis, 'id'> = {
+        title,
+        categoryIds: selection,
+    };
+    
+    addDoc(analysesRef, newAnalysisData)
+        .then(() => {
+            toast({ title: 'تم إنشاء التحليل', description: 'تم حفظ التحليل بنجاح.' });
+            setAnalysisDialogOpen(false);
+        })
+        .catch(() => errorEmitter.emit('permission-error', new FirestorePermissionError({ path: analysesRef.path, operation: 'create', requestResourceData: newAnalysisData })));
 
-    const newAnalysis = { id: nanoid(), title, stats, items: relevantItems };
-
-    setAnalyses(prev => [newAnalysis, ...prev]);
-    setAnalysisDialogOpen(false);
-  }, [items, categories]);
+  }, [categories, analysesRef, toast]);
 
   const handleRemoveAnalysis = (id: string) => {
-    setAnalyses(prev => prev.filter(a => a.id !== id));
+    if (!analysesRef) return;
+    const analysisDocRef = doc(analysesRef, id);
+    deleteDoc(analysisDocRef)
+        .then(() => {
+            toast({ title: 'تم حذف التحليل' });
+        })
+        .catch(() => errorEmitter.emit('permission-error', new FirestorePermissionError({ path: analysisDocRef.path, operation: 'delete' })));
   };
 
 
@@ -178,11 +212,10 @@ export default function StatsPage() {
             <StatsHeader />
             <main className="flex-1 p-4 md:p-8">
                 <div className="space-y-6 max-w-4xl mx-auto">
-                    <Skeleton className="h-10 w-48" />
-                    <div className="text-center py-16 text-muted-foreground border-2 border-dashed rounded-lg">
-                        <Skeleton className="h-6 w-56 mx-auto" />
-                        <Skeleton className="h-4 w-80 mx-auto mt-4" />
+                    <div className="flex justify-start">
+                        <Skeleton className="h-10 w-48" />
                     </div>
+                    <Skeleton className="h-64 w-full" />
                 </div>
             </main>
         </div>
