@@ -39,7 +39,7 @@ function Header() {
             <HomeIcon className="text-primary" size={24} />
           </div>
           <h1 className="text-2xl font-bold font-headline text-foreground">
-            عش المخطط
+            زفة
           </h1>
         </div>
         <div>

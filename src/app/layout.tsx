@@ -6,7 +6,7 @@ import { FirebaseClientProvider } from '@/firebase';
 import { ThemeManager } from '@/components/theme-manager';
 
 export const metadata: Metadata = {
-  title: 'عش المخطط',
+  title: 'زفة',
   description: 'نخطط لبيتنا الجديد سوا.',
 };
 

@@ -102,7 +102,7 @@ export default function LoginPage() {
     <div className="flex min-h-screen items-center justify-center bg-gray-100 dark:bg-gray-900 p-4">
       <Card className="w-full max-w-sm">
         <CardHeader className="text-center">
-          <CardTitle className="text-2xl font-bold font-headline">أهلاً بيكم في عش المخطط</CardTitle>
+          <CardTitle className="text-2xl font-bold font-headline">أهلاً بيكم في زفة</CardTitle>
           <CardDescription>سجلوا دخول عشان تبدأوا تخططوا لبيتكم الجديد.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
