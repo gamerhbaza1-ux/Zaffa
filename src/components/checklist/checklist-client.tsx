@@ -78,7 +78,14 @@ export default function ChecklistClient() {
             details,
             timestamp: serverTimestamp(),
         };
-        addDoc(activityLogsRef, logEntry).catch(e => console.error("Failed to log activity:", e));
+        addDoc(activityLogsRef, logEntry)
+            .catch(() => {
+                errorEmitter.emit('permission-error', new FirestorePermissionError({
+                    path: activityLogsRef.path,
+                    operation: 'create',
+                    requestResourceData: logEntry
+                }));
+            });
     }, [firestore, household, userProfile]);
 
     const formatPrice = useCallback((price: number) => {

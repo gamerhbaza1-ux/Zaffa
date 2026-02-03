@@ -40,7 +40,10 @@ service cloud.firestore {
      */
     function isMemberOfHousehold(householdId) {
       let userDoc = get(/databases/$(database)/documents/users/$(request.auth.uid));
-      return isSignedIn() && userDoc.data.householdId == householdId;
+      return isSignedIn()
+        && userDoc != null
+        && 'householdId' in userDoc.data
+        && userDoc.data.householdId == householdId;
     }
     
     /**
@@ -48,9 +51,13 @@ service cloud.firestore {
      * Partners are users who share the same non-null householdId.
      */
     function isPartner(userId) {
-      let userHouseholdId = get(/databases/$(database)/documents/users/$(request.auth.uid)).data.householdId;
-      let otherUserHouseholdId = get(/databases/$(database)/documents/users/$(userId)).data.householdId;
-      return isSignedIn() && userHouseholdId != null && userHouseholdId == otherUserHouseholdId;
+      let userDoc = get(/databases/$(database)/documents/users/$(request.auth.uid));
+      let otherUserDoc = get(/databases/$(database)/documents/users/$(userId));
+
+      return isSignedIn()
+        && userDoc != null && 'householdId' in userDoc.data && userDoc.data.householdId != null
+        && otherUserDoc != null && 'householdId' in otherUserDoc.data
+        && userDoc.data.householdId == otherUserDoc.data.householdId;
     }
     
     /**
