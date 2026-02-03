@@ -100,19 +100,19 @@ export default function LogPage() {
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>المستخدم</TableHead>
-                      <TableHead>الحدث</TableHead>
-                      <TableHead>التفاصيل</TableHead>
-                      <TableHead className="text-left">الوقت</TableHead>
+                      <TableHead className="text-right">المستخدم</TableHead>
+                      <TableHead className="text-right">الحدث</TableHead>
+                      <TableHead className="text-right">التفاصيل</TableHead>
+                      <TableHead className="text-right">الوقت</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {logs.map((log) => (
                       <TableRow key={log.id}>
-                        <TableCell className="font-medium">{log.userName}</TableCell>
-                        <TableCell>{formatAction(log.action)}</TableCell>
-                        <TableCell>{log.details}</TableCell>
-                        <TableCell className="text-left text-muted-foreground">
+                        <TableCell className="font-medium text-right">{log.userName}</TableCell>
+                        <TableCell className="text-right">{formatAction(log.action)}</TableCell>
+                        <TableCell className="text-right">{log.details}</TableCell>
+                        <TableCell className="text-right text-muted-foreground">
                           {log.timestamp ? formatDistanceToNow(log.timestamp.toDate(), { addSuffix: true, locale: arSA }) : ''}
                         </TableCell>
                       </TableRow>
