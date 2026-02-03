@@ -92,16 +92,20 @@ export default function Home() {
 
   const heroImage = PlaceHolderImages.find(p => p.id === 'hero');
   
-  // Primary loading state
-  if (isUserLoading || isProfileLoading || !user) {
+  // If we're still figuring out auth state, or there is no user, show a loading screen.
+  // This is the gatekeeper. It prevents rendering anything else for logged-out users
+  // and allows the useEffect to redirect.
+  if (isUserLoading || !user) {
     return <div className="flex h-screen items-center justify-center">جاري التحميل...</div>;
   }
   
-  // This can happen for a brief moment while profile is loading after auth
-  if (!userProfile) {
+  // At this point, `user` is guaranteed to exist.
+  // Now check for the profile.
+  if (isProfileLoading || !userProfile) {
     return <div className="flex h-screen items-center justify-center">جاري تحميل حسابك...</div>;
   }
 
+  // At this point, `userProfile` is guaranteed to exist.
   // If user has not completed setup, show the choice screen
   if (!userProfile.householdId) {
     return <SetupChoice />;
