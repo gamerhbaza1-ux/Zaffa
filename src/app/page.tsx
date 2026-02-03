@@ -24,6 +24,19 @@ function Header() {
     router.push('/login');
   };
 
+  const ZaytounaIcon = (props: React.ComponentProps<'svg'>) => (
+    <svg
+      viewBox="0 0 24 24"
+      fill="currentColor"
+      height="1em"
+      width="1em"
+      {...props}
+    >
+      <path d="M19.68 10.7a6.5 6.5 0 00-15.35 0A6.5 6.5 0 0012 22a6.5 6.5 0 007.68-11.3zM4 11.5a5.5 5.5 0 0110.4-2.52 5.5 5.5 0 01-2.9 9.42A5.5 5.5 0 014 11.5z" />
+      <path d="M12 1C12 1 8 5 8 9.5a4 4 0 108 0C16 5 12 1 12 1z" />
+    </svg>
+  );
+
   return (
       <header className="bg-background/95 backdrop-blur-sm border-b sticky top-0 z-10">
         <div className="container mx-auto px-4 py-3 flex items-center justify-between gap-4">
@@ -38,6 +51,11 @@ function Header() {
           {user && (
             <div className="flex items-center gap-2">
               <ThemeSwitcher />
+              <Button variant="ghost" size="icon" asChild>
+                <Link href="/stats" aria-label="عرض الزتونة">
+                    <ZaytounaIcon className="h-5 w-5 text-muted-foreground" />
+                </Link>
+              </Button>
               <Button variant="ghost" size="icon" asChild>
                 <Link href="/log" aria-label="عرض سجل النشاط">
                     <History className="h-5 w-5 text-muted-foreground" />
