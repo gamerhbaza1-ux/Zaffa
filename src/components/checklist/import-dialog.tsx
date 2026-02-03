@@ -22,6 +22,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { SubmitButton } from '../submit-button';
+import { Separator } from '@/components/ui/separator';
 
 type ImportDialogProps = {
   open: boolean;
@@ -33,9 +34,13 @@ const REQUIRED_FIELDS = [
   { id: 'section', label: 'القسم' },
   { id: 'category', label: 'الفئة' },
   { id: 'name', label: 'اسم الحاجة' },
+];
+
+const OPTIONAL_FIELDS = [
   { id: 'minPrice', label: 'أقل سعر' },
   { id: 'maxPrice', label: 'أقصى سعر' },
 ];
+
 
 export function ImportDialog({ open, onOpenChange, onImportCompleted }: ImportDialogProps) {
   const [state, formAction] = useActionState(importItems, { error: null, success: false, count: 0 });
@@ -145,6 +150,7 @@ export function ImportDialog({ open, onOpenChange, onImportCompleted }: ImportDi
               </DialogDescription>
             </DialogHeader>
             <div className="space-y-3 py-4">
+                <p className="text-sm font-medium">الحقول الأساسية (لازم نربطها)</p>
               {REQUIRED_FIELDS.map(field => (
                 <div key={field.id} className="grid grid-cols-3 items-center gap-4">
                   <Label className="text-right">
@@ -161,6 +167,27 @@ export function ImportDialog({ open, onOpenChange, onImportCompleted }: ImportDi
                     </SelectContent>
                   </Select>
                 </div>
+              ))}
+              <Separator className="my-4" />
+              <p className="text-sm font-medium text-muted-foreground">الحقول الاختيارية</p>
+              {OPTIONAL_FIELDS.map(field => (
+                <div key={field.id} className="grid grid-cols-3 items-center gap-4">
+                    <Label className="text-right text-muted-foreground">
+                        {field.label}
+                    </Label>
+                    <Select onValueChange={(value) => handleMappingChange(field.id, value)}>
+                        <SelectTrigger className="col-span-2">
+                        <SelectValue placeholder="نختار عامود (اختياري)..." />
+                        </SelectTrigger>
+                        <SelectContent>
+                        <SelectItem value="none">مش عاوزين نربط ده</SelectItem>
+                        <Separator />
+                        {headers.map((header, idx) => (
+                            <SelectItem key={`${header}-${idx}`} value={header}>{header}</SelectItem>
+                        ))}
+                        </SelectContent>
+                    </Select>
+                 </div>
               ))}
             </div>
             <DialogFooter>

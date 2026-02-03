@@ -268,7 +268,7 @@ export async function importItems(prevState: any, formData: FormData) {
 
   try {
     const mapping = JSON.parse(mappingStr);
-    const requiredKeys = ['section', 'category', 'name', 'minPrice', 'maxPrice'];
+    const requiredKeys = ['section', 'category', 'name'];
     if (!requiredKeys.every(key => key in mapping)) {
       return { error: "لازم نربط كل الحقول المطلوبة." };
     }
@@ -285,12 +285,12 @@ export async function importItems(prevState: any, formData: FormData) {
       section: headerLine.indexOf(mapping.section),
       category: headerLine.indexOf(mapping.category),
       name: headerLine.indexOf(mapping.name),
-      minPrice: headerLine.indexOf(mapping.minPrice),
-      maxPrice: headerLine.indexOf(mapping.maxPrice),
+      minPrice: (mapping.minPrice && mapping.minPrice !== 'none') ? headerLine.indexOf(mapping.minPrice) : -1,
+      maxPrice: (mapping.maxPrice && mapping.maxPrice !== 'none') ? headerLine.indexOf(mapping.maxPrice) : -1,
     };
 
-    if (Object.values(indices).some(index => index === -1)) {
-      return { error: "فيه أعمدة مختارة مش موجودة في الملف. اتأكد من الربط." };
+    if (indices.section === -1 || indices.category === -1 || indices.name === -1) {
+      return { error: "فيه أعمدة مطلوبة مش مربوطة صح. اتأكد من الربط." };
     }
 
     const newItems: ChecklistItem[] = [];
@@ -301,17 +301,22 @@ export async function importItems(prevState: any, formData: FormData) {
       const sectionName = values[indices.section];
       const categoryName = values[indices.category];
       const itemName = values[indices.name];
-      const minPriceStr = values[indices.minPrice];
-      const maxPriceStr = values[indices.maxPrice];
 
-      if (!sectionName || !categoryName || !itemName || !minPriceStr || !maxPriceStr) {
-        return; // Skip incomplete rows
+      if (!sectionName || !categoryName || !itemName) {
+        return; // Skip incomplete rows for required fields
       }
 
-      const minPrice = parseFloat(minPriceStr);
-      const maxPrice = parseFloat(maxPriceStr);
-      if (isNaN(minPrice) || isNaN(maxPrice) || maxPrice < minPrice) {
-        return; // Skip rows with invalid prices
+      const minPriceStr = indices.minPrice !== -1 ? values[indices.minPrice] : '0';
+      const maxPriceStr = indices.maxPrice !== -1 ? values[indices.maxPrice] : '0';
+      
+      let minPrice = parseFloat(minPriceStr);
+      let maxPrice = parseFloat(maxPriceStr);
+
+      if (isNaN(minPrice)) minPrice = 0;
+      if (isNaN(maxPrice)) maxPrice = 0;
+      
+      if (maxPrice < minPrice) {
+        maxPrice = minPrice;
       }
 
       // Find or create section
@@ -348,6 +353,8 @@ export async function importItems(prevState: any, formData: FormData) {
     return { success: true, count: newItems.length };
 
   } catch (e) {
+    const message = e instanceof Error ? e.message : "An unknown error occurred";
+    console.error("Import failed:", message);
     return { error: "حصلت مشكلة واحنا بنعالج الملف. اتأكد انه ملف CSV صحيح." };
   }
 }
