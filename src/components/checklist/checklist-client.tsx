@@ -49,6 +49,7 @@ export default function ChecklistClient({ initialItems, initialCategories }: Che
   const [isAddCategoryDialogOpen, setAddCategoryDialogOpen] = useState(false);
   const [itemToPurchase, setItemToPurchase] = useState<ChecklistItem | null>(null);
   const [itemToUnpurchase, setItemToUnpurchase] = useState<ChecklistItem | null>(null);
+  const [itemToDelete, setItemToDelete] = useState<ChecklistItem | null>(null);
   const [categoryToEdit, setCategoryToEdit] = useState<Category | null>(null);
   const [categoryToDelete, setCategoryToDelete] = useState<Category | null>(null);
   const { toast } = useToast();
@@ -94,10 +95,16 @@ export default function ChecklistClient({ initialItems, initialCategories }: Che
     });
   };
 
-  const handleDeleteItem = (id: string) => {
+  const handleDeleteItemConfirm = () => {
+    if (!itemToDelete) return;
     startTransition(async () => {
-      await deleteItem(id);
+      await deleteItem(itemToDelete.id);
+      toast({
+        title: "تم الحذف",
+        description: `تم حذف العنصر "${itemToDelete.name}".`,
+      });
       refreshData();
+      setItemToDelete(null);
     });
   };
   
@@ -245,7 +252,7 @@ export default function ChecklistClient({ initialItems, initialCategories }: Che
                                                     key={item.id}
                                                     item={item}
                                                     onToggle={() => handleToggle(item.id)}
-                                                    onDelete={() => handleDeleteItem(item.id)}
+                                                    onDelete={() => setItemToDelete(item)}
                                                     isPending={isPending}
                                                 />
                                             ))}
@@ -382,6 +389,27 @@ export default function ChecklistClient({ initialItems, initialCategories }: Che
               disabled={isPending}
             >
               {isPending ? <Loader2 className="ml-2 h-4 w-4 animate-spin" /> : "تأكيد"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={!!itemToDelete} onOpenChange={(open) => !open && setItemToDelete(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>هل أنت متأكد من الحذف؟</AlertDialogTitle>
+            <AlertDialogDescription>
+              سيتم حذف العنصر "{itemToDelete?.name}" نهائيًا. لا يمكن التراجع عن هذا الإجراء.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>إلغاء</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDeleteItemConfirm}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              disabled={isPending}
+            >
+              {isPending ? <Loader2 className="ml-2 h-4 w-4 animate-spin" /> : "حذف"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
