@@ -6,6 +6,7 @@ import { Firestore, doc, onSnapshot, collection, query, where } from 'firebase/f
 import { Auth, User, onAuthStateChanged } from 'firebase/auth';
 import { FirebaseErrorListener } from '@/components/FirebaseErrorListener';
 import type { UserProfile, Household, Invitation } from '@/lib/types';
+import { DevSeedUsers } from '@/components/dev-seed-users';
 
 interface FirebaseProviderProps {
   children: ReactNode;
@@ -263,6 +264,7 @@ export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
   return (
     <FirebaseContext.Provider value={contextValue}>
       <FirebaseErrorListener />
+      <DevSeedUsers />
       {children}
     </FirebaseContext.Provider>
   );
