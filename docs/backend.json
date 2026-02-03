@@ -61,6 +61,22 @@
             "type": "string"
           },
           "description": "A list of user UIDs that belong to this household."
+        },
+        "heroConfig": {
+          "type": "object",
+          "description": "Configuration for the hero section on the main page.",
+          "properties": {
+            "imageUrl": {
+              "type": "string",
+              "format": "uri"
+            },
+            "title": {
+              "type": "string"
+            },
+            "subtitle": {
+              "type": "string"
+            }
+          }
         }
       },
       "required": [

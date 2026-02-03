@@ -28,9 +28,16 @@ export type UserProfile = {
     householdId: string | null;
 };
 
+export type HeroConfig = {
+    title: string;
+    subtitle: string;
+    imageUrl: string;
+};
+
 export type Household = {
     id: string;
     memberIds: string[];
+    heroConfig?: HeroConfig;
 };
 
 export type Invitation = {
