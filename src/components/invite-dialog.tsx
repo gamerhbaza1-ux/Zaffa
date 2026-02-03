@@ -5,8 +5,8 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useFirestore, useUser } from "@/firebase";
-import { collection, doc, getDoc, getDocs, query, where, addDoc } from "firebase/firestore";
-import type { Invitation, UserProfile } from "@/lib/types";
+import { collection, addDoc } from "firebase/firestore";
+import type { Invitation } from "@/lib/types";
 import { errorEmitter } from "@/firebase/error-emitter";
 import { FirestorePermissionError } from "@/firebase/errors";
 
@@ -69,47 +69,26 @@ export function InviteDialog({
       return;
     }
 
-    startTransition(async () => {
-      try {
-        const { inviteeEmail } = values;
+    if (!userProfile.householdId) {
+       form.setError("inviteeEmail", { type: "server", message: "معرفناش نلاقي الأسرة بتاعتك. حاول تحدث الصفحة." });
+       return;
+    }
+    
+    const { inviteeEmail } = values;
+    if (userProfile.email.toLowerCase() === inviteeEmail.toLowerCase()) {
+        form.setError("inviteeEmail", { type: "server", message: "مينفعش تبعت دعوة لنفسك." });
+        return;
+    }
 
-        if (userProfile.email.toLowerCase() === inviteeEmail.toLowerCase()) {
-            throw new Error("مينفعش تبعت دعوة لنفسك.");
-        }
-
-        const usersRef = collection(firestore, "users");
-        const inviteeQuery = query(usersRef, where("email", "==", inviteeEmail));
-        const inviteeSnap = await getDocs(inviteeQuery);
-        if (inviteeSnap.empty) {
-          throw new Error("معندناش حساب بالإيميل ده.");
-        }
-        const invitee = inviteeSnap.docs[0].data() as UserProfile;
-
-        if (invitee.householdId) {
-            const inviteeHouseholdRef = doc(firestore, "households", invitee.householdId);
-            const inviteeHouseholdSnap = await getDoc(inviteeHouseholdRef);
-            if (inviteeHouseholdSnap.exists() && inviteeHouseholdSnap.data().memberIds.length > 1) {
-                throw new Error("الشخص ده موجود في أسرة تانية أصلاً.");
-            }
-        }
-        
-        if (!userProfile.householdId) {
-             throw new Error("معرفناش نلاقي الأسرة بتاعتك. حاول تحدث الصفحة.");
-        }
-        const householdId = userProfile.householdId;
-
+    startTransition(() => {
+        const householdId = userProfile.householdId!; // We already checked this
         const invitationsRef = collection(firestore, "invitations");
-        const existingInviteQuery = query(invitationsRef, where("inviteeEmail", "==", inviteeEmail), where("householdId", "==", householdId), where("status", "==", "pending"));
-        const existingInviteSnap = await getDocs(existingInviteQuery);
-        if (!existingInviteSnap.empty) {
-            throw new Error("انت باعت للشخص ده دعوة ولسه مردش عليها.");
-        }
 
         const newInvitation: Omit<Invitation, 'id'> = {
           inviterId: user.uid,
           inviterName: `${userProfile.firstName} ${userProfile.lastName}`,
           inviterRole: userProfile.role,
-          inviteeEmail: inviteeEmail,
+          inviteeEmail: inviteeEmail.toLowerCase(),
           householdId: householdId,
           status: 'pending',
         };
@@ -129,11 +108,6 @@ export function InviteDialog({
                 requestResourceData: newInvitation,
               }));
             });
-
-      } catch (e) {
-        const message = e instanceof Error ? e.message : "An unknown error occurred";
-        form.setError("inviteeEmail", { type: "server", message });
-      }
     });
   };
 
