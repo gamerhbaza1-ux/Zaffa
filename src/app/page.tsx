@@ -33,7 +33,7 @@ function Header() {
     ? `${userProfile.firstName?.charAt(0)}${userProfile.lastName?.charAt(0)}` 
     : user?.displayName?.charAt(0) || user?.email?.charAt(0) || 'U';
 
-  const canInvite = household && household.memberIds.length < 2;
+  const canInvite = !isHouseholdLoading && household && household.memberIds.length < 2;
 
   return (
     <>
@@ -69,12 +69,14 @@ function Header() {
                   </DropdownMenuLabel>
                   <DropdownMenuSeparator />
                    {canInvite && (
-                    <DropdownMenuItem onSelect={() => setInviteDialogOpen(true)}>
-                      <UserPlus className="ml-2 h-4 w-4" />
-                      <span>ندعي شريك</span>
-                    </DropdownMenuItem>
+                    <>
+                      <DropdownMenuItem onSelect={() => setInviteDialogOpen(true)}>
+                        <UserPlus className="ml-2 h-4 w-4" />
+                        <span>ندعي شريك</span>
+                      </DropdownMenuItem>
+                      <DropdownMenuSeparator />
+                    </>
                    )}
-                  <DropdownMenuSeparator />
                   <DropdownMenuItem onClick={() => auth.signOut()}>
                     <LogOut className="ml-2 h-4 w-4" />
                     <span>تسجيل الخروج</span>
