@@ -5,7 +5,6 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { addCategory } from '@/lib/actions';
-import { useAuth } from '@/firebase';
 
 import {
   Dialog,
@@ -39,10 +38,10 @@ type AddSectionDialogProps = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onSectionAdded: () => void;
+  householdId: string;
 };
 
-export function AddSectionDialog({ open, onOpenChange, onSectionAdded }: AddSectionDialogProps) {
-  const { user } = useAuth();
+export function AddSectionDialog({ open, onOpenChange, onSectionAdded, householdId }: AddSectionDialogProps) {
   const [state, formAction] = React.useActionState(addCategory, { errors: {} });
   const formRef = useRef<HTMLFormElement>(null);
   const { toast } = useToast();
@@ -81,8 +80,8 @@ export function AddSectionDialog({ open, onOpenChange, onSectionAdded }: AddSect
   }
 
   const handleFormAction = (formData: FormData) => {
-    if (user) {
-      formData.append('userId', user.uid);
+    if (householdId) {
+      formData.append('householdId', householdId);
       formData.append('parentId', 'null');
       formAction(formData);
     } else {

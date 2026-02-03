@@ -6,7 +6,6 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { purchaseItem } from '@/lib/actions';
 import type { ChecklistItem } from '@/lib/types';
-import { useAuth } from '@/firebase';
 
 import {
   Dialog,
@@ -25,19 +24,19 @@ import { SubmitButton } from '../submit-button';
 const purchaseSchema = z.object({
   itemId: z.string(),
   finalPrice: z.coerce.number().min(0, "السعر لازم يكون رقم."),
-  userId: z.string(),
+  householdId: z.string(),
 });
 
 type FormValues = z.infer<typeof purchaseSchema>;
 
 type PurchaseDialogProps = {
   item: ChecklistItem | null;
+  householdId: string;
   onOpenChange: (open: boolean) => void;
   onItemPurchased: () => void;
 };
 
-export function PurchaseDialog({ item, onOpenChange, onItemPurchased }: PurchaseDialogProps) {
-  const { user } = useAuth();
+export function PurchaseDialog({ item, householdId, onOpenChange, onItemPurchased }: PurchaseDialogProps) {
   const [state, formAction] = useActionState(purchaseItem, { errors: {} });
   const formRef = useRef<HTMLFormElement>(null);
   const { toast } = useToast();
@@ -64,14 +63,14 @@ export function PurchaseDialog({ item, onOpenChange, onItemPurchased }: Purchase
   }, [state, reset, onOpenChange, toast, setError, onItemPurchased]);
 
   useEffect(() => {
-    if (item && user) {
+    if (item && householdId) {
       setValue('itemId', item.id);
       setValue('finalPrice', item.maxPrice);
-      setValue('userId', user.uid);
+      setValue('householdId', householdId);
     } else {
         reset();
     }
-  }, [item, user, setValue, reset]);
+  }, [item, householdId, setValue, reset]);
 
   const handleOpenChange = (isOpen: boolean) => {
       if (!isOpen) {
@@ -99,7 +98,7 @@ export function PurchaseDialog({ item, onOpenChange, onItemPurchased }: Purchase
           className="grid gap-4 py-4"
         >
           <input type="hidden" {...register('itemId')} />
-          <input type="hidden" {...register('userId')} />
+          <input type="hidden" {...register('householdId')} />
           <div className="grid grid-cols-4 items-center gap-4">
             <Label htmlFor="finalPrice" className="text-right">
               جبناها بكام؟

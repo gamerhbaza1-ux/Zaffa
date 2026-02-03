@@ -4,10 +4,10 @@ import Image from 'next/image';
 import { PlaceHolderImages } from '@/lib/placeholder-images';
 import ChecklistClient from '@/components/checklist/checklist-client';
 import { Card } from '@/components/ui/card';
-import { Home as HomeIcon, LogOut } from 'lucide-react';
-import { useUser } from '@/firebase';
+import { Home as HomeIcon, LogOut, UserPlus } from 'lucide-react';
+import { useFirebase, useUser } from '@/firebase';
 import { useRouter } from 'next/navigation';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -19,9 +19,11 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { getAuth } from 'firebase/auth';
+import { InviteDialog } from '@/components/invite-dialog';
 
 function Header() {
-  const { user, userProfile, isUserLoading, isProfileLoading } = useUser();
+  const { user, userProfile, isUserLoading, isProfileLoading, household, isHouseholdLoading } = useUser();
+  const [isInviteDialogOpen, setInviteDialogOpen] = useState(false);
   const auth = getAuth();
 
   const displayName = userProfile ? `${userProfile.firstName} ${userProfile.lastName}`.trim() : user?.displayName;
@@ -32,47 +34,60 @@ function Header() {
 
 
   return (
-    <header className="bg-background/95 backdrop-blur-sm border-b sticky top-0 z-10">
-      <div className="container mx-auto px-4 py-3 flex items-center justify-between gap-4">
-        <div className="flex items-center gap-4">
-          <div className="bg-primary/10 p-2 rounded-lg">
-            <HomeIcon className="text-primary" size={24} />
+    <>
+      <header className="bg-background/95 backdrop-blur-sm border-b sticky top-0 z-10">
+        <div className="container mx-auto px-4 py-3 flex items-center justify-between gap-4">
+          <div className="flex items-center gap-4">
+            <div className="bg-primary/10 p-2 rounded-lg">
+              <HomeIcon className="text-primary" size={24} />
+            </div>
+            <h1 className="text-2xl font-bold font-headline text-foreground">
+              زفة
+            </h1>
           </div>
-          <h1 className="text-2xl font-bold font-headline text-foreground">
-            زفة
-          </h1>
+          <div>
+            {!(isUserLoading || isProfileLoading) && user && (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" className="relative h-10 w-10 rounded-full">
+                    <Avatar className="h-10 w-10">
+                      <AvatarImage src={user.photoURL ?? ''} alt={displayName ?? 'User'} />
+                      <AvatarFallback>{fallback}</AvatarFallback>
+                    </Avatar>
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent className="w-56" align="end" forceMount>
+                  <DropdownMenuLabel className="font-normal">
+                    <div className="flex flex-col space-y-1">
+                      <p className="text-sm font-medium leading-none">{displayName}</p>
+                      <p className="text-xs leading-none text-muted-foreground">
+                        {email}
+                      </p>
+                    </div>
+                  </DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                   <DropdownMenuItem onSelect={() => setInviteDialogOpen(true)}>
+                    <UserPlus className="ml-2 h-4 w-4" />
+                    <span>ندعي شريك</span>
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={() => auth.signOut()}>
+                    <LogOut className="ml-2 h-4 w-4" />
+                    <span>تسجيل الخروج</span>
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            )}
+          </div>
         </div>
-        <div>
-          {!(isUserLoading || isProfileLoading) && user && (
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="ghost" className="relative h-10 w-10 rounded-full">
-                  <Avatar className="h-10 w-10">
-                    <AvatarImage src={user.photoURL ?? ''} alt={displayName ?? 'User'} />
-                    <AvatarFallback>{fallback}</AvatarFallback>
-                  </Avatar>
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent className="w-56" align="end" forceMount>
-                <DropdownMenuLabel className="font-normal">
-                  <div className="flex flex-col space-y-1">
-                    <p className="text-sm font-medium leading-none">{displayName}</p>
-                    <p className="text-xs leading-none text-muted-foreground">
-                      {email}
-                    </p>
-                  </div>
-                </DropdownMenuLabel>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={() => auth.signOut()}>
-                  <LogOut className="ml-2 h-4 w-4" />
-                  <span>تسجيل الخروج</span>
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          )}
-        </div>
-      </div>
-    </header>
+      </header>
+       <InviteDialog
+        open={isInviteDialogOpen}
+        onOpenChange={setInviteDialogOpen}
+        inviteCode={household?.inviteCode}
+        userId={user?.uid}
+      />
+    </>
   );
 }
 

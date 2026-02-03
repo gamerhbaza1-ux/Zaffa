@@ -1,9 +1,9 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import type { ChecklistItem, Category } from "./types";
+import type { ChecklistItem, Category, Household } from "./types";
 import { z } from "zod";
-import { collection, writeBatch, getDocs, query, where, getDoc, doc, deleteDoc, setDoc, addDoc, updateDoc, Firestore } from "firebase/firestore";
+import { collection, writeBatch, getDocs, query, where, getDoc, doc, deleteDoc, setDoc, addDoc, updateDoc, Firestore, runTransaction } from "firebase/firestore";
 import { initializeApp, getApp, getApps } from "firebase/app";
 import { getFirestore } from "firebase/firestore";
 import { firebaseConfig } from "@/firebase/config";
@@ -22,7 +22,7 @@ const itemSchema = z.object({
   categoryId: z.string({ required_error: "لازم نختار فئة."}).min(1, "لازم نختار فئة."),
   minPrice: z.coerce.number().min(0, "السعر لازم يكون رقم."),
   maxPrice: z.coerce.number().min(0, "السعر لازم يكون رقم."),
-  userId: z.string(),
+  householdId: z.string(),
 }).refine(data => data.maxPrice >= data.minPrice, {
   message: "أقصى سعر لازم يكون أكبر من أو بيساوي أقل سعر.",
   path: ["maxPrice"],
@@ -31,13 +31,13 @@ const itemSchema = z.object({
 const categorySchema = z.object({
   name: z.string().min(1, "لازم نكتب اسم القسم أو الفئة."),
   parentId: z.string().nullable().optional(),
-  userId: z.string(),
+  householdId: z.string(),
 });
 
 const purchaseSchema = z.object({
   itemId: z.string(),
   finalPrice: z.coerce.number().min(0, "السعر لازم يكون رقم."),
-  userId: z.string(),
+  householdId: z.string(),
 });
 
 export async function addCategory(prevState: any, formData: FormData) {
@@ -54,9 +54,9 @@ export async function addCategory(prevState: any, formData: FormData) {
     };
   }
 
-  const { name, parentId, userId } = validatedFields.data;
+  const { name, parentId, householdId } = validatedFields.data;
 
-  const categoriesRef = collection(firestore, `users/${userId}/categories`);
+  const categoriesRef = collection(firestore, `households/${householdId}/categories`);
   const q = query(categoriesRef, where("name", "==", name), where("parentId", "==", parentId || null));
   const existing = await getDocs(q);
 
@@ -69,7 +69,6 @@ export async function addCategory(prevState: any, formData: FormData) {
   const newCategory: Omit<Category, 'id'> = {
     name,
     parentId: parentId || null,
-    userId,
   };
 
   await addDoc(categoriesRef, newCategory);
@@ -87,7 +86,7 @@ export async function addItem(prevState: any, formData: FormData) {
     };
   }
 
-  const { name, categoryId, minPrice, maxPrice, userId } = validatedFields.data;
+  const { name, categoryId, minPrice, maxPrice, householdId } = validatedFields.data;
   
   const newItem: Omit<ChecklistItem, 'id'> = {
     name,
@@ -95,10 +94,9 @@ export async function addItem(prevState: any, formData: FormData) {
     minPrice,
     maxPrice,
     isPurchased: false,
-    userId,
   };
   
-  const itemsRef = collection(firestore, `users/${userId}/checklistItems`);
+  const itemsRef = collection(firestore, `households/${householdId}/checklistItems`);
   await addDoc(itemsRef, newItem);
   
   revalidatePath("/");
@@ -114,9 +112,9 @@ export async function purchaseItem(prevState: any, formData: FormData) {
     };
   }
 
-  const { itemId, finalPrice, userId } = validatedFields.data;
+  const { itemId, finalPrice, householdId } = validatedFields.data;
 
-  const itemRef = doc(firestore, `users/${userId}/checklistItems`, itemId);
+  const itemRef = doc(firestore, `households/${householdId}/checklistItems`, itemId);
   await updateDoc(itemRef, {
     isPurchased: true,
     finalPrice: finalPrice
@@ -126,8 +124,8 @@ export async function purchaseItem(prevState: any, formData: FormData) {
   return { success: true };
 }
 
-export async function unpurchaseItem(userId: string, id: string) {
-  const itemRef = doc(firestore, `users/${userId}/checklistItems`, id);
+export async function unpurchaseItem(householdId: string, id: string) {
+  const itemRef = doc(firestore, `households/${householdId}/checklistItems`, id);
   await updateDoc(itemRef, {
     isPurchased: false,
     finalPrice: null
@@ -135,8 +133,8 @@ export async function unpurchaseItem(userId: string, id: string) {
   revalidatePath("/");
 }
 
-export async function deleteItem(userId: string, id: string) {
-  const itemRef = doc(firestore, `users/${userId}/checklistItems`, id);
+export async function deleteItem(householdId: string, id: string) {
+  const itemRef = doc(firestore, `households/${householdId}/checklistItems`, id);
   await deleteDoc(itemRef);
   revalidatePath("/");
 }
@@ -144,9 +142,9 @@ export async function deleteItem(userId: string, id: string) {
 export async function importItems(prevState: any, formData: FormData) {
   const fileContent = formData.get('fileContent') as string | null;
   const mappingStr = formData.get('mapping') as string | null;
-  const userId = formData.get('userId') as string | null;
+  const householdId = formData.get('householdId') as string | null;
 
-  if (!fileContent || !mappingStr || !userId) {
+  if (!fileContent || !mappingStr || !householdId) {
     return { error: "بيانات ناقصة، حاول تاني." };
   }
 
@@ -177,9 +175,9 @@ export async function importItems(prevState: any, formData: FormData) {
       return { error: "فيه أعمدة مطلوبة مش مربوطة صح. اتأكد من الربط." };
     }
     
-    const categoriesRef = collection(firestore, `users/${userId}/categories`);
+    const categoriesRef = collection(firestore, `households/${householdId}/categories`);
     const allCategoriesSnap = await getDocs(categoriesRef);
-    const allCategories = allCategoriesSnap.docs.map(d => ({...d.data(), id: d.id} as Category));
+    const allCategories = allCategoriesSnap.docs.map(d => ({...d.data(), id: d.id} as Category & {id: string}));
 
 
     const batch = writeBatch(firestore);
@@ -199,8 +197,8 @@ export async function importItems(prevState: any, formData: FormData) {
       let section = allCategories.find(c => c.name.toLowerCase() === sectionName.toLowerCase() && c.parentId === null);
       if (!section) {
         const newSectionDoc = doc(categoriesRef);
-        section = { id: newSectionDoc.id, name: sectionName, parentId: null, userId };
-        batch.set(newSectionDoc, { name: sectionName, parentId: null, userId });
+        section = { id: newSectionDoc.id, name: sectionName, parentId: null };
+        batch.set(newSectionDoc, { name: sectionName, parentId: null });
         allCategories.push(section);
       }
 
@@ -208,22 +206,21 @@ export async function importItems(prevState: any, formData: FormData) {
       let category = allCategories.find(c => c.name.toLowerCase() === categoryName.toLowerCase() && c.parentId === section!.id);
       if (!category) {
         const newCategoryDoc = doc(categoriesRef);
-        category = { id: newCategoryDoc.id, name: categoryName, parentId: section.id, userId };
-        batch.set(newCategoryDoc, { name: categoryName, parentId: section.id, userId });
+        category = { id: newCategoryDoc.id, name: categoryName, parentId: section.id };
+        batch.set(newCategoryDoc, { name: categoryName, parentId: section.id });
         allCategories.push(category);
       }
 
       const minPrice = parseFloat(indices.minPrice !== -1 ? values[indices.minPrice] : '0') || 0;
       const maxPrice = parseFloat(indices.maxPrice !== -1 ? values[indices.maxPrice] : '0') || 0;
       
-      const newItemRef = doc(collection(firestore, `users/${userId}/checklistItems`));
+      const newItemRef = doc(collection(firestore, `households/${householdId}/checklistItems`));
       batch.set(newItemRef, {
         name: itemName,
         categoryId: category.id,
         minPrice: maxPrice < minPrice ? maxPrice : minPrice,
         maxPrice: maxPrice < minPrice ? minPrice : maxPrice,
         isPurchased: false,
-        userId,
       });
     }
 
@@ -243,7 +240,7 @@ export async function updateCategory(prevState: any, formData: FormData) {
     id: z.string(),
     name: z.string().min(1, "الاسم مطلوب."),
     parentId: z.string().nullable().optional(),
-    userId: z.string(),
+    householdId: z.string(),
   });
   
   const rawData = Object.fromEntries(formData.entries());
@@ -258,10 +255,10 @@ export async function updateCategory(prevState: any, formData: FormData) {
     };
   }
 
-  const { id, name, parentId, userId } = validatedFields.data;
+  const { id, name, parentId, householdId } = validatedFields.data;
   const newParentId = parentId || null;
 
-  const categoriesRef = collection(firestore, `users/${userId}/categories`);
+  const categoriesRef = collection(firestore, `households/${householdId}/categories`);
   const q = query(categoriesRef, where("name", "==", name), where("parentId", "==", newParentId));
   const existingSnap = await getDocs(q);
   const nameExists = existingSnap.docs.some(doc => doc.id !== id);
@@ -290,8 +287,8 @@ export async function updateCategory(prevState: any, formData: FormData) {
   return { success: true };
 }
 
-export async function deleteCategory(userId: string, id: string) {
-  const categoriesRef = collection(firestore, `users/${userId}/categories`);
+export async function deleteCategory(householdId: string, id: string) {
+  const categoriesRef = collection(firestore, `households/${householdId}/categories`);
   
   const subcategoriesQuery = query(categoriesRef, where("parentId", "==", id));
   const subcategoriesSnap = await getDocs(subcategoriesQuery);
@@ -299,7 +296,7 @@ export async function deleteCategory(userId: string, id: string) {
     return { success: false, error: "مينفعش نمسحها عشان جواها فئات تانية." };
   }
   
-  const itemsRef = collection(firestore, `users/${userId}/checklistItems`);
+  const itemsRef = collection(firestore, `households/${householdId}/checklistItems`);
   const itemsQuery = query(itemsRef, where("categoryId", "==", id));
   const itemsSnap = await getDocs(itemsQuery);
 
@@ -310,4 +307,72 @@ export async function deleteCategory(userId: string, id: string) {
   await deleteDoc(doc(categoriesRef, id));
   revalidatePath("/");
   return { success: true };
+}
+
+export async function joinHousehold(prevState: any, formData: FormData) {
+    const schema = z.object({
+        inviteCode: z.string().min(1, "لازم نكتب كود الدعوة."),
+        userId: z.string(),
+    });
+
+    const validatedFields = schema.safeParse(Object.fromEntries(formData));
+
+    if (!validatedFields.success) {
+        return { error: validatedFields.error.flatten().fieldErrors.inviteCode?.[0] };
+    }
+
+    const { inviteCode, userId } = validatedFields.data;
+
+    try {
+        const householdsRef = collection(firestore, "households");
+        const q = query(householdsRef, where("inviteCode", "==", inviteCode.toUpperCase()));
+        const querySnapshot = await getDocs(q);
+
+        if (querySnapshot.empty) {
+            return { error: "كود الدعوة ده مش صح." };
+        }
+
+        const targetHouseholdDoc = querySnapshot.docs[0];
+        const targetHouseholdId = targetHouseholdDoc.id;
+        const targetHouseholdData = targetHouseholdDoc.data() as Household;
+
+        if (targetHouseholdData.memberIds.includes(userId)) {
+            return { error: "انت موجود في الأسرة دي أصلاً." };
+        }
+        
+        await runTransaction(firestore, async (transaction) => {
+            const userRef = doc(firestore, "users", userId);
+            const userDoc = await transaction.get(userRef);
+
+            if (!userDoc.exists()) {
+                throw new Error("User not found");
+            }
+            
+            // Delete the user's old, now empty household
+            const oldHouseholdId = userDoc.data().householdId;
+            if (oldHouseholdId) {
+                const oldHouseholdRef = doc(firestore, "households", oldHouseholdId);
+                const oldHouseholdDoc = await transaction.get(oldHouseholdRef);
+                if (oldHouseholdDoc.exists() && oldHouseholdDoc.data().memberIds.length === 1) {
+                    transaction.delete(oldHouseholdRef);
+                }
+            }
+
+            // Update user's profile to new household
+            transaction.update(userRef, { householdId: targetHouseholdId });
+
+            // Add user to the new household's members list
+            transaction.update(targetHouseholdDoc.ref, {
+                memberIds: [...targetHouseholdData.memberIds, userId]
+            });
+        });
+
+        revalidatePath("/");
+        return { success: true };
+
+    } catch (e) {
+        console.error("Join household failed:", e);
+        const message = e instanceof Error ? e.message : "An unknown error occurred";
+        return { error: "معرفناش ننضم للأسرة دي. حاول تاني." };
+    }
 }

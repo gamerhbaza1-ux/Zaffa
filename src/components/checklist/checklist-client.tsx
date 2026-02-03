@@ -3,7 +3,7 @@
 import { useState, useTransition, useMemo, useCallback } from 'react';
 import type { ChecklistItem, Category } from '@/lib/types';
 import { deleteItem, unpurchaseItem, deleteCategory } from '@/lib/actions';
-import { useAuth, useCollection, useFirestore, useMemoFirebase } from '@/firebase';
+import { useFirebase, useMemoFirebase } from '@/firebase';
 import { collection } from 'firebase/firestore';
 
 import { Button } from '@/components/ui/button';
@@ -37,18 +37,19 @@ import {
 import { useToast } from '@/hooks/use-toast';
 
 export default function ChecklistClient() {
-  const { user } = useAuth();
-  const firestore = useFirestore();
+  const { user, userProfile, isProfileLoading, household, isHouseholdLoading, firestore } = useFirebase();
+
+  const householdId = household?.id;
 
   const categoriesQuery = useMemoFirebase(() => {
-    if (!user) return null;
-    return collection(firestore, `users/${user.uid}/categories`);
-  }, [firestore, user]);
+    if (!householdId || !firestore) return null;
+    return collection(firestore, `households/${householdId}/categories`);
+  }, [firestore, householdId]);
 
   const itemsQuery = useMemoFirebase(() => {
-    if (!user) return null;
-    return collection(firestore, `users/${user.uid}/checklistItems`);
-  }, [firestore, user]);
+    if (!householdId || !firestore) return null;
+    return collection(firestore, `households/${householdId}/checklistItems`);
+  }, [firestore, householdId]);
 
   const { data: categoriesData, isLoading: isLoadingCategories } = useCollection<Category>(categoriesQuery);
   const categories = categoriesData || [];
@@ -88,10 +89,10 @@ export default function ChecklistClient() {
   };
 
   const handleUnpurchaseConfirm = () => {
-    if (!itemToUnpurchase || !user) return;
+    if (!itemToUnpurchase || !householdId) return;
 
     startTransition(async () => {
-      await unpurchaseItem(user.uid, itemToUnpurchase.id);
+      await unpurchaseItem(householdId, itemToUnpurchase.id);
       toast({
         title: "رجعناها القائمة",
         description: `رجعنا "${itemToUnpurchase.name}" للحاجات اللي لسه هنجيبها.`,
@@ -101,9 +102,9 @@ export default function ChecklistClient() {
   };
 
   const handleDeleteItemConfirm = () => {
-    if (!itemToDelete || !user) return;
+    if (!itemToDelete || !householdId) return;
     startTransition(async () => {
-      await deleteItem(user.uid, itemToDelete.id);
+      await deleteItem(householdId, itemToDelete.id);
       toast({
         title: "اتمسحت",
         description: `مسحنا الحاجة "${itemToDelete.name}".`,
@@ -113,10 +114,10 @@ export default function ChecklistClient() {
   };
   
   const handleDeleteCategory = () => {
-    if (!categoryToDelete || !user) return;
+    if (!categoryToDelete || !householdId) return;
 
     startTransition(async () => {
-      const result = await deleteCategory(user.uid, categoryToDelete.id);
+      const result = await deleteCategory(householdId, categoryToDelete.id);
       if (result?.success) {
         toast({
           title: "اتمسحت",
@@ -153,13 +154,25 @@ export default function ChecklistClient() {
     return getCategoryDepth(category.parentId, depth + 1);
   }, [categoriesById]);
 
-  if (isLoadingCategories || isLoadingItems) {
+  if (isLoadingCategories || isLoadingItems || isProfileLoading || isHouseholdLoading) {
     return (
       <div className="flex justify-center items-center h-64">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
       </div>
     );
   }
+  
+  if (!householdId) {
+    return (
+        <div className="text-center py-10 px-4 border-2 border-dashed rounded-lg">
+            <h3 className="text-lg font-medium text-foreground">خطأ في تحميل بيانات الأسرة.</h3>
+            <p className="text-muted-foreground mt-1">
+              من فضلك حاول تسجل خروج وترجع تاني.
+            </p>
+          </div>
+    );
+  }
+
 
   return (
     <>
@@ -322,6 +335,7 @@ export default function ChecklistClient() {
 
       <PurchaseDialog
         item={itemToPurchase}
+        householdId={householdId}
         onOpenChange={(open) => {
           if (!open) {
             setItemToPurchase(null);
@@ -335,18 +349,21 @@ export default function ChecklistClient() {
         onOpenChange={setAddDialogOpen}
         onItemAdded={refreshData}
         categories={categories}
+        householdId={householdId}
       />
       
       <ImportDialog
         open={isImportDialogOpen}
         onOpenChange={setImportDialogOpen}
         onImportCompleted={refreshData}
+        householdId={householdId}
       />
 
       <AddSectionDialog
         open={isAddSectionDialogOpen}
         onOpenChange={setAddSectionDialogOpen}
         onSectionAdded={refreshData}
+        householdId={householdId}
       />
       
       <AddCategoryDialog
@@ -354,11 +371,13 @@ export default function ChecklistClient() {
         onOpenChange={setAddCategoryDialogOpen}
         onCategoryAdded={refreshData}
         categories={categories}
+        householdId={householdId}
       />
 
       <EditCategoryDialog
         category={categoryToEdit}
         categories={categories}
+        householdId={householdId}
         onOpenChange={(open) => !open && setCategoryToEdit(null)}
         onCategoryUpdated={refreshData}
       />

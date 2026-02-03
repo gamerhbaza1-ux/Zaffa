@@ -7,8 +7,9 @@ import { z } from "zod";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { createUserWithEmailAndPassword } from "firebase/auth";
-import { setDoc, doc } from "firebase/firestore";
+import { setDoc, doc, collection, writeBatch } from "firebase/firestore";
 import { useAuth, useFirestore } from "@/firebase";
+import { nanoid } from 'nanoid';
 
 import { Button } from "@/components/ui/button";
 import {
@@ -105,6 +106,7 @@ export default function SignupPage() {
 
   const handleSignup = async (values: SignupFormValues) => {
     setError(null);
+    if (!auth || !firestore) return;
     try {
       // 1. Create user in Firebase Auth
       const userCredential = await createUserWithEmailAndPassword(
@@ -114,16 +116,32 @@ export default function SignupPage() {
       );
       const user = userCredential.user;
 
-      // 2. Create user profile in Firestore
-      await setDoc(doc(firestore, "users", user.uid), {
+      // 2. Create user profile and household in Firestore
+      const batch = writeBatch(firestore);
+
+      // 2a. Create a new household for the user
+      const householdRef = doc(collection(firestore, "households"));
+      const inviteCode = nanoid(6).toUpperCase();
+      batch.set(householdRef, {
+        memberIds: [user.uid],
+        inviteCode: inviteCode,
+      });
+
+      // 2b. Create the user's profile document, linking it to the household
+      const userDocRef = doc(firestore, "users", user.uid);
+      batch.set(userDocRef, {
         id: user.uid,
         firstName: values.firstName,
         lastName: values.lastName,
         email: values.email,
         role: selectedRole,
+        householdId: householdRef.id,
       });
 
-      // 3. Redirect to home page
+      // 3. Commit the batch write
+      await batch.commit();
+
+      // 4. Redirect to home page
       router.push("/");
     } catch (error: any) {
       if (error.code === "auth/email-already-in-use") {

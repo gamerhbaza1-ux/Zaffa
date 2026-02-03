@@ -23,12 +23,12 @@ import {
 } from "@/components/ui/select";
 import { SubmitButton } from '../submit-button';
 import { Separator } from '@/components/ui/separator';
-import { useAuth } from '@/firebase';
 
 type ImportDialogProps = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onImportCompleted: () => void;
+  householdId: string;
 };
 
 const REQUIRED_FIELDS = [
@@ -43,8 +43,7 @@ const OPTIONAL_FIELDS = [
 ];
 
 
-export function ImportDialog({ open, onOpenChange, onImportCompleted }: ImportDialogProps) {
-  const { user } = useAuth();
+export function ImportDialog({ open, onOpenChange, onImportCompleted, householdId }: ImportDialogProps) {
   const [state, formAction] = useActionState(importItems, { error: null, success: false, count: 0 });
   const { toast } = useToast();
   const [, startTransition] = useTransition();
@@ -120,8 +119,8 @@ export function ImportDialog({ open, onOpenChange, onImportCompleted }: ImportDi
   }
 
   const handleFormAction = (formData: FormData) => {
-    if (user) {
-      formData.append('userId', user.uid);
+    if (householdId) {
+      formData.append('householdId', householdId);
       formAction(formData);
     } else {
        toast({ variant: 'destructive', title: 'خطأ', description: 'لازم تسجل دخول الأول.'})

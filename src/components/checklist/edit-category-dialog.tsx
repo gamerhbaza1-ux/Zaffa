@@ -6,7 +6,6 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { updateCategory } from '@/lib/actions';
 import type { Category } from '@/lib/types';
-import { useAuth } from '@/firebase';
 
 import {
   Dialog,
@@ -51,12 +50,12 @@ type FormValues = z.infer<typeof categorySchema>;
 type EditCategoryDialogProps = {
   category: Category | null;
   categories: Category[];
+  householdId: string;
   onOpenChange: (open: boolean) => void;
   onCategoryUpdated: () => void;
 };
 
-export function EditCategoryDialog({ category, categories, onOpenChange, onCategoryUpdated }: EditCategoryDialogProps) {
-  const { user } = useAuth();
+export function EditCategoryDialog({ category, categories, householdId, onOpenChange, onCategoryUpdated }: EditCategoryDialogProps) {
   const [state, formAction] = React.useActionState(updateCategory, { errors: {} });
   const formRef = useRef<HTMLFormElement>(null);
   const { toast } = useToast();
@@ -110,8 +109,8 @@ export function EditCategoryDialog({ category, categories, onOpenChange, onCateg
   }
 
   const handleFormAction = (formData: FormData) => {
-    if (user) {
-      formData.append('userId', user.uid);
+    if (householdId) {
+      formData.append('householdId', householdId);
       formAction(formData);
     } else {
        toast({ variant: 'destructive', title: 'خطأ', description: 'لازم تسجل دخول الأول.'})

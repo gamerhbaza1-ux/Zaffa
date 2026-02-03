@@ -4,13 +4,19 @@ export type UserProfile = {
   lastName: string;
   email: string;
   role: 'groom' | 'bride';
+  householdId: string;
+};
+
+export type Household = {
+  id: string;
+  memberIds: string[];
+  inviteCode: string;
 };
 
 export type Category = {
-  id: string;
+  id:string;
   name: string;
   parentId: string | null;
-  userId: string;
 };
 
 export type ChecklistItem = {
@@ -21,5 +27,4 @@ export type ChecklistItem = {
   maxPrice: number;
   isPurchased: boolean;
   finalPrice?: number;
-  userId: string;
 };

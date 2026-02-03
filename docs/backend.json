@@ -29,6 +29,10 @@
             "groom",
             "bride"
           ]
+        },
+        "householdId": {
+          "type": "string",
+          "description": "The ID of the household this user belongs to."
         }
       },
       "required": [
@@ -36,7 +40,59 @@
         "email",
         "firstName",
         "lastName",
-        "role"
+        "role",
+        "householdId"
+      ]
+    },
+    "Household": {
+      "title": "Household",
+      "type": "object",
+      "description": "Represents a couple's shared household, containing members and a unique code for invitations.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the Household entity."
+        },
+        "memberIds": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "A list of user UIDs that belong to this household."
+        },
+        "inviteCode": {
+          "type": "string",
+          "description": "A short, unique, shareable code for inviting a partner."
+        }
+      },
+      "required": [
+        "id",
+        "memberIds",
+        "inviteCode"
+      ]
+    },
+    "Category": {
+      "title": "Category",
+      "type": "object",
+      "description": "Represents a category for checklist items within a household.",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "parentId": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "parentId"
       ]
     },
     "ChecklistItem": {
@@ -61,13 +117,16 @@
           "type": "number",
           "description": "Maximum estimated price of the item."
         },
-        "purchased": {
+        "isPurchased": {
           "type": "boolean",
           "description": "Indicates whether the item has been purchased."
         },
-        "userId": {
+        "categoryId": {
           "type": "string",
-          "description": "Reference to User. (Relationship: User 1:N ChecklistItem)"
+          "description": "The ID of the category this item belongs to."
+        },
+        "finalPrice": {
+            "type": "number"
         }
       },
       "required": [
@@ -75,8 +134,8 @@
         "name",
         "minPrice",
         "maxPrice",
-        "purchased",
-        "userId"
+        "isPurchased",
+        "categoryId"
       ]
     }
   },
@@ -105,17 +164,53 @@
         }
       },
       {
-        "path": "/users/{userId}/checklistItems/{checklistItemId}",
+        "path": "/households/{householdId}",
+        "definition": {
+          "entityName": "Household",
+          "schema": {
+            "$ref": "#/backend/entities/Household"
+          },
+          "description": "Stores shared household information, including member IDs and the invite code.",
+          "params": [
+            {
+              "name": "householdId",
+              "description": "The unique identifier of the household."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/households/{householdId}/categories/{categoryId}",
+        "definition": {
+          "entityName": "Category",
+          "schema": {
+            "$ref": "#/backend/entities/Category"
+          },
+          "description": "Stores the hierarchy of categories for a household's checklist.",
+          "params": [
+            {
+              "name": "householdId",
+              "description": "The household this category belongs to."
+            },
+            {
+              "name": "categoryId",
+              "description": "The unique ID of the category."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/households/{householdId}/checklistItems/{checklistItemId}",
         "definition": {
           "entityName": "ChecklistItem",
           "schema": {
             "$ref": "#/backend/entities/ChecklistItem"
           },
-          "description": "Stores checklist items owned by a specific user. Includes denormalized 'userId' for authorization independence.",
+          "description": "Stores checklist items for a specific household.",
           "params": [
             {
-              "name": "userId",
-              "description": "The Firebase Authentication UID of the user who owns the checklist item."
+              "name": "householdId",
+              "description": "The household this checklist item belongs to."
             },
             {
               "name": "checklistItemId",
@@ -125,6 +220,6 @@
         }
       }
     ],
-    "reasoning": "The Firestore structure is designed to ensure Authorization Independence, support QAPs, and maintain data clarity. User data and checklist items are stored in separate collections to enforce distinct security rules and improve query performance. User-owned checklist items are stored in a hierarchical path for straightforward ownership-based security rules.\n\nAuthorization Independence is achieved by storing the `userId` within each `ChecklistItem` document. This eliminates the need for security rules to perform `get()` operations on parent `User` documents to authorize access, thus supporting atomic operations (transactions/batches). The user id represents the owner id.\n\nQAPs are supported because the checklist items are segregated under the user's document, preventing the need to filter based on user ID in security rules.  Listing checklist items will only return the items associated with the authenticated user."
+    "reasoning": "The Firestore structure is designed around a shared 'household' model. User profiles are stored in a top-level `/users` collection, with each user document containing a `householdId` to link them to their shared data. All collaborative data (categories, checklist items) is stored in subcollections under a top-level `/households/{householdId}` path. This enforces a clear separation between individual user data and shared household data. Security rules can efficiently grant access to an entire household's data tree by checking if the requesting user's `householdId` (from their profile) matches the `householdId` in the path, enabling secure data sharing between partners."
   }
 }

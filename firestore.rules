@@ -1,16 +1,17 @@
 /**
- * Core Philosophy: This ruleset enforces a strict user-ownership model. All user-related data is private and can only be accessed by the user who owns it. The default security posture is to deny all access unless explicitly granted.
+ * Core Philosophy: This ruleset enforces a household-centric data model. Users can only access data within their own profile or within the household they belong to.
  *
- * Data Structure: The data is organized hierarchically. Each user has a primary document in the top-level `/users` collection. All of their associated data, such as checklist items, is stored in subcollections under their user document (e.g., `/users/{userId}/checklistItems/...`).
+ * Data Structure:
+ * - `/users/{userId}`: Stores private user profile information, including a `householdId`.
+ * - `/households/{householdId}`: A document containing household metadata, like an invite code and a list of member UIDs.
+ * - `/households/{householdId}/{collection}`: Subcollections (e.g., `checklistItems`, `categories`) containing the shared data for that household.
  *
  * Key Security Decisions:
- * - User Isolation: A user can only ever read or write data within their own document tree (`/users/{userId}/...`).
- * - No User Listing: It is not possible for any client to list all documents in the `/users` collection, protecting user privacy.
- * - Ownership Integrity: On creation, documents must include an ownership field (e.g., `userId`) that matches the authenticated user's ID. This field is immutable and cannot be changed on update, ensuring ownership can never be transferred.
+ * - User Profile Privacy: A user can only read and update their own profile document. Creation is handled upon signup, and deletion is disallowed from the client.
+ * - Household Isolation: A user can only read or write documents within the household they are a member of. This is the core of the sharing model.
+ * - Secure Access Check: To access any data within `/households/{householdId}/...`, the rule first fetches the requesting user's profile (`/users/{request.auth.uid}`) to get their `householdId` and verifies it matches the `householdId` in the resource path. This is an efficient way to enforce membership.
  *
- * Denormalization for Authorization: The `ChecklistItem` document contains a denormalized `userId` field. This allows security rules to authorize access by checking a field on the document itself, which is significantly more performant and scalable than checking its parent document.
- *
- * Structural Segregation: User data is naturally segregated by the `/users/{userId}` path, which provides a secure and efficient way to manage and query user-specific information without any risk of data leakage between users.
+ * This structure ensures that two users (e.g., a bride and groom) who share the same `householdId` can both securely access and modify their shared checklist, while keeping it entirely private from other users.
  */
 rules_version = '2';
 service cloud.firestore {
@@ -32,14 +33,31 @@ service cloud.firestore {
     function isOwner(userId) {
       return isSignedIn() && request.auth.uid == userId;
     }
+
+    /**
+     * Checks if the requesting user belongs to the household specified in the path.
+     * It does this by reading the user's own profile document to find their householdId.
+     */
+    function isMemberOfHousehold(householdId) {
+      return isSignedIn() && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.householdId == householdId;
+    }
     
     /**
-     * @description Rules for a user's own data, including profile and subcollections.
+     * @description Rules for a user's own profile data.
      * @path /users/{userId}
-     * @principle Restricts all access to a user's own data tree.
+     * @principle A user can read and update their own profile. Creation is handled securely, and deletion is not allowed.
      */
-    match /users/{userId}/{document=**} {
-      allow read, write: if isOwner(userId);
+    match /users/{userId} {
+      allow read, update: if isOwner(userId);
+    }
+
+    /**
+     * @description Rules for all shared data within a household.
+     * @path /households/{householdId}
+     * @principle Restricts all access to members of the household.
+     */
+    match /households/{householdId}/{document=**} {
+      allow read, write: if isMemberOfHousehold(householdId);
     }
   }
 }

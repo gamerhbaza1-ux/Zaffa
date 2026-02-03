@@ -5,7 +5,7 @@ import { FirebaseApp } from 'firebase/app';
 import { Firestore, doc, onSnapshot } from 'firebase/firestore';
 import { Auth, User, onAuthStateChanged } from 'firebase/auth';
 import { FirebaseErrorListener } from '@/components/FirebaseErrorListener';
-import type { UserProfile } from '@/lib/types';
+import type { UserProfile, Household } from '@/lib/types';
 
 interface FirebaseProviderProps {
   children: ReactNode;
@@ -25,6 +25,11 @@ interface ProfileState {
   isProfileLoading: boolean;
 }
 
+interface HouseholdState {
+  household: Household | null;
+  isHouseholdLoading: boolean;
+}
+
 export interface FirebaseContextState {
   areServicesAvailable: boolean;
   firebaseApp: FirebaseApp | null;
@@ -35,6 +40,8 @@ export interface FirebaseContextState {
   userError: Error | null;
   userProfile: UserProfile | null;
   isProfileLoading: boolean;
+  household: Household | null;
+  isHouseholdLoading: boolean;
 }
 
 export interface FirebaseServicesAndUser extends Omit<FirebaseContextState, 'areServicesAvailable'> {
@@ -49,6 +56,8 @@ export interface UserHookResult {
   userError: Error | null;
   userProfile: UserProfile | null;
   isProfileLoading: boolean;
+  household: Household | null;
+  isHouseholdLoading: boolean;
 }
 
 export const FirebaseContext = createContext<FirebaseContextState | undefined>(undefined);
@@ -68,6 +77,11 @@ export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
   const [profileState, setProfileState] = useState<ProfileState>({
     userProfile: null,
     isProfileLoading: true,
+  });
+  
+  const [householdState, setHouseholdState] = useState<HouseholdState>({
+    household: null,
+    isHouseholdLoading: true,
   });
 
   useEffect(() => {
@@ -113,6 +127,30 @@ export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
 
     return () => unsubscribe();
   }, [userAuthState.user, firestore]);
+  
+  useEffect(() => {
+    if (!profileState.userProfile?.householdId || !firestore) {
+      setHouseholdState({ household: null, isHouseholdLoading: false });
+      return;
+    }
+    
+    setHouseholdState(s => ({ ...s, isHouseholdLoading: true }));
+    const householdDocRef = doc(firestore, 'households', profileState.userProfile.householdId);
+
+    const unsubscribe = onSnapshot(householdDocRef, (docSnap) => {
+      if (docSnap.exists()) {
+        setHouseholdState({ household: { id: docSnap.id, ...docSnap.data() } as Household, isHouseholdLoading: false });
+      } else {
+        setHouseholdState({ household: null, isHouseholdLoading: false });
+      }
+    }, (error) => {
+      console.error("FirebaseProvider: household snapshot error:", error);
+      setHouseholdState({ household: null, isHouseholdLoading: false });
+    });
+
+    return () => unsubscribe();
+  }, [profileState.userProfile, firestore]);
+
 
   const contextValue = useMemo((): FirebaseContextState => {
     const servicesAvailable = !!(firebaseApp && firestore && auth);
@@ -126,8 +164,10 @@ export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
       userError: userAuthState.userError,
       userProfile: profileState.userProfile,
       isProfileLoading: profileState.isProfileLoading,
+      household: householdState.household,
+      isHouseholdLoading: householdState.isHouseholdLoading,
     };
-  }, [firebaseApp, firestore, auth, userAuthState, profileState]);
+  }, [firebaseApp, firestore, auth, userAuthState, profileState, householdState]);
 
   return (
     <FirebaseContext.Provider value={contextValue}>
@@ -157,6 +197,8 @@ export const useFirebase = (): FirebaseServicesAndUser => {
     userError: context.userError,
     userProfile: context.userProfile,
     isProfileLoading: context.isProfileLoading,
+    household: context.household,
+    isHouseholdLoading: context.isHouseholdLoading,
   };
 };
 
@@ -187,6 +229,6 @@ export function useMemoFirebase<T>(factory: () => T, deps: DependencyList): T | 
 }
 
 export const useUser = (): UserHookResult => {
-  const { user, isUserLoading, userError, userProfile, isProfileLoading } = useFirebase();
-  return { user, isUserLoading, userError, userProfile, isProfileLoading };
+  const { user, isUserLoading, userError, userProfile, isProfileLoading, household, isHouseholdLoading } = useFirebase();
+  return { user, isUserLoading, userError, userProfile, isProfileLoading, household, isHouseholdLoading };
 };

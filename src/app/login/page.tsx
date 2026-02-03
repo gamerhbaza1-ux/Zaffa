@@ -3,7 +3,7 @@ import { useAuth, useFirestore, useUser } from '@/firebase';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { GoogleAuthProvider, signInWithEmailAndPassword, signInWithPopup } from 'firebase/auth';
-import { useRouter, redirect } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useForm } from 'react-hook-form';
@@ -20,7 +20,8 @@ import {
 import { Input } from "@/components/ui/input";
 import { Separator } from '@/components/ui/separator';
 import { Loader2 } from 'lucide-react';
-import { doc, getDoc, setDoc } from 'firebase/firestore';
+import { doc, getDoc, setDoc, addDoc, collection, writeBatch } from 'firebase/firestore';
+import { nanoid } from 'nanoid';
 
 const GoogleIcon = () => (
   <svg className="mr-2 h-4 w-4" aria-hidden="true" focusable="false" data-prefix="fab" data-icon="google" role="img" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 488 512">
@@ -54,6 +55,7 @@ export default function LoginPage() {
   }, [user, isUserLoading, router]);
 
   const handleGoogleSignIn = async () => {
+    if (!auth || !firestore) return;
     const provider = new GoogleAuthProvider();
     try {
       const result = await signInWithPopup(auth, provider);
@@ -64,13 +66,28 @@ export default function LoginPage() {
 
       if (!docSnap.exists()) {
         const [firstName, lastName] = user.displayName?.split(' ') || ['', ''];
-        await setDoc(userDocRef, {
+        
+        const batch = writeBatch(firestore);
+
+        // 1. Create a new household
+        const householdRef = doc(collection(firestore, 'households'));
+        const inviteCode = nanoid(6).toUpperCase();
+        batch.set(householdRef, {
+          memberIds: [user.uid],
+          inviteCode: inviteCode,
+        });
+
+        // 2. Create the user profile
+        batch.set(userDocRef, {
           id: user.uid,
           email: user.email,
           firstName: firstName,
           lastName: lastName || '',
-          role: 'groom',
+          role: 'groom', // Default role
+          householdId: householdRef.id,
         });
+        
+        await batch.commit();
       }
       router.push('/');
     } catch (error) {
@@ -80,6 +97,7 @@ export default function LoginPage() {
   };
 
   const handleEmailSignIn = async (values: LoginFormValues) => {
+    if (!auth) return;
     setError(null);
     try {
       await signInWithEmailAndPassword(auth, values.email, values.password);
