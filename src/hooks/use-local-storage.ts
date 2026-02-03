@@ -2,15 +2,14 @@
 
 import { useState, useEffect, Dispatch, SetStateAction, useCallback } from 'react';
 
-// This hook now correctly handles functional updates and avoids stale state.
-// The main issue was in how the `setValue` function was created and used a stale `storedValue`.
-// By using `useCallback` and the functional update form of `useState`'s setter, we ensure
-// that we are always working with the latest state.
+// This is the most robust implementation. It uses a functional update with `setStoredValue`
+// to ensure we always have the latest value and avoid stale closures, especially when the
+// setter function is passed down through contexts or memoized callbacks.
 
 export function useLocalStorage<T>(key: string, initialValue: T): [T, Dispatch<SetStateAction<T>>] {
     
+    // Function to read the value from localStorage. Memoized to prevent re-creation.
     const readValue = useCallback((): T => {
-        // Prevent SSR errors
         if (typeof window === 'undefined') {
             return initialValue;
         }
@@ -23,50 +22,49 @@ export function useLocalStorage<T>(key: string, initialValue: T): [T, Dispatch<S
         }
     }, [initialValue, key]);
     
-    // State to store our value
-    // Pass initial state function to useState so logic is only executed once
+    // State to store our value. Initialized once with the value from localStorage.
     const [storedValue, setStoredValue] = useState<T>(readValue);
 
-    // Return a wrapped version of useState's setter function that ...
-    // ... persists the new value to localStorage.
+    // The setter function that will be returned. It persists the new value to localStorage.
     const setValue: Dispatch<SetStateAction<T>> = useCallback(
         (value) => {
-            // Prevent SSR errors
             if (typeof window === 'undefined') {
                 console.warn(`Tried to set localStorage key “${key}” even though no window was found`);
+                return; // Early return if on server
             }
 
             try {
-                // Allow value to be a function so we have the same API as useState
-                const newValue = value instanceof Function ? value(storedValue) : value;
-                // Save to local storage
-                window.localStorage.setItem(key, JSON.stringify(newValue));
-                // Save state
-                setStoredValue(newValue);
-
-                // We dispatch a custom event so other tabs can listen for changes
+                // Use the functional update form of useState's setter to get the latest state.
+                setStoredValue((currentValue) => {
+                    // This allows the new value to be a function, just like with regular useState.
+                    const newValue = value instanceof Function ? value(currentValue) : value;
+                    // Save the new value to localStorage.
+                    window.localStorage.setItem(key, JSON.stringify(newValue));
+                    // Return the new value to update the state.
+                    return newValue;
+                });
+                // Dispatch a custom event to notify other tabs of the change.
                 window.dispatchEvent(new StorageEvent('storage', { key }));
             } catch (error) {
                 console.warn(`Error setting localStorage key “${key}”:`, error);
             }
         },
-        [key, storedValue]
+        [key] // Dependency array only needs `key`. No dependency on `storedValue`.
     );
 
+    // Effect to re-read from localStorage when the component mounts or key changes.
     useEffect(() => {
         setStoredValue(readValue());
     }, [readValue]);
 
-    // This effect listens for changes in other tabs
+    // Effect to listen for storage changes from other tabs.
     useEffect(() => {
         const handleStorageChange = (e: StorageEvent) => {
             if (e.key === key) {
                 setStoredValue(readValue());
             }
         };
-
         window.addEventListener('storage', handleStorageChange);
-
         return () => {
             window.removeEventListener('storage', handleStorageChange);
         };
