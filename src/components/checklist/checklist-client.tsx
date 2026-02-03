@@ -34,7 +34,6 @@ import {
 } from "@/components/ui/alert-dialog";
 import { useToast } from '@/hooks/use-toast';
 
-// Dummy data removed
 const INITIAL_CATEGORIES: Category[] = [];
 
 const INITIAL_ITEMS: ChecklistItem[] = [];
@@ -161,6 +160,52 @@ export default function ChecklistClient() {
     toast({ title: 'اتمسحت', description: `مسحنا "${categoryName}".` });
     setCategoryToDelete(null);
   };
+
+  const handleImportCompleted = (importedData: { section: string; category: string; name: string; minPrice: number; maxPrice: number }[]) => {
+    let currentCategories = [...categories];
+    let currentItems = [...items];
+
+    const getOrCreateCategory = (name: string, parentId: string | null): Category => {
+        const lowerName = name.toLowerCase();
+        const existing = currentCategories.find(c => c.name.toLowerCase() === lowerName && c.parentId === parentId);
+        if (existing) {
+            return existing;
+        }
+
+        const newCategory: Category = {
+            id: nanoid(),
+            name,
+            parentId,
+        };
+        currentCategories.push(newCategory);
+        return newCategory;
+    };
+
+    for (const record of importedData) {
+        if (!record.section || !record.category || !record.name) continue;
+
+        const section = getOrCreateCategory(record.section, null);
+        const category = getOrCreateCategory(record.category, section.id);
+        
+        currentItems.push({
+            id: nanoid(),
+            name: record.name,
+            categoryId: category.id,
+            minPrice: record.minPrice,
+            maxPrice: record.maxPrice,
+            isPurchased: false,
+        });
+    }
+    
+    setCategories([...currentCategories]);
+    setItems([...currentItems]);
+
+    toast({
+        title: "تمام!",
+        description: `تم استيراد ${importedData.length} حاجة بنجاح.`,
+    });
+    setImportDialogOpen(false);
+  };
   
   const purchasedCount = useMemo(() => items.filter(item => item.isPurchased).length, [items]);
   const totalCount = items.length;
@@ -190,8 +235,8 @@ export default function ChecklistClient() {
           <Button onClick={() => setAddDialogOpen(true)}>
             <Plus className="ml-2 h-4 w-4" /> نضيف حاجة
           </Button>
-          <Button variant="secondary" disabled>
-            <Upload className="ml-2 h-4 w-4" /> نستورد (قريباً)
+          <Button variant="secondary" onClick={() => setImportDialogOpen(true)}>
+            <Upload className="ml-2 h-4 w-4" /> نستورد
           </Button>
            <Button variant="outline" onClick={() => setAddCategoryDialogOpen(true)}>
             <ListPlus className="ml-2 h-4 w-4" /> نضيف فئة
@@ -361,7 +406,7 @@ export default function ChecklistClient() {
       <ImportDialog
         open={isImportDialogOpen}
         onOpenChange={setImportDialogOpen}
-        onImportCompleted={() => {}}
+        onImportCompleted={handleImportCompleted}
       />
 
       <AddSectionDialog
