@@ -138,7 +138,7 @@ export default function ChecklistClient({ initialItems, initialCategories }: Che
       return depth;
     }
     const parent = categoriesById.get(category.parentId);
-    if(!parent?.parentId) return depth; // this is a sub-category of a top-level category
+    if(!parent?.parentId) return depth;
 
     return getCategoryDepth(category.parentId, depth + 1);
   }, [categoriesById]);
@@ -202,58 +202,60 @@ export default function ChecklistClient({ initialItems, initialCategories }: Che
                     return (
                        <Card 
                             key={category.id} 
-                            className="space-y-4"
-                            style={{ marginRight: level > 0 ? '1.5rem' : undefined }}
+                            className="overflow-hidden shadow-sm"
+                            style={{ marginRight: level > 0 ? '1rem' : undefined }}
                         >
-                            <CardContent className="p-4">
-                                <div className="flex justify-between items-center border-b pb-2 mb-4">
-                                    <div className="flex-grow">
-                                        <h3 className="font-bold text-lg">{category.name}</h3>
-                                        {(expectedInSubCat > 0 || paidInSubCat > 0) && (
-                                            <div className="text-sm text-muted-foreground font-normal flex flex-wrap gap-x-4 gap-y-1 mt-1">
-                                                <span>المتوقع: {formatPrice(expectedInSubCat)}</span>
-                                                <span>المدفوع: {formatPrice(paidInSubCat)}</span>
-                                            </div>
-                                        )}
-                                    </div>
-                                    <DropdownMenu>
-                                        <DropdownMenuTrigger asChild>
-                                            <Button variant="ghost" size="icon" className="h-8 w-8 flex-shrink-0">
-                                                <MoreVertical className="h-4 w-4" />
-                                                <span className="sr-only">إجراءات {category.name}</span>
-                                            </Button>
-                                        </DropdownMenuTrigger>
-                                        <DropdownMenuContent align="end">
-                                            <DropdownMenuItem onSelect={() => setCategoryToEdit(category)}>
-                                                <Pencil className="ml-2 h-4 w-4" />
-                                                <span>تعديل</span>
-                                            </DropdownMenuItem>
-                                            <DropdownMenuItem onSelect={() => setCategoryToDelete(category)} className="text-destructive focus:text-destructive">
-                                                <Trash2 className="ml-2 h-4 w-4" />
-                                                <span>حذف</span>
-                                            </DropdownMenuItem>
-                                        </DropdownMenuContent>
-                                    </DropdownMenu>
+                            <div className="flex justify-between items-center bg-accent p-3 px-4">
+                                <div className="flex-grow">
+                                    <h3 className="font-bold text-base text-foreground">{category.name}</h3>
+                                    {(expectedInSubCat > 0 || paidInSubCat > 0) && (
+                                        <div className="text-xs text-muted-foreground font-normal flex flex-wrap gap-x-3 gap-y-1 mt-1">
+                                            <span>المتوقع: {formatPrice(expectedInSubCat)}</span>
+                                            <span>المدفوع: {formatPrice(paidInSubCat)}</span>
+                                        </div>
+                                    )}
                                 </div>
-                                {subCatItems.length > 0 && (
-                                    <div className="space-y-2">
-                                        {subCatItems.map(item => (
-                                            <ItemCard
-                                                key={item.id}
-                                                item={item}
-                                                onToggle={() => handleToggle(item.id)}
-                                                onDelete={() => handleDeleteItem(item.id)}
-                                                isPending={isPending}
-                                            />
-                                        ))}
-                                    </div>
-                                )}
-                                {children.length > 0 && (
-                                    <div className="space-y-4">
-                                        {children.map(child => renderCategoryTree(child.id))}
-                                    </div>
-                                )}
-                             </CardContent>
+                                <DropdownMenu>
+                                    <DropdownMenuTrigger asChild>
+                                        <Button variant="ghost" size="icon" className="h-8 w-8 flex-shrink-0">
+                                            <MoreVertical className="h-4 w-4" />
+                                            <span className="sr-only">إجراءات {category.name}</span>
+                                        </Button>
+                                    </DropdownMenuTrigger>
+                                    <DropdownMenuContent align="end">
+                                        <DropdownMenuItem onSelect={() => setCategoryToEdit(category)}>
+                                            <Pencil className="ml-2 h-4 w-4" />
+                                            <span>تعديل</span>
+                                        </DropdownMenuItem>
+                                        <DropdownMenuItem onSelect={() => setCategoryToDelete(category)} className="text-destructive focus:text-destructive">
+                                            <Trash2 className="ml-2 h-4 w-4" />
+                                            <span>حذف</span>
+                                        </DropdownMenuItem>
+                                    </DropdownMenuContent>
+                                </DropdownMenu>
+                            </div>
+                            {(subCatItems.length > 0 || children.length > 0) && (
+                                <CardContent className="p-4 space-y-4">
+                                    {subCatItems.length > 0 && (
+                                        <div className="space-y-2">
+                                            {subCatItems.map(item => (
+                                                <ItemCard
+                                                    key={item.id}
+                                                    item={item}
+                                                    onToggle={() => handleToggle(item.id)}
+                                                    onDelete={() => handleDeleteItem(item.id)}
+                                                    isPending={isPending}
+                                                />
+                                            ))}
+                                        </div>
+                                    )}
+                                    {children.length > 0 && (
+                                        <div className="space-y-4">
+                                            {children.map(child => renderCategoryTree(child.id))}
+                                        </div>
+                                    )}
+                                </CardContent>
+                            )}
                         </Card>
                     );
                 };

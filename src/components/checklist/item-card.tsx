@@ -2,7 +2,6 @@
 
 import type { ChecklistItem } from '@/lib/types';
 import { cn } from '@/lib/utils';
-import { Card } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Button } from '@/components/ui/button';
 import { Trash2 } from 'lucide-react';
@@ -21,10 +20,10 @@ export function ItemCard({ item, onToggle, onDelete, isPending }: ItemCardProps)
   };
 
   return (
-    <Card
+    <div
       className={cn(
-        'p-4 flex items-center gap-4 transition-all duration-300 animate-in fade-in-0 zoom-in-95',
-        item.isPurchased && 'bg-muted/70',
+        'p-3 flex items-center gap-4 transition-colors duration-200 rounded-lg border border-transparent hover:bg-accent',
+        item.isPurchased && 'bg-accent/50',
         isPending && 'opacity-50 pointer-events-none'
       )}
     >
@@ -39,7 +38,7 @@ export function ItemCard({ item, onToggle, onDelete, isPending }: ItemCardProps)
         <label
           htmlFor={`item-${item.id}`}
           className={cn(
-            'font-medium text-lg cursor-pointer transition-all',
+            'font-medium text-base cursor-pointer transition-all',
             item.isPurchased && 'line-through text-muted-foreground'
           )}
         >
@@ -56,7 +55,7 @@ export function ItemCard({ item, onToggle, onDelete, isPending }: ItemCardProps)
         )}
       </div>
       {item.isPurchased && (
-        <Badge variant="secondary" className="bg-accent text-accent-foreground border-accent-foreground/20">تم الشراء</Badge>
+        <Badge variant="secondary" className="bg-green-100 text-green-800 border-green-200 dark:bg-green-900/50 dark:text-green-300 dark:border-green-800/50">تم الشراء</Badge>
       )}
       <Button
         variant="ghost"
@@ -67,6 +66,6 @@ export function ItemCard({ item, onToggle, onDelete, isPending }: ItemCardProps)
       >
         <Trash2 className="h-4 w-4" />
       </Button>
-    </Card>
+    </div>
   );
 }
