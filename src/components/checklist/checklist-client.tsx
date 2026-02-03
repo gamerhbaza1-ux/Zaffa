@@ -7,7 +7,7 @@ import { useCollection, useFirestore } from '@/firebase';
 import { collection, doc, addDoc, updateDoc, deleteDoc, writeBatch, serverTimestamp } from 'firebase/firestore';
 
 import { Button } from '@/components/ui/button';
-import { Plus, Upload, ListPlus, MoreVertical, Pencil, Trash2, FolderPlus, Search } from 'lucide-react';
+import { Plus, Upload, ListPlus, MoreVertical, Pencil, Trash2, FolderPlus, Search, Download } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { ItemCard } from './item-card';
 import { ProgressSummary } from './progress-summary';
@@ -313,6 +313,67 @@ export default function ChecklistClient() {
         return getCategoryDepth(category.parentId, depth + 1);
     }, [categoriesById]);
 
+    const handleDownloadData = useCallback(() => {
+        if (!items.length) {
+            toast({ title: 'لا توجد بيانات للتحميل', description: 'القائمة فاضية حاليًا.' });
+            return;
+        }
+
+        const priorityLabels: Record<Priority, string> = {
+            important: 'مهم',
+            nice_to_have: 'لو الدنيا تمام',
+            not_important: 'مش مهم',
+        };
+        
+        const getCategoryHierarchy = (categoryId: string) => {
+            const category = categoriesById.get(categoryId);
+            if (!category) return { sectionName: '', categoryName: '' };
+            
+            if (category.parentId) {
+                const section = categoriesById.get(category.parentId);
+                return {
+                    categoryName: category.name,
+                    sectionName: section?.name || 'قسم غير معروف',
+                };
+            } else {
+                return { categoryName: '', sectionName: category.name };
+            }
+        };
+
+        const headers = [
+            "القسم", "الفئة", "اسم الحاجة", "أقل سعر متوقع",
+            "أقصى سعر متوقع", "تم الشراء", "السعر النهائي", "الأولوية"
+        ];
+        
+        const rows = items.map(item => {
+            const { sectionName, categoryName } = getCategoryHierarchy(item.categoryId);
+            const values = [
+                sectionName,
+                categoryName,
+                item.name,
+                item.minPrice,
+                item.maxPrice,
+                item.isPurchased ? "نعم" : "لا",
+                item.finalPrice ?? '',
+                priorityLabels[item.priority || 'important'],
+            ];
+            return values.map(val => `"${String(val).replace(/"/g, '""')}"`).join(',');
+        });
+
+        const csvContent = [headers.join(','), ...rows].join('\r\n');
+        
+        const blob = new Blob(['\uFEFF' + csvContent], { type: 'text/csv;charset=utf-8;' });
+        const link = document.createElement("a");
+        const url = URL.createObjectURL(blob);
+        link.setAttribute("href", url);
+        link.setAttribute("download", "zaffa-checklist.csv");
+        link.style.visibility = 'hidden';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+    }, [items, categoriesById, toast]);
+
     if (isLoading) {
         return (
             <div className="space-y-6">
@@ -338,6 +399,9 @@ export default function ChecklistClient() {
               </Button>
                <Button variant="outline" onClick={() => setAddCategoryDialogOpen(true)}>
                 <ListPlus className="ml-2 h-4 w-4" /> نضيف فئة
+              </Button>
+              <Button variant="outline" onClick={handleDownloadData}>
+                <Download className="ml-2 h-4 w-4" /> نحمل الداتا
               </Button>
             </div>
             <div className="relative">
