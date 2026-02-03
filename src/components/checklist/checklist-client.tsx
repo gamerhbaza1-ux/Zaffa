@@ -101,7 +101,7 @@ export default function ChecklistClient({ initialItems, initialCategories }: Che
       await deleteItem(itemToDelete.id);
       toast({
         title: "اتمسحت",
-        description: `مسحنا العنصر "${itemToDelete.name}".`,
+        description: `مسحنا الحاجة "${itemToDelete.name}".`,
       });
       refreshData();
       setItemToDelete(null);
@@ -171,7 +171,7 @@ export default function ChecklistClient({ initialItems, initialCategories }: Che
       {totalCount > 0 ? (
         <Tabs defaultValue={topLevelCategories[0]?.id} className="w-full" dir="rtl">
             <div className="flex items-center flex-wrap gap-2">
-              <TabsList className="flex-wrap h-auto justify-start flex-grow">
+              <TabsList className="flex-wrap h-auto justify-start flex-grow gap-1">
                   {topLevelCategories.map(category => (
                       <TabsTrigger key={category.id} value={category.id}>
                           <span className="truncate">{category.name}</span>

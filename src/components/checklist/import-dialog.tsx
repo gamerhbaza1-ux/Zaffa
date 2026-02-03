@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useActionState, useEffect, useRef } from 'react';
+import { useState, useActionState, useEffect, useRef, useTransition } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -45,6 +45,7 @@ const OPTIONAL_FIELDS = [
 export function ImportDialog({ open, onOpenChange, onImportCompleted }: ImportDialogProps) {
   const [state, formAction] = useActionState(importItems, { error: null, success: false, count: 0 });
   const { toast } = useToast();
+  const [, startTransition] = useTransition();
   
   const [file, setFile] = useState<File | null>(null);
   const [fileContent, setFileContent] = useState<string>('');
@@ -53,23 +54,6 @@ export function ImportDialog({ open, onOpenChange, onImportCompleted }: ImportDi
   const [mapping, setMapping] = useState<Record<string, string>>({});
   
   const formRef = useRef<HTMLFormElement>(null);
-
-  useEffect(() => {
-    if (!open) {
-      // Reset all state when dialog closes
-      setTimeout(() => {
-        setFile(null);
-        setFileContent('');
-        setStep('selection');
-        setHeaders([]);
-        setMapping({});
-        if (formRef.current) {
-            // @ts-ignore
-            formRef.current.reset();
-        }
-      }, 200);
-    }
-  }, [open]);
 
   useEffect(() => {
     if (state?.success) {
@@ -111,10 +95,32 @@ export function ImportDialog({ open, onOpenChange, onImportCompleted }: ImportDi
     setMapping(prev => ({ ...prev, [fieldId]: header }));
   };
 
+  const handleOpenChange = (isOpen: boolean) => {
+    if (!isOpen) {
+      startTransition(() => {
+        // @ts-ignore
+        formAction(new FormData()); // Reset server state
+      });
+       // Reset all internal component state when dialog closes
+      setTimeout(() => {
+        setFile(null);
+        setFileContent('');
+        setStep('selection');
+        setHeaders([]);
+        setMapping({});
+        if (formRef.current) {
+            // @ts-ignore
+            formRef.current.reset();
+        }
+      }, 200);
+    }
+    onOpenChange(isOpen);
+  }
+
   const isMappingComplete = REQUIRED_FIELDS.every(field => mapping[field.id]);
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent className="sm:max-w-md">
         {step === 'selection' && (
           <>
