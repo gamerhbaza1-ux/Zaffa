@@ -34,18 +34,10 @@ import {
 } from "@/components/ui/alert-dialog";
 import { useToast } from '@/hooks/use-toast';
 
-// Dummy data
-const INITIAL_CATEGORIES: Category[] = [
-  { id: 'sec_furniture', name: 'عفش', parentId: null },
-  { id: 'sec_appliances', name: 'أجهزة كهربائية', parentId: null },
-  { id: 'cat_living_room', name: 'الصالون', parentId: 'sec_furniture' },
-  { id: 'cat_kitchen_main', name: 'المطبخ', parentId: 'sec_appliances' },
-];
+// Dummy data removed
+const INITIAL_CATEGORIES: Category[] = [];
 
-const INITIAL_ITEMS: ChecklistItem[] = [
-  { id: 'item_1', name: 'كنبة', categoryId: 'cat_living_room', minPrice: 5000, maxPrice: 10000, isPurchased: false },
-  { id: 'item_2', name: 'تلاجة', categoryId: 'cat_kitchen_main', minPrice: 15000, maxPrice: 25000, isPurchased: true, finalPrice: 22000 },
-];
+const INITIAL_ITEMS: ChecklistItem[] = [];
 
 
 export default function ChecklistClient() {
@@ -338,15 +330,15 @@ export default function ChecklistClient() {
         </Tabs>
       ) : (
         <div className="text-center py-10 px-4 border-2 border-dashed rounded-lg">
-            <h3 className="text-lg font-medium text-foreground">القائمة بتاعتنا فاضية!</h3>
-            <p className="text-muted-foreground mt-1">
-              يلا نبدأ نضيف الحاجات اللي محتاجينها لبيتنا الجديد.
-            </p>
-            <Button className="mt-4" onClick={() => setAddDialogOpen(true)}>
-              <Plus className="ml-2 h-4 w-4" />
-              نضيف أول حاجة
-            </Button>
-          </div>
+          <h3 className="text-lg font-medium text-foreground">القائمة بتاعتنا فاضية!</h3>
+          <p className="text-muted-foreground mt-1">
+            يلا نبدأ نضيف الأقسام عشان ننظم حاجتنا (زي عفش، أجهزة، مطبخ...).
+          </p>
+          <Button className="mt-4" onClick={() => setAddSectionDialogOpen(true)}>
+            <FolderPlus className="ml-2 h-4 w-4" />
+            نضيف أول قسم
+          </Button>
+        </div>
       )}
 
       <PurchaseDialog
