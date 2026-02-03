@@ -36,7 +36,7 @@ import { Label } from '@/components/ui/label';
 
 const createImage = (url: string): Promise<HTMLImageElement> =>
   new Promise((resolve, reject) => {
-    const image = new Image();
+    const image = new window.Image();
     image.addEventListener('load', () => resolve(image));
     image.addEventListener('error', (error) => reject(error));
     image.setAttribute('crossOrigin', 'anonymous'); // Needed for canvas security
@@ -85,8 +85,8 @@ type FormValues = z.infer<typeof heroConfigSchema>;
 interface HeroSettingsDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onSave: (data: HeroConfig) => void;
-  currentConfig: HeroConfig;
+  onSave: (data: Omit<HeroConfig, 'imageHint'>) => void;
+  currentConfig: Omit<HeroConfig, 'imageHint'>;
   isSaving: boolean;
 }
 
