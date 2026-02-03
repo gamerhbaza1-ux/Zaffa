@@ -66,7 +66,7 @@ function Header() {
                     </div>
                   </DropdownMenuLabel>
                   <DropdownMenuSeparator />
-                   <DropdownMenuItem onSelect={() => setInviteDialogOpen(true)}>
+                   <DropdownMenuItem onSelect={() => setInviteDialogOpen(true)} disabled={isHouseholdLoading}>
                     <UserPlus className="ml-2 h-4 w-4" />
                     <span>ندعي شريك</span>
                   </DropdownMenuItem>
