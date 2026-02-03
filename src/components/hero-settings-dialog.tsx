@@ -45,32 +45,52 @@ const createImage = (url: string): Promise<HTMLImageElement> =>
 
 async function getCroppedDataUrl(
   imageSrc: string,
-  pixelCrop: Area
+  pixelCrop: Area,
+  maxWidth: number = 1920 // Max width for the final image
 ): Promise<string | null> {
   const image = await createImage(imageSrc);
   const canvas = document.createElement('canvas');
-  canvas.width = pixelCrop.width;
-  canvas.height = pixelCrop.height;
   const ctx = canvas.getContext('2d');
 
   if (!ctx) {
     return null;
   }
 
+  // The size of the original cropped area from the source image
+  const cropWidth = pixelCrop.width;
+  const cropHeight = pixelCrop.height;
+
+  // Calculate final dimensions for resizing, maintaining aspect ratio
+  let finalWidth = cropWidth;
+  let finalHeight = cropHeight;
+
+  if (finalWidth > maxWidth) {
+    const ratio = maxWidth / finalWidth;
+    finalWidth = maxWidth;
+    finalHeight = finalHeight * ratio;
+  }
+
+  // Set canvas to the new, resized dimensions
+  canvas.width = finalWidth;
+  canvas.height = finalHeight;
+
+  // Draw the cropped portion of the original image onto the resizing canvas.
+  // This performs the crop and resize in one step.
   ctx.drawImage(
     image,
-    pixelCrop.x,
-    pixelCrop.y,
-    pixelCrop.width,
-    pixelCrop.height,
-    0,
-    0,
-    pixelCrop.width,
-    pixelCrop.height
+    pixelCrop.x, // source x
+    pixelCrop.y, // source y
+    cropWidth,   // source width
+    cropHeight,  // source height
+    0,           // destination x
+    0,           // destination y
+    finalWidth,  // destination width
+    finalHeight  // destination height
   );
 
-  // Return as a base64 data URL
-  return canvas.toDataURL('image/jpeg', 0.85); // JPEG with 85% quality
+  // Return as a base64 data URL with high quality.
+  // The resizing should keep the file size reasonable.
+  return canvas.toDataURL('image/jpeg', 0.9);
 }
 
 // --- Component ---
@@ -161,7 +181,7 @@ export function HeroSettingsDialog({
         try {
             const croppedImageUrl = await getCroppedDataUrl(uncroppedImage, croppedAreaPixels);
             if (croppedImageUrl) {
-                if (croppedImageUrl.length > 750 * 1024) { // ~750KB limit for safety
+                if (croppedImageUrl.length > 1000 * 1024) { // ~1MB limit, very safe for Firestore
                     setImageError('حجم الصورة كبير جدًا حتى بعد القص. الرجاء اختيار صورة أصغر.');
                     setUncroppedImage(null); // Go back to form view
                     return;
