@@ -545,14 +545,36 @@ export default function ChecklistClient() {
                     return (
                         <TabsContent key={topLevelCategory.id} value={topLevelCategory.id} className="mt-4">
                             <Card>
-                                <CardContent className="p-4 space-y-6">
-                                    <div className="flex justify-between items-center mb-4 border-b pb-2">
-                                        <div className="text-sm text-muted-foreground font-normal flex flex-wrap gap-x-4 gap-y-1 p-1">
-                                            <span>إجمالي المتوقع في القسم: {formatPrice(totalExpectedInTab)}</span>
-                                            <span>إجمالي المدفوع في القسم: {formatPrice(totalPaidInTab)}</span>
-                                        </div>
+                                <div className="flex justify-between items-start p-4 border-b">
+                                    <div>
+                                        <h2 className="text-lg font-bold font-headline">{topLevelCategory.name}</h2>
+                                        {(totalExpectedInTab > 0 || totalPaidInTab > 0) && (
+                                            <div className="text-sm text-muted-foreground font-normal flex flex-wrap gap-x-4 gap-y-1 mt-1">
+                                                <span>المتوقع: {formatPrice(totalExpectedInTab)}</span>
+                                                <span>المدفوع: {formatPrice(totalPaidInTab)}</span>
+                                            </div>
+                                        )}
                                     </div>
-                                    
+                                    <DropdownMenu>
+                                        <DropdownMenuTrigger asChild>
+                                            <Button variant="ghost" size="icon" className="h-8 w-8 flex-shrink-0 -mr-2 -mt-1">
+                                                <MoreVertical className="h-4 w-4" />
+                                                <span className="sr-only">خيارات لـ {topLevelCategory.name}</span>
+                                            </Button>
+                                        </DropdownMenuTrigger>
+                                        <DropdownMenuContent align="end">
+                                            <DropdownMenuItem onSelect={() => setCategoryToEdit(topLevelCategory)}>
+                                                <Pencil className="ml-2 h-4 w-4" />
+                                                <span>نعدّل</span>
+                                            </DropdownMenuItem>
+                                            <DropdownMenuItem onSelect={() => setCategoryToDelete(topLevelCategory)} className="text-destructive focus:text-destructive">
+                                                <Trash2 className="ml-2 h-4 w-4" />
+                                                <span>نمسح</span>
+                                            </DropdownMenuItem>
+                                        </DropdownMenuContent>
+                                    </DropdownMenu>
+                                </div>
+                                <CardContent className="p-4 space-y-6">
                                     {directSubCategories.length > 0 ? (
                                         <div className="space-y-6">
                                           {directSubCategories.map(cat => renderCategoryTree(cat.id))}
