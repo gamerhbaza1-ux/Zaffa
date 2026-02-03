@@ -42,10 +42,6 @@ service cloud.firestore {
       return isSignedIn() && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.householdId == householdId;
     }
     
-     function userEmail() {
-        return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.email;
-    }
-
     /**
      * Checks if the requesting user is a partner of the user specified by userId.
      * Partners are users who share the same non-null householdId.
@@ -63,8 +59,7 @@ service cloud.firestore {
      */
     match /users/{userId} {
       allow read: if isOwner(userId) || isPartner(userId);
-      allow update: if isOwner(userId);
-      // Create is handled by server-side logic (or backend function) upon signup.
+      allow create, update: if isOwner(userId);
       // Delete is not allowed from the client for data integrity.
     }
     
@@ -89,11 +84,14 @@ service cloud.firestore {
     match /invitations/{invitationId} {
       allow create: if isSignedIn() && request.resource.data.inviterId == request.auth.uid;
       
+      // 'read' covers 'get' and 'list'. For 'list' (queries), `resource` is not available.
+      // This rule works for queries like `where('inviteeEmail', '==', request.auth.token.email)`
+      // because Firestore can verify `resource.data.inviteeEmail` against the query's constraint.
       allow read: if isSignedIn() && 
-                  (request.auth.uid == resource.data.inviterId || userEmail() == resource.data.inviteeEmail);
+                  (request.auth.uid == resource.data.inviterId || request.auth.token.email == resource.data.inviteeEmail);
 
       allow delete: if isSignedIn() && 
-                    (request.auth.uid == resource.data.inviterId || userEmail() == resource.data.inviteeEmail);
+                    (request.auth.uid == resource.data.inviterId || request.auth.token.email == resource.data.inviteeEmail);
     }
   }
 }
