@@ -217,14 +217,19 @@ export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
     }
 
     setInvitationsState(s => ({ ...s, isLoadingInvitations: true }));
+    // Simplified query to avoid composite index requirement.
+    // We will filter for 'pending' status on the client.
     const invitationsQuery = query(
       collection(firestore, 'invitations'),
-      where('inviteeEmail', '==', userAuthState.user.email),
-      where('status', '==', 'pending')
+      where('inviteeEmail', '==', userAuthState.user.email)
     );
 
     const unsubscribe = onSnapshot(invitationsQuery, (snap) => {
-      const invs = snap.docs.map(d => ({ ...d.data(), id: d.id } as Invitation));
+      // Map and then filter for pending invitations on the client.
+      const invs = snap.docs
+        .map(d => ({ ...d.data(), id: d.id } as Invitation))
+        .filter(inv => inv.status === 'pending');
+      
       setInvitationsState({ invitations: invs, isLoadingInvitations: false });
     }, (error) => {
       console.error("FirebaseProvider: invitations snapshot error:", error);
