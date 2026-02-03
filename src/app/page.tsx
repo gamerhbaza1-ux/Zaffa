@@ -13,6 +13,7 @@ import { InvitationNotification } from '@/components/invitation-notification';
 import { getAuth, signOut } from 'firebase/auth';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
+import { ThemeSwitcher } from '@/components/theme-switcher';
 
 function Header() {
   const { user } = useUser();
@@ -36,6 +37,7 @@ function Header() {
           </div>
           {user && (
             <div className="flex items-center gap-2">
+              <ThemeSwitcher />
               <Button variant="ghost" size="icon" asChild>
                 <Link href="/log" aria-label="عرض سجل النشاط">
                     <History className="h-5 w-5 text-muted-foreground" />

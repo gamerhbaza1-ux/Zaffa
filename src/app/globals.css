@@ -39,6 +39,42 @@
     --sidebar-ring: 330 60% 70%;
   }
 
+  .theme-bride {
+    --background: 340 25% 97%;
+    --foreground: 215 28% 17%;
+    --card: 0 0% 100%;
+    --card-foreground: 215 28% 17%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 215 28% 17%;
+    --primary: 340 82% 56%;
+    --primary-foreground: 340 82% 98%;
+    --secondary: 340 20% 94%;
+    --secondary-foreground: 340 60% 25%;
+    --muted: 340 20% 94%;
+    --muted-foreground: 215 20% 45%;
+    --accent: 340 50% 92%;
+    --accent-foreground: 340 70% 30%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 340 15% 90%;
+    --input: 340 15% 90%;
+    --ring: 340 82% 56%;
+    --chart-1: 340 76% 61%;
+    --chart-2: 350 58% 39%;
+    --chart-3: 355 37% 24%;
+    --chart-4: 0 74% 66%;
+    --chart-5: 10 87% 67%;
+    --radius: 0.8rem;
+    --sidebar-background: 340 67% 98%;
+    --sidebar-foreground: 340 10% 25%;
+    --sidebar-primary: 340 60% 70%;
+    --sidebar-primary-foreground: 340 20% 10%;
+    --sidebar-accent: 340 67% 92%;
+    --sidebar-accent-foreground: 340 10% 25%;
+    --sidebar-border: 340 67% 90%;
+    --sidebar-ring: 340 60% 70%;
+  }
+
   .dark {
     --background: 222 84% 4.9%;
     --foreground: 210 40% 98%;
