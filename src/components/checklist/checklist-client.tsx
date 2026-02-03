@@ -154,9 +154,6 @@ export default function ChecklistClient({ initialItems, initialCategories }: Che
           <Button variant="secondary" onClick={() => setImportDialogOpen(true)}>
             <Upload className="ml-2 h-4 w-4" /> استيراد
           </Button>
-          <Button variant="outline" onClick={() => setAddSectionDialogOpen(true)}>
-            <ListPlus className="ml-2 h-4 w-4" /> إضافة قسم
-          </Button>
            <Button variant="outline" onClick={() => setAddCategoryDialogOpen(true)}>
             <ListPlus className="ml-2 h-4 w-4" /> إضافة فئة
           </Button>
@@ -166,13 +163,18 @@ export default function ChecklistClient({ initialItems, initialCategories }: Che
 
       {totalCount > 0 ? (
         <Tabs defaultValue={topLevelCategories[0]?.id} className="w-full" dir="rtl">
-            <TabsList className="flex flex-wrap w-full h-auto justify-start">
-                {topLevelCategories.map(category => (
-                    <TabsTrigger key={category.id} value={category.id} className="flex-grow">
-                        <span className="truncate">{category.name}</span>
-                    </TabsTrigger>
-                ))}
-            </TabsList>
+            <div className="flex items-center flex-wrap gap-2">
+              <TabsList className="flex-wrap h-auto justify-start flex-grow">
+                  {topLevelCategories.map(category => (
+                      <TabsTrigger key={category.id} value={category.id}>
+                          <span className="truncate">{category.name}</span>
+                      </TabsTrigger>
+                  ))}
+              </TabsList>
+              <Button variant="outline" onClick={() => setAddSectionDialogOpen(true)} className="shrink-0">
+                  <ListPlus className="ml-2 h-4 w-4" /> إضافة قسم
+              </Button>
+            </div>
             {topLevelCategories.map(topLevelCategory => {
                 const getDescendantIds = (catId: string): string[] => {
                     let ids = [catId];
