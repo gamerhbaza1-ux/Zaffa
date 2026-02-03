@@ -50,8 +50,10 @@ export default function ChecklistClient() {
     return collection(firestore, `users/${user.uid}/checklistItems`);
   }, [firestore, user]);
 
-  const { data: categories = [], isLoading: isLoadingCategories } = useCollection<Category>(categoriesQuery);
-  const { data: items = [], isLoading: isLoadingItems } = useCollection<ChecklistItem>(itemsQuery);
+  const { data: categoriesData, isLoading: isLoadingCategories } = useCollection<Category>(categoriesQuery);
+  const categories = categoriesData || [];
+  const { data: itemsData, isLoading: isLoadingItems } = useCollection<ChecklistItem>(itemsQuery);
+  const items = itemsData || [];
 
   const [isPending, startTransition] = useTransition();
 
