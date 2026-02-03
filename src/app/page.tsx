@@ -80,11 +80,12 @@ function Header() {
 }
 
 export default function Home() {
-  const { user, isUserLoading, userProfile, isProfileLoading, household, isHouseholdLoading } = useUser();
+  const { user, isUserLoading, userProfile, isProfileLoading } = useUser();
   const router = useRouter();
-  const [isInviteDialogOpen, setInviteDialogOpen] = useState(false);
   
+  // This effect handles the redirection for unauthenticated users.
   useEffect(() => {
+    // We wait until the loading is complete before checking for a user.
     if (!isUserLoading && !user) {
       router.push('/login');
     }
@@ -92,25 +93,30 @@ export default function Home() {
 
   const heroImage = PlaceHolderImages.find(p => p.id === 'hero');
   
-  // If we're still figuring out auth state, or there is no user, show a loading screen.
-  // This is the gatekeeper. It prevents rendering anything else for logged-out users
-  // and allows the useEffect to redirect.
-  if (isUserLoading || !user) {
+  // Gatekeeper 1: While checking auth state, show a loading screen.
+  if (isUserLoading) {
     return <div className="flex h-screen items-center justify-center">جاري التحميل...</div>;
   }
   
-  // At this point, `user` is guaranteed to exist.
-  // Now check for the profile.
-  if (isProfileLoading || !userProfile) {
+  // Gatekeeper 2: If auth is resolved and there's NO user, the effect above will redirect.
+  // We render a loading screen to provide a seamless transition during redirection.
+  if (!user) {
+    return <div className="flex h-screen items-center justify-center">جاري التحميل...</div>;
+  }
+  
+  // From here on, we are guaranteed to have a logged-in user.
+
+  // Gatekeeper 3: Wait for the user's profile to load.
+  if (isProfileLoading) {
     return <div className="flex h-screen items-center justify-center">جاري تحميل حسابك...</div>;
   }
 
-  // At this point, `userProfile` is guaranteed to exist.
-  // If user has not completed setup, show the choice screen
-  if (!userProfile.householdId) {
+  // Gatekeeper 4: If profile is loaded but doesn't exist (edge case) or doesn't have a household
+  if (!userProfile || !userProfile.householdId) {
     return <SetupChoice />;
   }
 
+  // If all checks pass, render the main application content.
   return (
     <div className="flex flex-col min-h-screen bg-background">
       <Header />
@@ -143,35 +149,6 @@ export default function Home() {
           
           <div className="mb-8 space-y-4">
             <PartnerDisplay />
-            
-            {isHouseholdLoading ? (
-              <Card className="bg-primary-foreground border-2 border-dashed border-primary/20">
-                 <CardContent className="p-6">
-                    <div className="flex items-center justify-between gap-4">
-                      <div className="space-y-2 flex-grow">
-                         <Skeleton className="h-5 w-48" />
-                         <Skeleton className="h-4 w-full max-w-md" />
-                      </div>
-                      <Skeleton className="h-10 w-32" />
-                    </div>
-                 </CardContent>
-              </Card>
-            ) : household && household.memberIds.length < 2 ? (
-               <Card className="bg-primary-foreground border-2 border-dashed border-primary/20">
-                <CardContent className="p-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-                  <div className="flex-grow">
-                    <h3 className="text-lg font-semibold text-primary">جاهزين للتخطيط سوا؟</h3>
-                    <p className="text-sm text-muted-foreground mt-1">
-                      اعزم شريكك عشان تشاركوا القايمة وتبدأوا تجهزوا عش الزوجية.
-                    </p>
-                  </div>
-                  <Button onClick={() => setInviteDialogOpen(true)} className="w-full sm:w-auto flex-shrink-0">
-                    <UserPlus className="ml-2 h-4 w-4" />
-                    ندعي شريك
-                  </Button>
-                </CardContent>
-              </Card>
-            ) : null}
           </div>
 
           <ChecklistClient />
@@ -182,10 +159,6 @@ export default function Home() {
           اتعمل بـ <span className="text-primary">♡</span> لبداية جديدة.
         </p>
       </footer>
-       <InviteDialog
-        open={isInviteDialogOpen}
-        onOpenChange={setInviteDialogOpen}
-      />
     </div>
   );
 }
