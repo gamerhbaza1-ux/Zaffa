@@ -5,7 +5,7 @@ import { PlaceHolderImages } from '@/lib/placeholder-images';
 import ChecklistClient from '@/components/checklist/checklist-client';
 import { Card } from '@/components/ui/card';
 import { Home as HomeIcon, LogOut } from 'lucide-react';
-import { useAuth } from '@/firebase';
+import { useUser } from '@/firebase';
 import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';
 import { Button } from '@/components/ui/button';
@@ -21,8 +21,15 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { getAuth } from 'firebase/auth';
 
 function Header() {
-  const { user, isUserLoading } = useAuth();
+  const { user, userProfile, isUserLoading, isProfileLoading } = useUser();
   const auth = getAuth();
+
+  const displayName = userProfile ? `${userProfile.firstName} ${userProfile.lastName}`.trim() : user?.displayName;
+  const email = userProfile?.email || user?.email;
+  const fallback = userProfile 
+    ? `${userProfile.firstName?.charAt(0)}${userProfile.lastName?.charAt(0)}` 
+    : user?.displayName?.charAt(0) || user?.email?.charAt(0) || 'U';
+
 
   return (
     <header className="bg-background/95 backdrop-blur-sm border-b sticky top-0 z-10">
@@ -36,28 +43,28 @@ function Header() {
           </h1>
         </div>
         <div>
-          {!isUserLoading && user && (
+          {!(isUserLoading || isProfileLoading) && user && (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" className="relative h-10 w-10 rounded-full">
                   <Avatar className="h-10 w-10">
-                    <AvatarImage src={user.photoURL ?? ''} alt={user.displayName ?? 'User'} />
-                    <AvatarFallback>{user.displayName?.charAt(0)}</AvatarFallback>
+                    <AvatarImage src={user.photoURL ?? ''} alt={displayName ?? 'User'} />
+                    <AvatarFallback>{fallback}</AvatarFallback>
                   </Avatar>
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent className="w-56" align="end" forceMount>
                 <DropdownMenuLabel className="font-normal">
                   <div className="flex flex-col space-y-1">
-                    <p className="text-sm font-medium leading-none">{user.displayName}</p>
+                    <p className="text-sm font-medium leading-none">{displayName}</p>
                     <p className="text-xs leading-none text-muted-foreground">
-                      {user.email}
+                      {email}
                     </p>
                   </div>
                 </DropdownMenuLabel>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={() => auth.signOut()}>
-                  <LogOut className="mr-2 h-4 w-4" />
+                  <LogOut className="ml-2 h-4 w-4" />
                   <span>تسجيل الخروج</span>
                 </DropdownMenuItem>
               </DropdownMenuContent>
@@ -70,7 +77,7 @@ function Header() {
 }
 
 export default function Home() {
-  const { user, isUserLoading } = useAuth();
+  const { user, isUserLoading } = useUser();
   const router = useRouter();
   
   useEffect(() => {

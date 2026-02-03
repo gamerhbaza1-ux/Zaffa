@@ -1,29 +1,42 @@
 {
   "entities": {
     "User": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "User",
       "type": "object",
       "description": "Represents a user of the Nest Planner application.",
       "properties": {
         "id": {
           "type": "string",
-          "description": "Unique identifier for the User entity."
+          "description": "Unique identifier for the User entity (Firebase UID)."
         },
         "email": {
           "type": "string",
           "description": "Email address of the user.",
           "format": "email"
         },
-        "username": {
+        "firstName": {
           "type": "string",
-          "description": "Username of the user."
+          "description": "First name of the user."
+        },
+        "lastName": {
+          "type": "string",
+          "description": "Last name of the user."
+        },
+        "role": {
+          "type": "string",
+          "description": "The user's role, which determines the app theme.",
+          "enum": [
+            "groom",
+            "bride"
+          ]
         }
       },
       "required": [
         "id",
         "email",
-        "username"
+        "firstName",
+        "lastName",
+        "role"
       ]
     },
     "ChecklistItem": {
@@ -70,7 +83,7 @@
   "auth": {
     "providers": [
       "password",
-      "anonymous"
+      "google.com"
     ]
   },
   "firestore": {

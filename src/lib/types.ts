@@ -1,3 +1,11 @@
+export type UserProfile = {
+  id: string; // Firebase UID
+  firstName: string;
+  lastName: string;
+  email: string;
+  role: 'groom' | 'bride';
+};
+
 export type Category = {
   id: string;
   name: string;
