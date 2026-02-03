@@ -4,10 +4,10 @@ import { useMemo, useEffect, useState, useCallback } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useUser, useCollection, useFirestore } from '@/firebase';
-import { collection, addDoc, deleteDoc, doc } from 'firebase/firestore';
+import { collection, addDoc, deleteDoc, doc, updateDoc } from 'firebase/firestore';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { ArrowRight, ListTree, ShoppingCart, Target, TrendingUp, X, PlusCircle } from 'lucide-react';
+import { ArrowRight, ListTree, ShoppingCart, Target, TrendingUp, X, PlusCircle, Star } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import type { Category, ChecklistItem, Analysis } from '@/lib/types';
 import { Progress } from '@/components/ui/progress';
@@ -68,8 +68,8 @@ function StatCard({ title, value, icon: Icon, onClick, className }: { title: str
     );
 }
 
-function AnalysisResultCard({ analysis, onRemove, onShowItems }: { analysis: any, onRemove: (id: string) => void, onShowItems: () => void }) {
-    const { title, stats } = analysis;
+function AnalysisResultCard({ analysis, onRemove, onShowItems, onToggleFeatured }: { analysis: any, onRemove: (id: string) => void, onShowItems: () => void, onToggleFeatured: (id: string, isCurrentlyFeatured: boolean) => void }) {
+    const { title, stats, isFeatured } = analysis;
 
     const formatPrice = (price: number) => {
         return new Intl.NumberFormat('ar-EG', { style: 'currency', currency: 'EGP', minimumFractionDigits: 0 }).format(price);
@@ -79,9 +79,16 @@ function AnalysisResultCard({ analysis, onRemove, onShowItems }: { analysis: any
         <Card className="bg-accent/30">
             <CardHeader>
                 <div className="flex justify-between items-start">
-                    <CardTitle className="font-headline text-lg">{title}</CardTitle>
+                    <div className="flex items-center gap-2">
+                        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => onToggleFeatured(analysis.id, !!isFeatured)}>
+                            <Star className={cn("h-4 w-4 transition-colors", isFeatured ? "fill-primary text-primary" : "text-muted-foreground hover:text-primary")} />
+                            <span className="sr-only">{isFeatured ? 'إلغاء تثبيت التحليل' : 'تثبيت التحليل في الرئيسية'}</span>
+                        </Button>
+                        <CardTitle className="font-headline text-lg">{title}</CardTitle>
+                    </div>
                     <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => onRemove(analysis.id)}>
                         <X className="h-4 w-4" />
+                         <span className="sr-only">حذف التحليل</span>
                     </Button>
                 </div>
             </CardHeader>
@@ -167,6 +174,7 @@ export default function StatsPage() {
         return {
             id: saved.id,
             title: saved.title,
+            isFeatured: saved.isFeatured,
             stats,
             items: relevantItems,
         };
@@ -184,6 +192,7 @@ export default function StatsPage() {
     const newAnalysisData: Omit<Analysis, 'id'> = {
         title,
         categoryIds: selection,
+        isFeatured: false,
     };
     
     addDoc(analysesRef, newAnalysisData)
@@ -204,7 +213,16 @@ export default function StatsPage() {
         })
         .catch(() => errorEmitter.emit('permission-error', new FirestorePermissionError({ path: analysisDocRef.path, operation: 'delete' })));
   };
-
+  
+  const handleToggleFeatured = (id: string, isCurrentlyFeatured: boolean) => {
+    if (!analysesRef) return;
+    const analysisDocRef = doc(analysesRef, id);
+    updateDoc(analysisDocRef, { isFeatured: !isCurrentlyFeatured })
+        .then(() => {
+            toast({ title: !isCurrentlyFeatured ? 'تم التثبيت في الرئيسية' : 'تمت الإزالة من الرئيسية' });
+        })
+        .catch(() => errorEmitter.emit('permission-error', new FirestorePermissionError({ path: analysisDocRef.path, operation: 'update', requestResourceData: { isFeatured: !isCurrentlyFeatured } })));
+  };
 
   if (isLoading || !user) {
     return (
@@ -257,6 +275,7 @@ export default function StatsPage() {
                             analysis={analysis} 
                             onRemove={handleRemoveAnalysis} 
                             onShowItems={() => setItemsToShow({ title: analysis.title, items: analysis.items })}
+                            onToggleFeatured={handleToggleFeatured}
                         />
                     ))}
                 </div>

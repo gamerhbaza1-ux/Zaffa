@@ -265,6 +265,10 @@
             "type": "string"
           },
           "description": "An array of category or section IDs included in the analysis."
+        },
+        "isFeatured": {
+          "type": "boolean",
+          "description": "If true, this analysis will be displayed on the main page."
         }
       },
       "required": [

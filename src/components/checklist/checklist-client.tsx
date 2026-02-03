@@ -40,6 +40,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Skeleton } from '../ui/skeleton';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
+import { FeaturedAnalyses } from '../featured-analyses';
 
 export default function ChecklistClient() {
     const { userProfile, household, isHouseholdLoading } = useUser();
@@ -421,6 +422,7 @@ export default function ChecklistClient() {
                 />
             </div>
             <ProgressSummary purchasedCount={purchasedCount} totalCount={totalCount} />
+            <FeaturedAnalyses />
           </div>
     
           {searchQuery ? (

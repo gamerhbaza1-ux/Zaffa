@@ -63,4 +63,5 @@ export type Analysis = {
   id: string;
   title: string;
   categoryIds: string[];
+  isFeatured?: boolean;
 };
