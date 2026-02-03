@@ -1,128 +1,52 @@
 "use client";
 
-import { useActionState, useEffect, useRef, useTransition } from 'react';
-import { useForm } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
-import { z } from 'zod';
-import { updateCategory } from '@/lib/actions';
+import { useState, useEffect } from 'react';
 import type { Category } from '@/lib/types';
-
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-  DialogFooter
-} from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import {
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from "@/components/ui/form";
-import {
-  Select,
-  SelectContent,
-  SelectGroup,
-  SelectItem,
-  SelectLabel,
-  SelectSeparator,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
-import { useToast } from '@/hooks/use-toast';
-import React from 'react';
-import { SubmitButton } from '../submit-button';
-
-const categorySchema = z.object({
-  id: z.string(),
-  name: z.string().min(1, "الاسم مطلوب."),
-  parentId: z.string().nullable().optional(),
-});
-
-type FormValues = z.infer<typeof categorySchema>;
+import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectSeparator, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Label } from '../ui/label';
 
 type EditCategoryDialogProps = {
   category: Category | null;
   categories: Category[];
-  householdId: string;
   onOpenChange: (open: boolean) => void;
-  onCategoryUpdated: () => void;
+  onCategoryUpdated: (id: string, name: string, parentId: string | null) => boolean;
 };
 
-export function EditCategoryDialog({ category, categories, householdId, onOpenChange, onCategoryUpdated }: EditCategoryDialogProps) {
-  const [state, formAction] = React.useActionState(updateCategory, { errors: {} });
-  const formRef = useRef<HTMLFormElement>(null);
-  const { toast } = useToast();
-  const [, startTransition] = useTransition();
-  
-  const open = !!category;
+export function EditCategoryDialog({ category, categories, onOpenChange, onCategoryUpdated }: EditCategoryDialogProps) {
+  const [name, setName] = useState('');
+  const [parentId, setParentId] = useState<string | null>(null);
 
-  const form = useForm<FormValues>({
-    resolver: zodResolver(categorySchema),
-    defaultValues: {
-      id: category?.id || "",
-      name: category?.name || "",
-      parentId: category?.parentId || null,
-    }
-  });
+  const open = !!category;
 
   useEffect(() => {
     if (category) {
-      form.reset({ id: category.id, name: category.name, parentId: category.parentId });
+      setName(category.name);
+      setParentId(category.parentId);
     }
-  }, [category, form]);
+  }, [category]);
 
-  useEffect(() => {
-    if (state?.success) {
-      toast({
-        title: "تمام!",
-        description: "حدثنا القسم/الفئة.",
-      });
-      onCategoryUpdated();
-      onOpenChange(false);
-    } else if (state?.errors) {
-       Object.entries(state.errors).forEach(([key, value]) => {
-        if (value) {
-            form.setError(key as keyof FormValues, { type: 'server', message: value[0] });
-        }
-       });
-    }
-  }, [state, form, onOpenChange, onCategoryUpdated, toast]);
-  
-  const handleOpenChange = (isOpen: boolean) => {
-    if (!isOpen) {
-        onOpenChange(false);
-        form.reset();
-        startTransition(() => {
-          // @ts-ignore
-          formAction(new FormData()); // Reset server state
-        });
-    } else {
-        onOpenChange(true);
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!category || !name) return;
+    const success = onCategoryUpdated(category.id, name, parentId);
+    if (success) {
+      handleClose();
     }
   }
 
-  const handleFormAction = (formData: FormData) => {
-    if (householdId) {
-      formData.append('householdId', householdId);
-      formAction(formData);
-    } else {
-       toast({ variant: 'destructive', title: 'خطأ', description: 'لازم تسجل دخول الأول.'})
-    }
+  const handleClose = () => {
+    onOpenChange(false);
   }
-  
+
   const filteredCategories = categories.filter(c => c.id !== category?.id);
   const sections = filteredCategories.filter(c => !c.parentId).sort((a, b) => a.name.localeCompare(b.name));
   const otherCategories = filteredCategories.filter(c => c.parentId).sort((a, b) => a.name.localeCompare(b.name));
 
   return (
-    <Dialog open={open} onOpenChange={handleOpenChange}>
+    <Dialog open={open} onOpenChange={handleClose}>
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
           <DialogTitle className="font-headline">نعدل القسم أو الفئة</DialogTitle>
@@ -130,39 +54,18 @@ export function EditCategoryDialog({ category, categories, householdId, onOpenCh
             ممكن نغير الاسم أو ننقله لقسم أو فئة تانية.
           </DialogDescription>
         </DialogHeader>
-        <Form {...form}>
-          <form
-            ref={formRef}
-            action={handleFormAction}
-            className="space-y-4 pt-4"
-          >
-            <input type="hidden" {...form.register('id')} />
-            <FormField
-              control={form.control}
-              name="name"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>الاسم</FormLabel>
-                  <FormControl>
-                    <Input {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+        <form onSubmit={handleSubmit} className="space-y-4 pt-4">
+            <div>
+              <Label htmlFor='editCatName'>الاسم</Label>
+              <Input id='editCatName' value={name} onChange={e => setName(e.target.value)} />
+            </div>
             
-            <FormField
-              control={form.control}
-              name="parentId"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>تبع</FormLabel>
-                   <Select onValueChange={field.onChange} value={field.value || "null"}>
-                    <FormControl>
-                      <SelectTrigger>
+            <div>
+                <Label>تبع</Label>
+                <Select onValueChange={(val) => setParentId(val === 'null' ? null : val)} value={parentId || "null"}>
+                    <SelectTrigger>
                         <SelectValue placeholder="نختار قسم أو فئة" />
-                      </SelectTrigger>
-                    </FormControl>
+                    </SelectTrigger>
                     <SelectContent>
                         <SelectItem value="null">مش تبع حاجة (نخليه قسم لوحده)</SelectItem>
                         <SelectSeparator />
@@ -188,18 +91,14 @@ export function EditCategoryDialog({ category, categories, householdId, onOpenCh
                           </>
                         )}
                     </SelectContent>
-                  </Select>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+                </Select>
+            </div>
 
             <DialogFooter className="pt-4">
-              <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>نلغي</Button>
-              <SubmitButton label="نحفظ التغييرات" />
+              <Button type="button" variant="outline" onClick={handleClose}>نلغي</Button>
+              <Button type="submit">نحفظ التغييرات</Button>
             </DialogFooter>
           </form>
-        </Form>
       </DialogContent>
     </Dialog>
   );

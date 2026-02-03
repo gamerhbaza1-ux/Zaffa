@@ -1,96 +1,36 @@
 "use client";
 
-import { useActionState, useEffect, useRef, useTransition } from 'react';
-import { useForm } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
-import { z } from 'zod';
-import { addCategory } from '@/lib/actions';
-
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-  DialogFooter
-} from "@/components/ui/dialog";
+import { useState } from 'react';
 import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import {
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from "@/components/ui/form";
-import { useToast } from '@/hooks/use-toast';
-import React from 'react';
-import { SubmitButton } from '../submit-button';
-
-const sectionSchema = z.object({
-  name: z.string().min(1, "لازم نكتب اسم القسم."),
-});
-
-type FormValues = z.infer<typeof sectionSchema>;
+import { Label } from "@/components/ui/label";
 
 type AddSectionDialogProps = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onSectionAdded: () => void;
-  householdId: string;
+  onSectionAdded: (name: string) => boolean;
 };
 
-export function AddSectionDialog({ open, onOpenChange, onSectionAdded, householdId }: AddSectionDialogProps) {
-  const [state, formAction] = React.useActionState(addCategory, { errors: {} });
-  const formRef = useRef<HTMLFormElement>(null);
-  const { toast } = useToast();
-  const [, startTransition] = useTransition();
+export function AddSectionDialog({ open, onOpenChange, onSectionAdded }: AddSectionDialogProps) {
+  const [name, setName] = useState('');
 
-  const form = useForm<FormValues>({
-    resolver: zodResolver(sectionSchema),
-    defaultValues: {
-      name: "",
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!name) return;
+    const success = onSectionAdded(name);
+    if(success) {
+      handleClose();
     }
-  });
-
-  useEffect(() => {
-    if (state?.success) {
-      toast({
-        title: "تمام!",
-        description: "ضفنا القسم الجديد.",
-      });
-      form.reset();
-      onSectionAdded();
-      onOpenChange(false);
-    } else if (state?.errors?.name) {
-        form.setError("name", { type: 'server', message: state.errors.name[0] });
-    }
-  }, [state, form, onOpenChange, onSectionAdded, toast]);
-  
-  const handleOpenChange = (isOpen: boolean) => {
-    if (!isOpen) {
-      form.reset();
-      startTransition(() => {
-        // @ts-ignore
-        formAction(new FormData()); // Reset server state
-      });
-    }
-    onOpenChange(isOpen);
   }
 
-  const handleFormAction = (formData: FormData) => {
-    if (householdId) {
-      formData.append('householdId', householdId);
-      formData.append('parentId', 'null');
-      formAction(formData);
-    } else {
-       toast({ variant: 'destructive', title: 'خطأ', description: 'لازم تسجل دخول الأول.'})
-    }
+  const handleClose = () => {
+    setName('');
+    onOpenChange(false);
   }
 
   return (
-    <Dialog open={open} onOpenChange={handleOpenChange}>
+    <Dialog open={open} onOpenChange={handleClose}>
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
           <DialogTitle className="font-headline">نضيف قسم جديد</DialogTitle>
@@ -98,32 +38,16 @@ export function AddSectionDialog({ open, onOpenChange, onSectionAdded, household
             الأقسام هي اللي بتنظم القائمة بتاعتنا (زي عفش، أجهزة).
           </DialogDescription>
         </DialogHeader>
-        <Form {...form}>
-          <form
-            ref={formRef}
-            action={handleFormAction}
-            className="space-y-4 pt-4"
-          >
-            <FormField
-              control={form.control}
-              name="name"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>اسم القسم</FormLabel>
-                  <FormControl>
-                    <Input placeholder="مثال: عفش" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <DialogFooter className="pt-4">
-              <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>نلغي</Button>
-              <SubmitButton label="نضيف القسم" />
-            </DialogFooter>
-          </form>
-        </Form>
+        <form onSubmit={handleSubmit} className="space-y-4 pt-4">
+          <div>
+            <Label htmlFor="sectionName">اسم القسم</Label>
+            <Input id="sectionName" placeholder="مثال: عفش" value={name} onChange={e => setName(e.target.value)} />
+          </div>
+          <DialogFooter className="pt-4">
+            <Button type="button" variant="outline" onClick={handleClose}>نلغي</Button>
+            <Button type="submit">نضيف القسم</Button>
+          </DialogFooter>
+        </form>
       </DialogContent>
     </Dialog>
   );

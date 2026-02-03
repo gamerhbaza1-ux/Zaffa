@@ -11,10 +11,9 @@ type ItemCardProps = {
   item: ChecklistItem;
   onToggle: () => void;
   onDelete: () => void;
-  isPending: boolean;
 };
 
-export function ItemCard({ item, onToggle, onDelete, isPending }: ItemCardProps) {
+export function ItemCard({ item, onToggle, onDelete }: ItemCardProps) {
   const formatPrice = (price: number) => {
     return new Intl.NumberFormat('ar-EG', { style: 'currency', currency: 'EGP', minimumFractionDigits: 0 }).format(price);
   };
@@ -23,8 +22,7 @@ export function ItemCard({ item, onToggle, onDelete, isPending }: ItemCardProps)
     <div
       className={cn(
         'p-3 flex items-center gap-4 transition-colors duration-200 rounded-lg border border-transparent hover:bg-accent',
-        item.isPurchased && 'bg-accent/50',
-        isPending && 'opacity-50 pointer-events-none'
+        item.isPurchased && 'bg-accent/50'
       )}
     >
       <Checkbox

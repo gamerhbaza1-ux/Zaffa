@@ -1,10 +1,8 @@
 "use client";
 
-import { useState, useTransition, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback } from 'react';
 import type { ChecklistItem, Category } from '@/lib/types';
-import { deleteItem, unpurchaseItem, deleteCategory } from '@/lib/actions';
-import { useUser, useFirestore, useCollection } from '@/firebase';
-import { collection } from 'firebase/firestore';
+import { nanoid } from 'nanoid';
 
 import { Button } from '@/components/ui/button';
 import { Plus, Upload, ListPlus, MoreVertical, Pencil, Trash2, Loader2, FolderPlus } from 'lucide-react';
@@ -36,28 +34,23 @@ import {
 } from "@/components/ui/alert-dialog";
 import { useToast } from '@/hooks/use-toast';
 
+// Dummy data
+const INITIAL_CATEGORIES: Category[] = [
+  { id: 'sec_furniture', name: 'عفش', parentId: null },
+  { id: 'sec_appliances', name: 'أجهزة كهربائية', parentId: null },
+  { id: 'cat_living_room', name: 'الصالون', parentId: 'sec_furniture' },
+  { id: 'cat_kitchen_main', name: 'المطبخ', parentId: 'sec_appliances' },
+];
+
+const INITIAL_ITEMS: ChecklistItem[] = [
+  { id: 'item_1', name: 'كنبة', categoryId: 'cat_living_room', minPrice: 5000, maxPrice: 10000, isPurchased: false },
+  { id: 'item_2', name: 'تلاجة', categoryId: 'cat_kitchen_main', minPrice: 15000, maxPrice: 25000, isPurchased: true, finalPrice: 22000 },
+];
+
+
 export default function ChecklistClient() {
-  const { isProfileLoading, household, isHouseholdLoading } = useUser();
-  const firestore = useFirestore();
-
-  const householdId = household?.id;
-
-  const categoriesQuery = useMemo(() => {
-    if (!householdId || !firestore) return null;
-    return collection(firestore, `households/${householdId}/categories`);
-  }, [firestore, householdId]);
-
-  const itemsQuery = useMemo(() => {
-    if (!householdId || !firestore) return null;
-    return collection(firestore, `households/${householdId}/checklistItems`);
-  }, [firestore, householdId]);
-
-  const { data: categoriesData, isLoading: isLoadingCategories } = useCollection<Category>(categoriesQuery);
-  const categories = categoriesData || [];
-  const { data: itemsData, isLoading: isLoadingItems } = useCollection<ChecklistItem>(itemsQuery);
-  const items = itemsData || [];
-
-  const [isPending, startTransition] = useTransition();
+  const [categories, setCategories] = useState<Category[]>(INITIAL_CATEGORIES);
+  const [items, setItems] = useState<ChecklistItem[]>(INITIAL_ITEMS);
 
   const [isAddDialogOpen, setAddDialogOpen] = useState(false);
   const [isImportDialogOpen, setImportDialogOpen] = useState(false);
@@ -70,10 +63,6 @@ export default function ChecklistClient() {
   const [categoryToDelete, setCategoryToDelete] = useState<Category | null>(null);
   const { toast } = useToast();
   
-  const refreshData = useCallback(() => {
-    // Revalidation is handled by server actions
-  }, []);
-
   const formatPrice = useCallback((price: number) => {
     return new Intl.NumberFormat('ar-EG', { style: 'currency', currency: 'EGP', minimumFractionDigits: 0 }).format(price);
   }, []);
@@ -88,53 +77,99 @@ export default function ChecklistClient() {
       }
     }
   };
+  
+  const handlePurchase = (itemId: string, finalPrice: number) => {
+    setItems(prev => prev.map(item => item.id === itemId ? { ...item, isPurchased: true, finalPrice } : item));
+    toast({
+        title: "تمام!",
+        description: "علمنا على الحاجة دي انها اتجابت خلاص.",
+    });
+    setItemToPurchase(null);
+  }
 
   const handleUnpurchaseConfirm = () => {
-    if (!itemToUnpurchase || !householdId) return;
-
-    startTransition(async () => {
-      await unpurchaseItem(householdId, itemToUnpurchase.id);
-      toast({
+    if (!itemToUnpurchase) return;
+    const itemName = itemToUnpurchase.name;
+    setItems(prev => prev.map(item => item.id === itemToUnpurchase.id ? { ...item, isPurchased: false, finalPrice: undefined } : item));
+    toast({
         title: "رجعناها القائمة",
-        description: `رجعنا "${itemToUnpurchase.name}" للحاجات اللي لسه هنجيبها.`,
-      });
-      setItemToUnpurchase(null);
+        description: `رجعنا "${itemName}" للحاجات اللي لسه هنجيبها.`,
     });
+    setItemToUnpurchase(null);
   };
 
   const handleDeleteItemConfirm = () => {
-    if (!itemToDelete || !householdId) return;
-    startTransition(async () => {
-      await deleteItem(householdId, itemToDelete.id);
-      toast({
+    if (!itemToDelete) return;
+    const itemName = itemToDelete.name;
+    setItems(prev => prev.filter(item => item.id !== itemToDelete.id));
+    toast({
         title: "اتمسحت",
-        description: `مسحنا الحاجة "${itemToDelete.name}".`,
-      });
-      setItemToDelete(null);
+        description: `مسحنا الحاجة "${itemName}".`,
     });
+    setItemToDelete(null);
+  };
+
+  const handleAddSection = (name: string) => {
+    if (categories.some(c => c.parentId === null && c.name.toLowerCase() === name.toLowerCase())) {
+      toast({ variant: 'destructive', title: 'خطأ', description: 'القسم ده موجود قبل كده.'});
+      return false;
+    }
+    const newSection: Category = { id: nanoid(), name, parentId: null };
+    setCategories(prev => [...prev, newSection]);
+    toast({ title: 'تمام!', description: 'ضفنا القسم الجديد.' });
+    setAddSectionDialogOpen(false);
+    return true;
+  }
+
+  const handleAddCategory = (name: string, parentId: string) => {
+      if (categories.some(c => c.parentId === parentId && c.name.toLowerCase() === name.toLowerCase())) {
+        toast({ variant: 'destructive', title: 'خطأ', description: 'الفئة دي موجودة قبل كده في نفس المكان.'});
+        return false;
+    }
+    const newCategory: Category = { id: nanoid(), name, parentId };
+    setCategories(prev => [...prev, newCategory]);
+    toast({ title: 'تمام!', description: 'ضفنا الفئة الجديدة.' });
+    setAddCategoryDialogOpen(false);
+    return true;
+  }
+  
+  const handleUpdateCategory = (id: string, name: string, parentId: string | null) => {
+      let currentParentId = parentId;
+      while(currentParentId) {
+          if (currentParentId === id) {
+              toast({ variant: 'destructive', title: 'خطأ', description: 'مينفعش تخلي الفئة تبع نفسها.' });
+              return false;
+          }
+          const parent = categories.find(c => c.id === currentParentId);
+          currentParentId = parent?.parentId || null;
+      }
+
+      setCategories(prev => prev.map(c => c.id === id ? { ...c, name, parentId } : c));
+      toast({ title: 'تمام!', description: 'حدثنا القسم/الفئة.' });
+      setCategoryToEdit(null);
+      return true;
+  }
+
+  const handleDeleteCategory = () => {
+    if (!categoryToDelete) return;
+    
+    const hasChildren = categories.some(c => c.parentId === categoryToDelete.id);
+    if(hasChildren) {
+        toast({ variant: 'destructive', title: 'خطأ', description: 'مينفعش نمسحها عشان جواها فئات تانية.' });
+        return;
+    }
+
+    const hasItems = items.some(i => i.categoryId === categoryToDelete.id);
+    if(hasItems) {
+        toast({ variant: 'destructive', title: 'خطأ', description: 'مينفعش نمسحها عشان جواها حاجات.' });
+        return;
+    }
+    const categoryName = categoryToDelete.name;
+    setCategories(prev => prev.filter(c => c.id !== categoryToDelete.id));
+    toast({ title: 'اتمسحت', description: `مسحنا "${categoryName}".` });
+    setCategoryToDelete(null);
   };
   
-  const handleDeleteCategory = () => {
-    if (!categoryToDelete || !householdId) return;
-
-    startTransition(async () => {
-      const result = await deleteCategory(householdId, categoryToDelete.id);
-      if (result?.success) {
-        toast({
-          title: "اتمسحت",
-          description: `مسحنا "${categoryToDelete.name}".`,
-        });
-        setCategoryToDelete(null);
-      } else {
-        toast({
-          variant: "destructive",
-          title: "معرفناش نمسح",
-          description: result?.error || "حصلت مشكلة.",
-        });
-      }
-    });
-  };
-
   const purchasedCount = useMemo(() => items.filter(item => item.isPurchased).length, [items]);
   const totalCount = items.length;
 
@@ -155,25 +190,6 @@ export default function ChecklistClient() {
     return getCategoryDepth(category.parentId, depth + 1);
   }, [categoriesById]);
 
-  if (isLoadingCategories || isLoadingItems || isProfileLoading || isHouseholdLoading) {
-    return (
-      <div className="flex justify-center items-center h-64">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-      </div>
-    );
-  }
-  
-  if (!householdId) {
-    return (
-        <div className="text-center py-10 px-4 border-2 border-dashed rounded-lg">
-            <h3 className="text-lg font-medium text-foreground">خطأ في تحميل بيانات الأسرة.</h3>
-            <p className="text-muted-foreground mt-1">
-              من فضلك حاول تسجل خروج وترجع تاني.
-            </p>
-          </div>
-    );
-  }
-
 
   return (
     <>
@@ -182,8 +198,8 @@ export default function ChecklistClient() {
           <Button onClick={() => setAddDialogOpen(true)}>
             <Plus className="ml-2 h-4 w-4" /> نضيف حاجة
           </Button>
-          <Button variant="secondary" onClick={() => setImportDialogOpen(true)}>
-            <Upload className="ml-2 h-4 w-4" /> نستورد
+          <Button variant="secondary" disabled>
+            <Upload className="ml-2 h-4 w-4" /> نستورد (قريباً)
           </Button>
            <Button variant="outline" onClick={() => setAddCategoryDialogOpen(true)}>
             <ListPlus className="ml-2 h-4 w-4" /> نضيف فئة
@@ -277,7 +293,6 @@ export default function ChecklistClient() {
                                                     item={item}
                                                     onToggle={() => handleToggle(item.id)}
                                                     onDelete={() => setItemToDelete(item)}
-                                                    isPending={isPending}
                                                 />
                                             ))}
                                         </div>
@@ -336,51 +351,45 @@ export default function ChecklistClient() {
 
       <PurchaseDialog
         item={itemToPurchase}
-        householdId={householdId}
-        onOpenChange={(open) => {
-          if (!open) {
-            setItemToPurchase(null);
-          }
-        }}
-        onItemPurchased={refreshData}
+        onOpenChange={(open) => !open && setItemToPurchase(null)}
+        onItemPurchased={handlePurchase}
       />
 
       <AddItemDialog
         open={isAddDialogOpen}
         onOpenChange={setAddDialogOpen}
-        onItemAdded={refreshData}
+        onItemAdded={(newItem) => {
+            setItems(prev => [...prev, { ...newItem, id: nanoid(), isPurchased: false }]);
+            toast({ title: 'تمام!', description: 'ضفنا الحاجة الجديدة.'});
+            setAddDialogOpen(false);
+        }}
         categories={categories}
-        householdId={householdId}
       />
       
       <ImportDialog
         open={isImportDialogOpen}
         onOpenChange={setImportDialogOpen}
-        onImportCompleted={refreshData}
-        householdId={householdId}
+        onImportCompleted={() => {}}
       />
 
       <AddSectionDialog
         open={isAddSectionDialogOpen}
         onOpenChange={setAddSectionDialogOpen}
-        onSectionAdded={refreshData}
-        householdId={householdId}
+        onSectionAdded={handleAddSection}
       />
       
       <AddCategoryDialog
         open={isAddCategoryDialogOpen}
         onOpenChange={setAddCategoryDialogOpen}
-        onCategoryAdded={refreshData}
+        onCategoryAdded={handleAddCategory}
         categories={categories}
-        householdId={householdId}
       />
 
       <EditCategoryDialog
         category={categoryToEdit}
         categories={categories}
-        householdId={householdId}
         onOpenChange={(open) => !open && setCategoryToEdit(null)}
-        onCategoryUpdated={refreshData}
+        onCategoryUpdated={handleUpdateCategory}
       />
       
       <AlertDialog open={!!categoryToDelete} onOpenChange={(open) => !open && setCategoryToDelete(null)}>
@@ -388,7 +397,7 @@ export default function ChecklistClient() {
           <AlertDialogHeader>
             <AlertDialogTitle>متأكدين اننا هنمسح؟</AlertDialogTitle>
             <AlertDialogDescription>
-              القسم ده "{categoryToDelete?.name}" هيتمسح ومش هنعرف نرجعه تاني. مش هينفع يتمسح لو جواه فئات تانية أو حاجات.
+              القسم ده "{categoryToDelete?.name}" هيتمسح ومش هنعرف نرجعه تاني.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -396,9 +405,8 @@ export default function ChecklistClient() {
             <AlertDialogAction
               onClick={handleDeleteCategory}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-              disabled={isPending}
             >
-              {isPending ? <Loader2 className="ml-2 h-4 w-4 animate-spin" /> : "أه، نمسح"}
+              أه، نمسح
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -416,9 +424,8 @@ export default function ChecklistClient() {
             <AlertDialogCancel>لأ، نرجع</AlertDialogCancel>
             <AlertDialogAction
               onClick={handleUnpurchaseConfirm}
-              disabled={isPending}
             >
-              {isPending ? <Loader2 className="ml-2 h-4 w-4 animate-spin" /> : "تمام، نرجعها"}
+              تمام، نرجعها
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -437,9 +444,8 @@ export default function ChecklistClient() {
             <AlertDialogAction
               onClick={handleDeleteItemConfirm}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-              disabled={isPending}
             >
-              {isPending ? <Loader2 className="ml-2 h-4 w-4 animate-spin" /> : "أه، نمسح"}
+              أه، نمسح
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
