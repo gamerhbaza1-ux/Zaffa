@@ -6,14 +6,14 @@ import { useRouter } from 'next/navigation';
 import { useUser, useCollection, useFirestore } from '@/firebase';
 import { collection } from 'firebase/firestore';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
-import { ArrowRight, ListTree, ShoppingCart, Target, TrendingUp, X } from 'lucide-react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { ArrowRight, ListTree, ShoppingCart, Target, TrendingUp, X, PlusCircle } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import type { Category, ChecklistItem } from '@/lib/types';
 import { Progress } from '@/components/ui/progress';
-import { Checkbox } from '@/components/ui/checkbox';
-import { Separator } from '@/components/ui/separator';
 import { nanoid } from 'nanoid';
+import { AnalysisSetupDialog } from '@/components/stats/analysis-setup-dialog';
+
 
 const ZaytounaIcon = (props: React.ComponentProps<'svg'>) => (
   <svg
@@ -102,8 +102,8 @@ export default function StatsPage() {
   const firestore = useFirestore();
   const router = useRouter();
   
-  const [selection, setSelection] = useState<string[]>([]);
   const [analyses, setAnalyses] = useState<any[]>([]);
+  const [isAnalysisDialogOpen, setAnalysisDialogOpen] = useState(false);
 
   useEffect(() => {
     if (!isUserLoading && !user) {
@@ -127,17 +127,7 @@ export default function StatsPage() {
     return { sections, subCategories };
   }, [categories]);
 
-  const handleSelectionChange = (checked: boolean | 'indeterminate', id: string) => {
-    setSelection(prev => {
-        if (checked) {
-            return [...prev, id];
-        } else {
-            return prev.filter(existingId => existingId !== id);
-        }
-    });
-  };
-
-  const handleCreateAnalysis = useCallback(() => {
+  const handleCreateAnalysis = useCallback((selection: string[]) => {
     if (selection.length === 0) return;
 
     const getDescendantIds = (catId: string): string[] => {
@@ -171,8 +161,8 @@ export default function StatsPage() {
     const newAnalysis = { id: nanoid(), title, stats };
 
     setAnalyses(prev => [newAnalysis, ...prev]);
-    setSelection([]);
-  }, [selection, items, categories]);
+    setAnalysisDialogOpen(false);
+  }, [items, categories]);
 
   const handleRemoveAnalysis = (id: string) => {
     setAnalyses(prev => prev.filter(a => a.id !== id));
@@ -184,19 +174,12 @@ export default function StatsPage() {
         <div className="flex flex-col min-h-screen bg-background">
             <StatsHeader />
             <main className="flex-1 p-4 md:p-8">
-                <div className="space-y-4 max-w-4xl mx-auto">
-                    <Card>
-                        <CardHeader>
-                            <Skeleton className="h-6 w-48" />
-                            <Skeleton className="h-4 w-64" />
-                        </CardHeader>
-                        <CardContent>
-                           <Skeleton className="h-32 w-full" />
-                        </CardContent>
-                        <CardFooter>
-                           <Skeleton className="h-10 w-32" />
-                        </CardFooter>
-                    </Card>
+                <div className="space-y-6 max-w-4xl mx-auto">
+                    <Skeleton className="h-10 w-48" />
+                    <div className="text-center py-16 text-muted-foreground border-2 border-dashed rounded-lg">
+                        <Skeleton className="h-6 w-56 mx-auto" />
+                        <Skeleton className="h-4 w-80 mx-auto mt-4" />
+                    </div>
                 </div>
             </main>
         </div>
@@ -208,52 +191,20 @@ export default function StatsPage() {
       <StatsHeader />
       <main className="flex-1">
         <div className="container mx-auto p-4 md:p-8 max-w-4xl space-y-8">
-            <Card>
-                <CardHeader>
-                    <CardTitle className="font-headline">إنشاء تحليل جديد</CardTitle>
-                    <CardDescription>
-                        اختار الأقسام أو الفئات اللي عاوز تجمع تحليلها في تقرير واحد.
-                    </CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                    <div>
-                        <h4 className="font-medium text-muted-foreground mb-3">الأقسام الرئيسية</h4>
-                        <div className="space-y-2">
-                        {sections.map(s => (
-                            <div key={s.id} className="flex items-center gap-2">
-                                <Checkbox id={s.id} checked={selection.includes(s.id)} onCheckedChange={(checked) => handleSelectionChange(checked, s.id)} />
-                                <label htmlFor={s.id} className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer">
-                                    {s.name}
-                                </label>
-                            </div>
-                        ))}
-                        </div>
-                    </div>
-                     {subCategories.length > 0 && (
-                        <>
-                        <Separator />
-                        <div>
-                            <h4 className="font-medium text-muted-foreground mb-3">الفئات الفرعية</h4>
-                            <div className="space-y-2">
-                            {subCategories.map(c => (
-                                <div key={c.id} className="flex items-center gap-2">
-                                    <Checkbox id={c.id} checked={selection.includes(c.id)} onCheckedChange={(checked) => handleSelectionChange(checked, c.id)} />
-                                    <label htmlFor={c.id} className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer">
-                                        {c.name}
-                                    </label>
-                                </div>
-                            ))}
-                            </div>
-                        </div>
-                        </>
-                    )}
-                </CardContent>
-                <CardFooter>
-                    <Button onClick={handleCreateAnalysis} disabled={selection.length === 0}>
-                        إنشاء تحليل
-                    </Button>
-                </CardFooter>
-            </Card>
+            <div className="flex justify-start">
+                <Button onClick={() => setAnalysisDialogOpen(true)}>
+                    <PlusCircle className="ml-2 h-4 w-4" />
+                    إنشاء تحليل جديد
+                </Button>
+            </div>
+
+            <AnalysisSetupDialog
+                open={isAnalysisDialogOpen}
+                onOpenChange={setAnalysisDialogOpen}
+                sections={sections}
+                subCategories={subCategories}
+                onAnalyze={handleCreateAnalysis}
+            />
 
             {analyses.length > 0 ? (
                 <div className="space-y-6">
@@ -262,8 +213,9 @@ export default function StatsPage() {
                     ))}
                 </div>
             ) : (
-                <div className="text-center py-10 text-muted-foreground border-2 border-dashed rounded-lg">
-                    <p>لسه مفيش تحليلات. اختار حاجة من فوق عشان تبدأ.</p>
+                <div className="text-center py-16 text-muted-foreground border-2 border-dashed rounded-lg">
+                    <h3 className="text-xl font-medium">ابدأ بتحليل قائمتك</h3>
+                    <p className="mt-2">اضغط على "إنشاء تحليل جديد" لاختيار الأقسام والفئات التي تريد تلخيصها.</p>
                 </div>
             )}
         </div>
