@@ -34,45 +34,12 @@ service cloud.firestore {
     }
     
     /**
-     * Checks for ownership on an existing document. Used for update/delete operations
-     * to prevent acting on documents that do not exist.
-     */
-    function isExistingOwner(userId) {
-      return isOwner(userId) && resource != null;
-    }
-
-    /**
-     * @description Rules for a user's own profile document.
+     * @description Rules for a user's own data, including profile and subcollections.
      * @path /users/{userId}
-     * @allow (create) An authenticated user creating their own user document for the first time.
-     * @allow (get) An authenticated user reading their own profile.
-     * @deny (list) Any user, authenticated or not, attempting to list all users.
-     * @deny (update) An authenticated user trying to modify another user's profile.
-     * @principle Restricts access to a user's own profile document and prevents user enumeration.
+     * @principle Restricts all access to a user's own data tree.
      */
-    match /users/{userId} {
-      allow get: if isOwner(userId);
-      allow list: if false;
-      allow create: if isOwner(userId) && request.resource.data.id == userId;
-      allow update: if isExistingOwner(userId) && request.resource.data.id == resource.data.id;
-      allow delete: if isExistingOwner(userId);
-    }
-
-    /**
-     * @description Rules for a user's private checklist items.
-     * @path /users/{userId}/checklistItems/{checklistItemId}
-     * @allow (create) An authenticated user creating a checklist item for themselves.
-     * @allow (list) An authenticated user listing their own checklist items.
-     * @deny (get) An authenticated user trying to read another user's checklist item.
-     * @deny (create) An authenticated user trying to create a checklist item for another user.
-     * @principle Enforces strict ownership on a subcollection, ensuring a user can only manage their own data.
-     */
-    match /users/{userId}/checklistItems/{checklistItemId} {
-      allow get: if isOwner(userId);
-      allow list: if isOwner(userId);
-      allow create: if isOwner(userId) && request.resource.data.userId == userId;
-      allow update: if isExistingOwner(userId) && request.resource.data.userId == resource.data.userId;
-      allow delete: if isExistingOwner(userId);
+    match /users/{userId}/{document=**} {
+      allow read, write: if isOwner(userId);
     }
   }
 }

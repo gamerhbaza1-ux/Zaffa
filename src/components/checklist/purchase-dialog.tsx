@@ -6,6 +6,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { purchaseItem } from '@/lib/actions';
 import type { ChecklistItem } from '@/lib/types';
+import { useAuth } from '@/firebase';
 
 import {
   Dialog,
@@ -24,6 +25,7 @@ import { SubmitButton } from '../submit-button';
 const purchaseSchema = z.object({
   itemId: z.string(),
   finalPrice: z.coerce.number().min(0, "السعر لازم يكون رقم."),
+  userId: z.string(),
 });
 
 type FormValues = z.infer<typeof purchaseSchema>;
@@ -35,6 +37,7 @@ type PurchaseDialogProps = {
 };
 
 export function PurchaseDialog({ item, onOpenChange, onItemPurchased }: PurchaseDialogProps) {
+  const { user } = useAuth();
   const [state, formAction] = useActionState(purchaseItem, { errors: {} });
   const formRef = useRef<HTMLFormElement>(null);
   const { toast } = useToast();
@@ -61,13 +64,14 @@ export function PurchaseDialog({ item, onOpenChange, onItemPurchased }: Purchase
   }, [state, reset, onOpenChange, toast, setError, onItemPurchased]);
 
   useEffect(() => {
-    if (item) {
+    if (item && user) {
       setValue('itemId', item.id);
       setValue('finalPrice', item.maxPrice);
+      setValue('userId', user.uid);
     } else {
         reset();
     }
-  }, [item, setValue, reset]);
+  }, [item, user, setValue, reset]);
 
   const handleOpenChange = (isOpen: boolean) => {
       if (!isOpen) {
@@ -91,11 +95,11 @@ export function PurchaseDialog({ item, onOpenChange, onItemPurchased }: Purchase
         </DialogHeader>
         <form
           ref={formRef}
-          // @ts-ignore
           action={formAction}
           className="grid gap-4 py-4"
         >
           <input type="hidden" {...register('itemId')} />
+          <input type="hidden" {...register('userId')} />
           <div className="grid grid-cols-4 items-center gap-4">
             <Label htmlFor="finalPrice" className="text-right">
               جبناها بكام؟

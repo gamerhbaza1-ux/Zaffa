@@ -6,6 +6,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { addItem } from '@/lib/actions';
 import type { Category } from '@/lib/types';
+import { useAuth } from '@/firebase';
 
 import {
   Dialog,
@@ -57,6 +58,7 @@ type AddItemDialogProps = {
 };
 
 export function AddItemDialog({ open, onOpenChange, onItemAdded, categories }: AddItemDialogProps) {
+  const { user } = useAuth();
   const [state, formAction] = React.useActionState(addItem, { errors: {} });
   const formRef = useRef<HTMLFormElement>(null);
   const { toast } = useToast();
@@ -103,6 +105,16 @@ export function AddItemDialog({ open, onOpenChange, onItemAdded, categories }: A
     onOpenChange(isOpen);
   }
 
+  const handleFormAction = (formData: FormData) => {
+    if (user) {
+      formData.append('userId', user.uid);
+      formAction(formData);
+    } else {
+      toast({ variant: 'destructive', title: 'خطأ', description: 'لازم تسجل دخول الأول.'})
+    }
+  }
+
+
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent className="sm:max-w-[425px]">
@@ -115,8 +127,7 @@ export function AddItemDialog({ open, onOpenChange, onItemAdded, categories }: A
         <Form {...form}>
           <form
             ref={formRef}
-            // @ts-ignore
-            action={formAction}
+            action={handleFormAction}
             className="space-y-4 pt-4"
           >
             <FormField

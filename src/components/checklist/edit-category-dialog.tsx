@@ -1,12 +1,12 @@
 "use client";
 
 import { useActionState, useEffect, useRef, useTransition } from 'react';
-import { useFormStatus } from 'react-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { updateCategory } from '@/lib/actions';
 import type { Category } from '@/lib/types';
+import { useAuth } from '@/firebase';
 
 import {
   Dialog,
@@ -36,7 +36,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import React from 'react';
 import { SubmitButton } from '../submit-button';
@@ -57,6 +56,7 @@ type EditCategoryDialogProps = {
 };
 
 export function EditCategoryDialog({ category, categories, onOpenChange, onCategoryUpdated }: EditCategoryDialogProps) {
+  const { user } = useAuth();
   const [state, formAction] = React.useActionState(updateCategory, { errors: {} });
   const formRef = useRef<HTMLFormElement>(null);
   const { toast } = useToast();
@@ -108,6 +108,15 @@ export function EditCategoryDialog({ category, categories, onOpenChange, onCateg
         onOpenChange(true);
     }
   }
+
+  const handleFormAction = (formData: FormData) => {
+    if (user) {
+      formData.append('userId', user.uid);
+      formAction(formData);
+    } else {
+       toast({ variant: 'destructive', title: 'خطأ', description: 'لازم تسجل دخول الأول.'})
+    }
+  }
   
   const filteredCategories = categories.filter(c => c.id !== category?.id);
   const sections = filteredCategories.filter(c => !c.parentId).sort((a, b) => a.name.localeCompare(b.name));
@@ -125,8 +134,7 @@ export function EditCategoryDialog({ category, categories, onOpenChange, onCateg
         <Form {...form}>
           <form
             ref={formRef}
-            // @ts-ignore
-            action={formAction}
+            action={handleFormAction}
             className="space-y-4 pt-4"
           >
             <input type="hidden" {...form.register('id')} />

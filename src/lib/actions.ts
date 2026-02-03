@@ -3,12 +3,26 @@
 import { revalidatePath } from "next/cache";
 import type { ChecklistItem, Category } from "./types";
 import { z } from "zod";
+import { collection, writeBatch, getDocs, query, where, getDoc, doc, deleteDoc, setDoc, addDoc, updateDoc, Firestore } from "firebase/firestore";
+import { initializeApp, getApp, getApps } from "firebase/app";
+import { getFirestore } from "firebase/firestore";
+import { firebaseConfig } from "@/firebase/config";
+
+// Server-side Firebase initialization
+let firestore: Firestore;
+if (getApps().length === 0) {
+  const app = initializeApp(firebaseConfig);
+  firestore = getFirestore(app);
+} else {
+  firestore = getFirestore(getApp());
+}
 
 const itemSchema = z.object({
   name: z.string().min(1, "لازم نكتب اسم الحاجة."),
   categoryId: z.string({ required_error: "لازم نختار فئة."}).min(1, "لازم نختار فئة."),
   minPrice: z.coerce.number().min(0, "السعر لازم يكون رقم."),
   maxPrice: z.coerce.number().min(0, "السعر لازم يكون رقم."),
+  userId: z.string(),
 }).refine(data => data.maxPrice >= data.minPrice, {
   message: "أقصى سعر لازم يكون أكبر من أو بيساوي أقل سعر.",
   path: ["maxPrice"],
@@ -17,28 +31,14 @@ const itemSchema = z.object({
 const categorySchema = z.object({
   name: z.string().min(1, "لازم نكتب اسم القسم أو الفئة."),
   parentId: z.string().nullable().optional(),
+  userId: z.string(),
 });
 
 const purchaseSchema = z.object({
   itemId: z.string(),
   finalPrice: z.coerce.number().min(0, "السعر لازم يكون رقم."),
+  userId: z.string(),
 });
-
-// In-memory store for demonstration purposes
-let categories: Category[] = [];
-let items: ChecklistItem[] = [];
-
-const simulateLatency = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
-
-export async function getItems(): Promise<ChecklistItem[]> {
-  await simulateLatency(500);
-  return items;
-}
-
-export async function getCategories(): Promise<Category[]> {
-  await simulateLatency(100);
-  return categories;
-}
 
 export async function addCategory(prevState: any, formData: FormData) {
   const rawData = Object.fromEntries(formData.entries());
@@ -53,26 +53,29 @@ export async function addCategory(prevState: any, formData: FormData) {
       errors: validatedFields.error.flatten().fieldErrors,
     };
   }
-  
-  await simulateLatency(500);
 
-  const { name, parentId } = validatedFields.data;
+  const { name, parentId, userId } = validatedFields.data;
 
-  const newCategory: Category = {
-    id: Date.now().toString(),
-    name,
-    parentId: parentId || null
-  };
-  
-  if (!categories.some(c => c.name === newCategory.name && c.parentId === newCategory.parentId)) {
-    categories.unshift(newCategory);
-    revalidatePath("/");
-    return { success: true };
-  } else {
+  const categoriesRef = collection(firestore, `users/${userId}/categories`);
+  const q = query(categoriesRef, where("name", "==", name), where("parentId", "==", parentId || null));
+  const existing = await getDocs(q);
+
+  if (!existing.empty) {
     return {
       errors: { name: ["الاسم ده موجود قبل كده في نفس المكان."] },
     };
   }
+  
+  const newCategory: Omit<Category, 'id'> = {
+    name,
+    parentId: parentId || null,
+    userId,
+  };
+
+  await addDoc(categoriesRef, newCategory);
+  
+  revalidatePath("/");
+  return { success: true };
 }
 
 export async function addItem(prevState: any, formData: FormData) {
@@ -84,17 +87,20 @@ export async function addItem(prevState: any, formData: FormData) {
     };
   }
 
-  await simulateLatency(1000);
-
-  const newItem: ChecklistItem = {
-    id: Date.now().toString(),
-    name: validatedFields.data.name,
-    categoryId: validatedFields.data.categoryId,
-    minPrice: validatedFields.data.minPrice,
-    maxPrice: validatedFields.data.maxPrice,
+  const { name, categoryId, minPrice, maxPrice, userId } = validatedFields.data;
+  
+  const newItem: Omit<ChecklistItem, 'id'> = {
+    name,
+    categoryId,
+    minPrice,
+    maxPrice,
     isPurchased: false,
+    userId,
   };
-  items.unshift(newItem);
+  
+  const itemsRef = collection(firestore, `users/${userId}/checklistItems`);
+  await addDoc(itemsRef, newItem);
+  
   revalidatePath("/");
   return { success: true };
 }
@@ -107,40 +113,40 @@ export async function purchaseItem(prevState: any, formData: FormData) {
       errors: validatedFields.error.flatten().fieldErrors,
     };
   }
-  
-  await simulateLatency(500);
 
-  const { itemId, finalPrice } = validatedFields.data;
+  const { itemId, finalPrice, userId } = validatedFields.data;
 
-  items = items.map(item =>
-    item.id === itemId ? { ...item, isPurchased: true, finalPrice: finalPrice } : item
-  );
+  const itemRef = doc(firestore, `users/${userId}/checklistItems`, itemId);
+  await updateDoc(itemRef, {
+    isPurchased: true,
+    finalPrice: finalPrice
+  });
+
   revalidatePath("/");
   return { success: true };
 }
 
-
-export async function unpurchaseItem(id: string) {
-  await simulateLatency(500);
-  items = items.map(item =>
-    item.id === id ? { ...item, isPurchased: false, finalPrice: undefined } : item
-  );
+export async function unpurchaseItem(userId: string, id: string) {
+  const itemRef = doc(firestore, `users/${userId}/checklistItems`, id);
+  await updateDoc(itemRef, {
+    isPurchased: false,
+    finalPrice: null
+  });
   revalidatePath("/");
 }
 
-export async function deleteItem(id: string) {
-  await simulateLatency(500);
-  items = items.filter(item => item.id !== id);
+export async function deleteItem(userId: string, id: string) {
+  const itemRef = doc(firestore, `users/${userId}/checklistItems`, id);
+  await deleteDoc(itemRef);
   revalidatePath("/");
 }
 
 export async function importItems(prevState: any, formData: FormData) {
-  await simulateLatency(1500);
-
   const fileContent = formData.get('fileContent') as string | null;
   const mappingStr = formData.get('mapping') as string | null;
+  const userId = formData.get('userId') as string | null;
 
-  if (!fileContent || !mappingStr) {
+  if (!fileContent || !mappingStr || !userId) {
     return { error: "بيانات ناقصة، حاول تاني." };
   }
 
@@ -170,10 +176,15 @@ export async function importItems(prevState: any, formData: FormData) {
     if (indices.section === -1 || indices.category === -1 || indices.name === -1) {
       return { error: "فيه أعمدة مطلوبة مش مربوطة صح. اتأكد من الربط." };
     }
+    
+    const categoriesRef = collection(firestore, `users/${userId}/categories`);
+    const allCategoriesSnap = await getDocs(categoriesRef);
+    const allCategories = allCategoriesSnap.docs.map(d => ({...d.data(), id: d.id} as Category));
 
-    const newItems: ChecklistItem[] = [];
 
-    dataLines.forEach((line, lineIndex) => {
+    const batch = writeBatch(firestore);
+
+    for (const line of dataLines) {
       const values = line.split(',').map(v => v.trim().replace(/"/g, ''));
       
       const sectionName = values[indices.section];
@@ -181,54 +192,44 @@ export async function importItems(prevState: any, formData: FormData) {
       const itemName = values[indices.name];
 
       if (!sectionName || !categoryName || !itemName) {
-        return; // Skip incomplete rows for required fields
-      }
-
-      const minPriceStr = indices.minPrice !== -1 ? values[indices.minPrice] : '0';
-      const maxPriceStr = indices.maxPrice !== -1 ? values[indices.maxPrice] : '0';
-      
-      let minPrice = parseFloat(minPriceStr);
-      let maxPrice = parseFloat(maxPriceStr);
-
-      if (isNaN(minPrice)) minPrice = 0;
-      if (isNaN(maxPrice)) maxPrice = 0;
-      
-      if (maxPrice < minPrice) {
-        maxPrice = minPrice;
+        continue; // Skip incomplete rows
       }
 
       // Find or create section
-      let section = categories.find(c => c.name.toLowerCase() === sectionName.toLowerCase() && c.parentId === null);
+      let section = allCategories.find(c => c.name.toLowerCase() === sectionName.toLowerCase() && c.parentId === null);
       if (!section) {
-        section = { id: `s-import-${Date.now()}-${lineIndex}`, name: sectionName, parentId: null };
-        categories.unshift(section);
+        const newSectionDoc = doc(categoriesRef);
+        section = { id: newSectionDoc.id, name: sectionName, parentId: null, userId };
+        batch.set(newSectionDoc, { name: sectionName, parentId: null, userId });
+        allCategories.push(section);
       }
 
       // Find or create category under that section
-      let category = categories.find(c => c.name.toLowerCase() === categoryName.toLowerCase() && c.parentId === section!.id);
+      let category = allCategories.find(c => c.name.toLowerCase() === categoryName.toLowerCase() && c.parentId === section!.id);
       if (!category) {
-        category = { id: `c-import-${Date.now()}-${lineIndex}`, name: categoryName, parentId: section.id };
-        categories.unshift(category);
+        const newCategoryDoc = doc(categoriesRef);
+        category = { id: newCategoryDoc.id, name: categoryName, parentId: section.id, userId };
+        batch.set(newCategoryDoc, { name: categoryName, parentId: section.id, userId });
+        allCategories.push(category);
       }
+
+      const minPrice = parseFloat(indices.minPrice !== -1 ? values[indices.minPrice] : '0') || 0;
+      const maxPrice = parseFloat(indices.maxPrice !== -1 ? values[indices.maxPrice] : '0') || 0;
       
-      const newItem: ChecklistItem = {
-        id: `i-import-${Date.now()}-${lineIndex}`,
+      const newItemRef = doc(collection(firestore, `users/${userId}/checklistItems`));
+      batch.set(newItemRef, {
         name: itemName,
         categoryId: category.id,
-        minPrice,
-        maxPrice,
+        minPrice: maxPrice < minPrice ? maxPrice : minPrice,
+        maxPrice: maxPrice < minPrice ? minPrice : maxPrice,
         isPurchased: false,
-      };
-      
-      newItems.push(newItem);
-    });
-    
-    if (newItems.length > 0) {
-      items.unshift(...newItems);
+        userId,
+      });
     }
-    
+
+    await batch.commit();
     revalidatePath("/");
-    return { success: true, count: newItems.length };
+    return { success: true, count: dataLines.length };
 
   } catch (e) {
     const message = e instanceof Error ? e.message : "An unknown error occurred";
@@ -242,10 +243,11 @@ export async function updateCategory(prevState: any, formData: FormData) {
     id: z.string(),
     name: z.string().min(1, "الاسم مطلوب."),
     parentId: z.string().nullable().optional(),
+    userId: z.string(),
   });
   
   const rawData = Object.fromEntries(formData.entries());
-    if (rawData.parentId === 'null') {
+  if (rawData.parentId === 'null') {
     rawData.parentId = null;
   }
   const validatedFields = schema.safeParse(rawData);
@@ -256,18 +258,20 @@ export async function updateCategory(prevState: any, formData: FormData) {
     };
   }
 
-  await simulateLatency(500);
-
-  const { id, name, parentId } = validatedFields.data;
+  const { id, name, parentId, userId } = validatedFields.data;
   const newParentId = parentId || null;
 
-  if (categories.some(c => c.name === name && c.parentId === newParentId && c.id !== id)) {
+  const categoriesRef = collection(firestore, `users/${userId}/categories`);
+  const q = query(categoriesRef, where("name", "==", name), where("parentId", "==", newParentId));
+  const existingSnap = await getDocs(q);
+  const nameExists = existingSnap.docs.some(doc => doc.id !== id);
+
+  if (nameExists) {
      return {
       errors: { name: ["الاسم ده موجود قبل كده في نفس المكان."] },
     };
   }
 
-  // Prevent making a category its own child/descendant
   let currentParentId = newParentId;
   while(currentParentId) {
       if (currentParentId === id) {
@@ -275,29 +279,35 @@ export async function updateCategory(prevState: any, formData: FormData) {
               errors: { parentId: ["مينفعش نخلي الفئة تبع نفسها."] },
           };
       }
-      currentParentId = categories.find(c => c.id === currentParentId)?.parentId || null;
+      const parentDoc = await getDoc(doc(categoriesRef, currentParentId));
+      currentParentId = parentDoc.data()?.parentId || null;
   }
 
+  const categoryRef = doc(categoriesRef, id);
+  await updateDoc(categoryRef, { name, parentId: newParentId });
 
-  categories = categories.map(c => 
-    c.id === id ? { ...c, name, parentId: newParentId } : c
-  );
   revalidatePath("/");
   return { success: true };
 }
 
-
-export async function deleteCategory(id: string) {
-  await simulateLatency(500);
+export async function deleteCategory(userId: string, id: string) {
+  const categoriesRef = collection(firestore, `users/${userId}/categories`);
   
-  const hasSubcategories = categories.some(c => c.parentId === id);
-  const hasItems = items.some(i => i.categoryId === id);
+  const subcategoriesQuery = query(categoriesRef, where("parentId", "==", id));
+  const subcategoriesSnap = await getDocs(subcategoriesQuery);
+  if (!subcategoriesSnap.empty) {
+    return { success: false, error: "مينفعش نمسحها عشان جواها فئات تانية." };
+  }
+  
+  const itemsRef = collection(firestore, `users/${userId}/checklistItems`);
+  const itemsQuery = query(itemsRef, where("categoryId", "==", id));
+  const itemsSnap = await getDocs(itemsQuery);
 
-  if (hasSubcategories || hasItems) {
-    return { success: false, error: "مينفعش نمسحها عشان جواها حاجات تانية." };
+  if (!itemsSnap.empty) {
+    return { success: false, error: "مينفعش نمسحها عشان جواها حاجات." };
   }
 
-  categories = categories.filter(c => c.id !== id);
+  await deleteDoc(doc(categoriesRef, id));
   revalidatePath("/");
   return { success: true };
 }

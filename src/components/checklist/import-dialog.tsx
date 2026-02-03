@@ -23,6 +23,7 @@ import {
 } from "@/components/ui/select";
 import { SubmitButton } from '../submit-button';
 import { Separator } from '@/components/ui/separator';
+import { useAuth } from '@/firebase';
 
 type ImportDialogProps = {
   open: boolean;
@@ -43,6 +44,7 @@ const OPTIONAL_FIELDS = [
 
 
 export function ImportDialog({ open, onOpenChange, onImportCompleted }: ImportDialogProps) {
+  const { user } = useAuth();
   const [state, formAction] = useActionState(importItems, { error: null, success: false, count: 0 });
   const { toast } = useToast();
   const [, startTransition] = useTransition();
@@ -117,6 +119,15 @@ export function ImportDialog({ open, onOpenChange, onImportCompleted }: ImportDi
     onOpenChange(isOpen);
   }
 
+  const handleFormAction = (formData: FormData) => {
+    if (user) {
+      formData.append('userId', user.uid);
+      formAction(formData);
+    } else {
+       toast({ variant: 'destructive', title: 'خطأ', description: 'لازم تسجل دخول الأول.'})
+    }
+  }
+
   const isMappingComplete = REQUIRED_FIELDS.every(field => mapping[field.id]);
 
   return (
@@ -146,7 +157,7 @@ export function ImportDialog({ open, onOpenChange, onImportCompleted }: ImportDi
         )}
 
         {step === 'mapping' && (
-          <form ref={formRef} action={formAction}>
+          <form ref={formRef} action={handleFormAction}>
             <input type="hidden" name="fileContent" value={fileContent} />
             <input type="hidden" name="mapping" value={JSON.stringify(mapping)} />
             <DialogHeader>

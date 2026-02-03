@@ -6,6 +6,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { addCategory } from '@/lib/actions';
 import type { Category } from '@/lib/types';
+import { useAuth } from '@/firebase';
 
 import {
   Dialog,
@@ -54,6 +55,7 @@ type AddCategoryDialogProps = {
 };
 
 export function AddCategoryDialog({ open, onOpenChange, onCategoryAdded, categories }: AddCategoryDialogProps) {
+  const { user } = useAuth();
   const [state, formAction] = React.useActionState(addCategory, { errors: {} });
   const formRef = useRef<HTMLFormElement>(null);
   const { toast } = useToast();
@@ -96,6 +98,15 @@ export function AddCategoryDialog({ open, onOpenChange, onCategoryAdded, categor
     onOpenChange(isOpen);
   }
 
+  const handleFormAction = (formData: FormData) => {
+    if (user) {
+      formData.append('userId', user.uid);
+      formAction(formData);
+    } else {
+      toast({ variant: 'destructive', title: 'خطأ', description: 'لازم تسجل دخول الأول.'})
+    }
+  }
+
   const sections = categories.filter(c => !c.parentId).sort((a, b) => a.name.localeCompare(b.name));
   const otherCategories = categories.filter(c => c.parentId).sort((a, b) => a.name.localeCompare(b.name));
 
@@ -111,8 +122,7 @@ export function AddCategoryDialog({ open, onOpenChange, onCategoryAdded, categor
         <Form {...form}>
           <form
             ref={formRef}
-            // @ts-ignore
-            action={formAction}
+            action={handleFormAction}
             className="space-y-4 pt-4"
           >
             <FormField

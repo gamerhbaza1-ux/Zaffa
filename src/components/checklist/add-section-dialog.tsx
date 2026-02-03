@@ -5,6 +5,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { addCategory } from '@/lib/actions';
+import { useAuth } from '@/firebase';
 
 import {
   Dialog,
@@ -41,6 +42,7 @@ type AddSectionDialogProps = {
 };
 
 export function AddSectionDialog({ open, onOpenChange, onSectionAdded }: AddSectionDialogProps) {
+  const { user } = useAuth();
   const [state, formAction] = React.useActionState(addCategory, { errors: {} });
   const formRef = useRef<HTMLFormElement>(null);
   const { toast } = useToast();
@@ -79,8 +81,13 @@ export function AddSectionDialog({ open, onOpenChange, onSectionAdded }: AddSect
   }
 
   const handleFormAction = (formData: FormData) => {
-    formData.append('parentId', 'null');
-    formAction(formData);
+    if (user) {
+      formData.append('userId', user.uid);
+      formData.append('parentId', 'null');
+      formAction(formData);
+    } else {
+       toast({ variant: 'destructive', title: 'خطأ', description: 'لازم تسجل دخول الأول.'})
+    }
   }
 
   return (

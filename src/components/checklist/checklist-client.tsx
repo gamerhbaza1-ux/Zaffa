@@ -2,7 +2,10 @@
 
 import { useState, useTransition, useMemo, useCallback } from 'react';
 import type { ChecklistItem, Category } from '@/lib/types';
-import { deleteItem, unpurchaseItem, deleteCategory, getItems, getCategories } from '@/lib/actions';
+import { deleteItem, unpurchaseItem, deleteCategory } from '@/lib/actions';
+import { useAuth, useCollection, useFirestore, useMemoFirebase } from '@/firebase';
+import { collection } from 'firebase/firestore';
+
 import { Button } from '@/components/ui/button';
 import { Plus, Upload, ListPlus, MoreVertical, Pencil, Trash2, Loader2, FolderPlus } from 'lucide-react';
 import { ItemCard } from './item-card';
@@ -33,15 +36,24 @@ import {
 } from "@/components/ui/alert-dialog";
 import { useToast } from '@/hooks/use-toast';
 
-type ChecklistClientProps = {
-  initialItems: ChecklistItem[];
-  initialCategories: Category[];
-};
+export default function ChecklistClient() {
+  const { user } = useAuth();
+  const firestore = useFirestore();
 
-export default function ChecklistClient({ initialItems, initialCategories }: ChecklistClientProps) {
+  const categoriesQuery = useMemoFirebase(() => {
+    if (!user) return null;
+    return collection(firestore, `users/${user.uid}/categories`);
+  }, [firestore, user]);
+
+  const itemsQuery = useMemoFirebase(() => {
+    if (!user) return null;
+    return collection(firestore, `users/${user.uid}/checklistItems`);
+  }, [firestore, user]);
+
+  const { data: categories = [], isLoading: isLoadingCategories } = useCollection<Category>(categoriesQuery);
+  const { data: items = [], isLoading: isLoadingItems } = useCollection<ChecklistItem>(itemsQuery);
+
   const [isPending, startTransition] = useTransition();
-  const [items, setItems] = useState(initialItems);
-  const [categories, setCategories] = useState(initialCategories);
 
   const [isAddDialogOpen, setAddDialogOpen] = useState(false);
   const [isImportDialogOpen, setImportDialogOpen] = useState(false);
@@ -55,12 +67,7 @@ export default function ChecklistClient({ initialItems, initialCategories }: Che
   const { toast } = useToast();
   
   const refreshData = useCallback(() => {
-    startTransition(async () => {
-      const newItems = await getItems();
-      const newCategories = await getCategories();
-      setItems(newItems);
-      setCategories(newCategories);
-    });
+    // Revalidation is handled by server actions
   }, []);
 
   const formatPrice = useCallback((price: number) => {
@@ -79,14 +86,10 @@ export default function ChecklistClient({ initialItems, initialCategories }: Che
   };
 
   const handleUnpurchaseConfirm = () => {
-    if (!itemToUnpurchase) return;
+    if (!itemToUnpurchase || !user) return;
 
     startTransition(async () => {
-      await unpurchaseItem(itemToUnpurchase.id);
-      
-      const newItems = await getItems();
-      setItems(newItems);
-      
+      await unpurchaseItem(user.uid, itemToUnpurchase.id);
       toast({
         title: "رجعناها القائمة",
         description: `رجعنا "${itemToUnpurchase.name}" للحاجات اللي لسه هنجيبها.`,
@@ -96,29 +99,27 @@ export default function ChecklistClient({ initialItems, initialCategories }: Che
   };
 
   const handleDeleteItemConfirm = () => {
-    if (!itemToDelete) return;
+    if (!itemToDelete || !user) return;
     startTransition(async () => {
-      await deleteItem(itemToDelete.id);
+      await deleteItem(user.uid, itemToDelete.id);
       toast({
         title: "اتمسحت",
         description: `مسحنا الحاجة "${itemToDelete.name}".`,
       });
-      refreshData();
       setItemToDelete(null);
     });
   };
   
   const handleDeleteCategory = () => {
-    if (!categoryToDelete) return;
+    if (!categoryToDelete || !user) return;
 
     startTransition(async () => {
-      const result = await deleteCategory(categoryToDelete.id);
+      const result = await deleteCategory(user.uid, categoryToDelete.id);
       if (result?.success) {
         toast({
           title: "اتمسحت",
           description: `مسحنا "${categoryToDelete.name}".`,
         });
-        refreshData();
         setCategoryToDelete(null);
       } else {
         toast({
@@ -150,6 +151,13 @@ export default function ChecklistClient({ initialItems, initialCategories }: Che
     return getCategoryDepth(category.parentId, depth + 1);
   }, [categoriesById]);
 
+  if (isLoadingCategories || isLoadingItems) {
+    return (
+      <div className="flex justify-center items-center h-64">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
 
   return (
     <>
