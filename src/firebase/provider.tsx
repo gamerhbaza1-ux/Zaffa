@@ -25,6 +25,11 @@ interface ProfileState {
   isProfileLoading: boolean;
 }
 
+interface PartnerState {
+  partnerProfile: UserProfile | null;
+  isPartnerLoading: boolean;
+}
+
 interface HouseholdState {
   household: Household | null;
   isHouseholdLoading: boolean;
@@ -42,6 +47,8 @@ export interface FirebaseContextState {
   isProfileLoading: boolean;
   household: Household | null;
   isHouseholdLoading: boolean;
+  partnerProfile: UserProfile | null;
+  isPartnerLoading: boolean;
 }
 
 export interface FirebaseServicesAndUser extends Omit<FirebaseContextState, 'areServicesAvailable'> {
@@ -58,6 +65,8 @@ export interface UserHookResult {
   isProfileLoading: boolean;
   household: Household | null;
   isHouseholdLoading: boolean;
+  partnerProfile: UserProfile | null;
+  isPartnerLoading: boolean;
 }
 
 export const FirebaseContext = createContext<FirebaseContextState | undefined>(undefined);
@@ -82,6 +91,11 @@ export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
   const [householdState, setHouseholdState] = useState<HouseholdState>({
     household: null,
     isHouseholdLoading: true,
+  });
+  
+  const [partnerState, setPartnerState] = useState<PartnerState>({
+    partnerProfile: null,
+    isPartnerLoading: true,
   });
 
   useEffect(() => {
@@ -151,6 +165,35 @@ export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
     return () => unsubscribe();
   }, [profileState.userProfile, firestore]);
 
+  useEffect(() => {
+    if (!firestore || !userAuthState.user || !householdState.household || householdState.household.memberIds.length < 2) {
+      setPartnerState({ partnerProfile: null, isPartnerLoading: false });
+      return;
+    }
+
+    const partnerId = householdState.household.memberIds.find(id => id !== userAuthState.user!.uid);
+
+    if (!partnerId) {
+      setPartnerState({ partnerProfile: null, isPartnerLoading: false });
+      return;
+    }
+
+    setPartnerState(s => ({ ...s, isPartnerLoading: true }));
+    const partnerDocRef = doc(firestore, 'users', partnerId);
+
+    const unsubscribe = onSnapshot(partnerDocRef, (docSnap) => {
+      if (docSnap.exists()) {
+        setPartnerState({ partnerProfile: docSnap.data() as UserProfile, isPartnerLoading: false });
+      } else {
+        setPartnerState({ partnerProfile: null, isPartnerLoading: false });
+      }
+    }, (error) => {
+       console.error("FirebaseProvider: partner snapshot error:", error);
+       setPartnerState({ partnerProfile: null, isPartnerLoading: false });
+    });
+
+    return () => unsubscribe();
+  }, [userAuthState.user, householdState.household, firestore]);
 
   const contextValue = useMemo((): FirebaseContextState => {
     const servicesAvailable = !!(firebaseApp && firestore && auth);
@@ -166,8 +209,10 @@ export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
       isProfileLoading: profileState.isProfileLoading,
       household: householdState.household,
       isHouseholdLoading: householdState.isHouseholdLoading,
+      partnerProfile: partnerState.partnerProfile,
+      isPartnerLoading: partnerState.isPartnerLoading,
     };
-  }, [firebaseApp, firestore, auth, userAuthState, profileState, householdState]);
+  }, [firebaseApp, firestore, auth, userAuthState, profileState, householdState, partnerState]);
 
   return (
     <FirebaseContext.Provider value={contextValue}>
@@ -199,6 +244,8 @@ export const useFirebase = (): FirebaseServicesAndUser => {
     isProfileLoading: context.isProfileLoading,
     household: context.household,
     isHouseholdLoading: context.isHouseholdLoading,
+    partnerProfile: context.partnerProfile,
+    isPartnerLoading: context.isPartnerLoading,
   };
 };
 
@@ -229,6 +276,6 @@ export function useMemoFirebase<T>(factory: () => T, deps: DependencyList): T | 
 }
 
 export const useUser = (): UserHookResult => {
-  const { user, isUserLoading, userError, userProfile, isProfileLoading, household, isHouseholdLoading } = useFirebase();
-  return { user, isUserLoading, userError, userProfile, isProfileLoading, household, isHouseholdLoading };
+  const { user, isUserLoading, userError, userProfile, isProfileLoading, household, isHouseholdLoading, partnerProfile, isPartnerLoading } = useFirebase();
+  return { user, isUserLoading, userError, userProfile, isProfileLoading, household, isHouseholdLoading, partnerProfile, isPartnerLoading };
 };

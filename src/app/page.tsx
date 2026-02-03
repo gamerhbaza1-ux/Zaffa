@@ -5,7 +5,7 @@ import { PlaceHolderImages } from '@/lib/placeholder-images';
 import ChecklistClient from '@/components/checklist/checklist-client';
 import { Card } from '@/components/ui/card';
 import { Home as HomeIcon, LogOut, UserPlus } from 'lucide-react';
-import { useFirebase, useUser } from '@/firebase';
+import { useUser } from '@/firebase';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
@@ -20,6 +20,7 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { getAuth } from 'firebase/auth';
 import { InviteDialog } from '@/components/invite-dialog';
+import { PartnerDisplay } from '@/components/partner-display';
 
 function Header() {
   const { user, userProfile, isUserLoading, isProfileLoading, household, isHouseholdLoading } = useUser();
@@ -137,6 +138,10 @@ export default function Home() {
             )}
           </Card>
           
+          <div className="mb-8">
+            <PartnerDisplay />
+          </div>
+
           <ChecklistClient />
         </div>
       </main>
