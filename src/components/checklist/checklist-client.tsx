@@ -4,7 +4,7 @@ import { useState, useTransition, useMemo, useCallback } from 'react';
 import type { ChecklistItem, Category } from '@/lib/types';
 import { deleteItem, unpurchaseItem, deleteCategory, getItems, getCategories } from '@/lib/actions';
 import { Button } from '@/components/ui/button';
-import { Plus, Upload, ListPlus, MoreVertical, Pencil, Trash2, Loader2 } from 'lucide-react';
+import { Plus, Upload, ListPlus, MoreVertical, Pencil, Trash2, Loader2, FolderPlus } from 'lucide-react';
 import { ItemCard } from './item-card';
 import { ProgressSummary } from './progress-summary';
 import { AddItemDialog } from './add-item-dialog';
@@ -54,14 +54,14 @@ export default function ChecklistClient({ initialItems, initialCategories }: Che
   const [categoryToDelete, setCategoryToDelete] = useState<Category | null>(null);
   const { toast } = useToast();
   
-  const refreshData = () => {
+  const refreshData = useCallback(() => {
     startTransition(async () => {
       const newItems = await getItems();
       const newCategories = await getCategories();
       setItems(newItems);
       setCategories(newCategories);
     });
-  };
+  }, []);
 
   const formatPrice = useCallback((price: number) => {
     return new Intl.NumberFormat('ar-EG', { style: 'currency', currency: 'EGP', minimumFractionDigits: 0 }).format(price);
@@ -168,10 +168,10 @@ export default function ChecklistClient({ initialItems, initialCategories }: Che
         <ProgressSummary purchasedCount={purchasedCount} totalCount={totalCount} />
       </div>
 
-      {totalCount > 0 ? (
+      {totalCount > 0 || categories.length > 0 ? (
         <Tabs defaultValue={topLevelCategories[0]?.id} className="w-full" dir="rtl">
             <div className="flex items-center flex-wrap gap-2">
-              <TabsList className="flex-wrap h-auto justify-start flex-grow gap-1">
+              <TabsList className="flex-wrap h-auto justify-start flex-grow gap-2">
                   {topLevelCategories.map(category => (
                       <TabsTrigger key={category.id} value={category.id}>
                           <span className="truncate">{category.name}</span>
@@ -179,7 +179,7 @@ export default function ChecklistClient({ initialItems, initialCategories }: Che
                   ))}
               </TabsList>
               <Button variant="outline" onClick={() => setAddSectionDialogOpen(true)} className="shrink-0">
-                  <ListPlus className="ml-2 h-4 w-4" /> نضيف قسم
+                  <FolderPlus className="ml-2 h-4 w-4" /> نضيف قسم
               </Button>
             </div>
             {topLevelCategories.map(topLevelCategory => {
@@ -214,9 +214,9 @@ export default function ChecklistClient({ initialItems, initialCategories }: Che
                             className="overflow-hidden shadow-sm"
                             style={{ marginRight: level > 0 ? '1rem' : undefined }}
                         >
-                            <div className="flex justify-between items-center bg-accent p-3 px-4">
+                            <div className="flex justify-between items-center bg-accent/50 p-3 px-4">
                                 <div className="flex-grow">
-                                    <h3 className="font-bold text-base text-foreground">{category.name}</h3>
+                                    <h3 className="font-bold text-base text-accent-foreground">{category.name}</h3>
                                     {(expectedInSubCat > 0 || paidInSubCat > 0) && (
                                         <div className="text-xs text-muted-foreground font-normal flex flex-wrap gap-x-3 gap-y-1 mt-1">
                                             <span>المتوقع: {formatPrice(expectedInSubCat)}</span>
