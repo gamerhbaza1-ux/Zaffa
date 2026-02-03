@@ -4,16 +4,17 @@ import type { ChecklistItem } from '@/lib/types';
 import { cn } from '@/lib/utils';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Button } from '@/components/ui/button';
-import { Trash2 } from 'lucide-react';
+import { Trash2, Pencil } from 'lucide-react';
 import { Badge } from '../ui/badge';
 
 type ItemCardProps = {
   item: ChecklistItem;
   onToggle: () => void;
   onDelete: () => void;
+  onEdit: () => void;
 };
 
-export function ItemCard({ item, onToggle, onDelete }: ItemCardProps) {
+export function ItemCard({ item, onToggle, onDelete, onEdit }: ItemCardProps) {
   const formatPrice = (price: number) => {
     return new Intl.NumberFormat('ar-EG', { style: 'currency', currency: 'EGP', minimumFractionDigits: 0 }).format(price);
   };
@@ -55,6 +56,17 @@ export function ItemCard({ item, onToggle, onDelete }: ItemCardProps) {
       {item.isPurchased && (
         <Badge variant="secondary" className="bg-green-100 text-green-800 border-green-200 dark:bg-green-900/50 dark:text-green-300 dark:border-green-800/50">جبناها</Badge>
       )}
+      
+      <Button
+        variant="ghost"
+        size="icon"
+        onClick={onEdit}
+        aria-label={`نعدّل ${item.name}`}
+        className="text-muted-foreground hover:bg-accent hover:text-accent-foreground h-8 w-8 rounded-full"
+      >
+        <Pencil className="h-4 w-4" />
+      </Button>
+
       <Button
         variant="ghost"
         size="icon"

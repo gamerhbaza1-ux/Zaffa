@@ -63,6 +63,7 @@ export default function LogPage() {
         purchase_item: 'شراء حاجة',
         unpurchase_item: 'إلغاء شراء',
         delete_item: 'حذف حاجة',
+        update_item: 'تعديل حاجة',
         create_section: 'إنشاء قسم',
         create_category: 'إنشاء فئة',
         update_category: 'تعديل قسم/فئة',

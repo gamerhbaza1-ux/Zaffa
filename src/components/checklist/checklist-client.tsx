@@ -17,6 +17,7 @@ import { AddSectionDialog } from './add-section-dialog';
 import { AddCategoryDialog } from './add-category-dialog';
 import { EditCategoryDialog } from './edit-category-dialog';
 import { PurchaseDialog } from './purchase-dialog';
+import { EditItemDialog } from './edit-item-dialog';
 import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
@@ -63,6 +64,7 @@ export default function ChecklistClient() {
     const [itemToPurchase, setItemToPurchase] = useState<ChecklistItem | null>(null);
     const [itemToUnpurchase, setItemToUnpurchase] = useState<ChecklistItem | null>(null);
     const [itemToDelete, setItemToDelete] = useState<ChecklistItem | null>(null);
+    const [itemToEdit, setItemToEdit] = useState<ChecklistItem | null>(null);
     const [categoryToEdit, setCategoryToEdit] = useState<Category | null>(null);
     const [categoryToDelete, setCategoryToDelete] = useState<Category | null>(null);
     
@@ -256,6 +258,22 @@ export default function ChecklistClient() {
             })
             .catch(() => errorEmitter.emit('permission-error', new FirestorePermissionError({ path: itemsRef.path, operation: 'create', requestResourceData: newItem })));
     };
+
+    const handleUpdateItem = (itemId: string, data: Omit<ChecklistItem, 'id' | 'isPurchased' | 'finalPrice'>) => {
+        if (!itemsRef) return;
+        const itemDocRef = doc(itemsRef, itemId);
+        const originalItem = items.find(i => i.id === itemId);
+
+        updateDoc(itemDocRef, data)
+            .then(() => {
+                toast({ title: "تمام!", description: "حدثنا الحاجة دي." });
+                if(originalItem) {
+                   logActivity('update_item', `تعديل "${originalItem.name}" إلى "${data.name}"`);
+                }
+                setItemToEdit(null);
+            })
+            .catch(() => errorEmitter.emit('permission-error', new FirestorePermissionError({ path: itemDocRef.path, operation: 'update', requestResourceData: data })));
+    };
   
     const isLoading = isHouseholdLoading || areCategoriesLoading || areItemsLoading;
     const purchasedCount = useMemo(() => items.filter(item => item.isPurchased).length, [items]);
@@ -328,6 +346,7 @@ export default function ChecklistClient() {
                             item={item}
                             onToggle={() => handleToggle(item.id)}
                             onDelete={() => setItemToDelete(item)}
+                            onEdit={() => setItemToEdit(item)}
                         />
                     ))
                 ) : (
@@ -424,6 +443,7 @@ export default function ChecklistClient() {
                                                         item={item}
                                                         onToggle={() => handleToggle(item.id)}
                                                         onDelete={() => setItemToDelete(item)}
+                                                        onEdit={() => setItemToEdit(item)}
                                                     />
                                                 ))}
                                             </div>
@@ -510,6 +530,13 @@ export default function ChecklistClient() {
             onOpenChange={setAddCategoryDialogOpen}
             onCategoryAdded={handleAddCategory}
             categories={categories}
+          />
+
+          <EditItemDialog
+            item={itemToEdit}
+            categories={categories}
+            onOpenChange={(open) => !open && setItemToEdit(null)}
+            onItemUpdated={handleUpdateItem}
           />
     
           <EditCategoryDialog
