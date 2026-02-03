@@ -2,7 +2,7 @@
 import Image from 'next/image';
 import { PlaceHolderImages } from '@/lib/placeholder-images';
 import ChecklistClient from '@/components/checklist/checklist-client';
-import { Card } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Home as HomeIcon, LogOut, UserPlus } from 'lucide-react';
 import { useUser } from '@/firebase';
 import { useRouter } from 'next/navigation';
@@ -23,8 +23,7 @@ import { PartnerDisplay } from '@/components/partner-display';
 import { InvitationNotification } from '@/components/invitation-notification';
 
 function Header() {
-  const { user, userProfile, isUserLoading, isProfileLoading, household, isHouseholdLoading } = useUser();
-  const [isInviteDialogOpen, setInviteDialogOpen] = useState(false);
+  const { user, userProfile, isUserLoading, isProfileLoading } = useUser();
   const auth = getAuth();
 
   const displayName = userProfile ? `${userProfile.firstName} ${userProfile.lastName}`.trim() : user?.displayName;
@@ -33,10 +32,7 @@ function Header() {
     ? `${userProfile.firstName?.charAt(0)}${userProfile.lastName?.charAt(0)}` 
     : user?.displayName?.charAt(0) || user?.email?.charAt(0) || 'U';
 
-  const canInvite = !isHouseholdLoading && household && household.memberIds.length < 2;
-
   return (
-    <>
       <header className="bg-background/95 backdrop-blur-sm border-b sticky top-0 z-10">
         <div className="container mx-auto px-4 py-3 flex items-center justify-between gap-4">
           <div className="flex items-center gap-4">
@@ -68,15 +64,6 @@ function Header() {
                     </div>
                   </DropdownMenuLabel>
                   <DropdownMenuSeparator />
-                   {canInvite && (
-                    <>
-                      <DropdownMenuItem onSelect={() => setInviteDialogOpen(true)}>
-                        <UserPlus className="ml-2 h-4 w-4" />
-                        <span>ندعي شريك</span>
-                      </DropdownMenuItem>
-                      <DropdownMenuSeparator />
-                    </>
-                   )}
                   <DropdownMenuItem onClick={() => auth.signOut()}>
                     <LogOut className="ml-2 h-4 w-4" />
                     <span>تسجيل الخروج</span>
@@ -87,17 +74,13 @@ function Header() {
           </div>
         </div>
       </header>
-       <InviteDialog
-        open={isInviteDialogOpen}
-        onOpenChange={setInviteDialogOpen}
-      />
-    </>
   );
 }
 
 export default function Home() {
-  const { user, isUserLoading } = useUser();
+  const { user, isUserLoading, household, isHouseholdLoading } = useUser();
   const router = useRouter();
+  const [isInviteDialogOpen, setInviteDialogOpen] = useState(false);
   
   useEffect(() => {
     if (!isUserLoading && !user) {
@@ -108,9 +91,10 @@ export default function Home() {
   const heroImage = PlaceHolderImages.find(p => p.id === 'hero');
   
   if (isUserLoading || !user) {
-    // You can show a loading spinner here
     return <div className="flex h-screen items-center justify-center">جاري التحميل...</div>;
   }
+
+  const canInvite = !isHouseholdLoading && household && household.memberIds.length < 2;
 
   return (
     <div className="flex flex-col min-h-screen bg-background">
@@ -142,8 +126,24 @@ export default function Home() {
             )}
           </Card>
           
-          <div className="mb-8">
+          <div className="mb-8 space-y-4">
             <PartnerDisplay />
+            {canInvite && (
+               <Card className="bg-primary-foreground border-2 border-dashed border-primary/20">
+                <CardContent className="p-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                  <div className="flex-grow">
+                    <h3 className="text-lg font-semibold text-primary">جاهزين للتخطيط سوا؟</h3>
+                    <p className="text-sm text-muted-foreground mt-1">
+                      اعزم شريكك عشان تشاركوا القايمة وتبدأوا تجهزوا عش الزوجية.
+                    </p>
+                  </div>
+                  <Button onClick={() => setInviteDialogOpen(true)} className="w-full sm:w-auto flex-shrink-0">
+                    <UserPlus className="ml-2 h-4 w-4" />
+                    ندعي شريك
+                  </Button>
+                </CardContent>
+              </Card>
+            )}
           </div>
 
           <ChecklistClient />
@@ -154,6 +154,10 @@ export default function Home() {
           اتعمل بـ <span className="text-primary">♡</span> لبداية جديدة.
         </p>
       </footer>
+       <InviteDialog
+        open={isInviteDialogOpen}
+        onOpenChange={setInviteDialogOpen}
+      />
     </div>
   );
 }

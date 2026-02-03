@@ -54,6 +54,15 @@ service cloud.firestore {
     match /users/{userId} {
       allow read, update: if isOwner(userId);
     }
+    
+    /**
+     * @description Rules for the household document itself.
+     * @path /households/{householdId}
+     * @principle A member of a household can read and write to it.
+     */
+    match /households/{householdId} {
+       allow read, write: if isMemberOfHousehold(householdId);
+    }
 
     /**
      * @description Rules for all shared data within a household.
