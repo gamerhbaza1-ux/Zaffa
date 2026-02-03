@@ -256,40 +256,99 @@ export async function deleteItem(id: string) {
   revalidatePath("/");
 }
 
-export async function importItems(fileContent: string) {
+export async function importItems(prevState: any, formData: FormData) {
   await simulateLatency(1500);
-  try {
-    const lines = fileContent.split('\n').slice(1); // ignore header
-    const newItems: ChecklistItem[] = lines.map((line, index) => {
-      const [name, minPrice, maxPrice, categoryName] = line.split(',');
-      if (name && minPrice && maxPrice && categoryName) {
-        const categoryNameTrimmed = categoryName.trim();
-        let category = categories.find(c => c.name === categoryNameTrimmed && !c.parentId);
-        if (!category) {
-            category = {
-                id: `cat-import-${Date.now()}-${index}`,
-                name: categoryNameTrimmed,
-                parentId: null
-            };
-            categories.unshift(category);
-        }
-        return {
-          id: `import-${Date.now()}-${index}`,
-          name: name.trim(),
-          minPrice: parseFloat(minPrice),
-          maxPrice: parseFloat(maxPrice),
-          categoryId: category.id,
-          isPurchased: false,
-        };
-      }
-      return null;
-    }).filter((item): item is ChecklistItem => item !== null);
 
-    items.unshift(...newItems);
+  const fileContent = formData.get('fileContent') as string | null;
+  const mappingStr = formData.get('mapping') as string | null;
+
+  if (!fileContent || !mappingStr) {
+    return { error: "بيانات ناقصة، حاول تاني." };
+  }
+
+  try {
+    const mapping = JSON.parse(mappingStr);
+    const requiredKeys = ['section', 'category', 'name', 'minPrice', 'maxPrice'];
+    if (!requiredKeys.every(key => key in mapping)) {
+      return { error: "لازم نربط كل الحقول المطلوبة." };
+    }
+
+    const lines = fileContent.split('\n').filter(line => line.trim() !== '');
+    if (lines.length < 2) {
+      return { error: "الملف فاضي أو فيه صف واحد بس." };
+    }
+
+    const headerLine = lines[0].split(',').map(h => h.trim().replace(/"/g, ''));
+    const dataLines = lines.slice(1);
+
+    const indices = {
+      section: headerLine.indexOf(mapping.section),
+      category: headerLine.indexOf(mapping.category),
+      name: headerLine.indexOf(mapping.name),
+      minPrice: headerLine.indexOf(mapping.minPrice),
+      maxPrice: headerLine.indexOf(mapping.maxPrice),
+    };
+
+    if (Object.values(indices).some(index => index === -1)) {
+      return { error: "فيه أعمدة مختارة مش موجودة في الملف. اتأكد من الربط." };
+    }
+
+    const newItems: ChecklistItem[] = [];
+
+    dataLines.forEach((line, lineIndex) => {
+      const values = line.split(',').map(v => v.trim().replace(/"/g, ''));
+      
+      const sectionName = values[indices.section];
+      const categoryName = values[indices.category];
+      const itemName = values[indices.name];
+      const minPriceStr = values[indices.minPrice];
+      const maxPriceStr = values[indices.maxPrice];
+
+      if (!sectionName || !categoryName || !itemName || !minPriceStr || !maxPriceStr) {
+        return; // Skip incomplete rows
+      }
+
+      const minPrice = parseFloat(minPriceStr);
+      const maxPrice = parseFloat(maxPriceStr);
+      if (isNaN(minPrice) || isNaN(maxPrice) || maxPrice < minPrice) {
+        return; // Skip rows with invalid prices
+      }
+
+      // Find or create section
+      let section = categories.find(c => c.name.toLowerCase() === sectionName.toLowerCase() && c.parentId === null);
+      if (!section) {
+        section = { id: `s-import-${Date.now()}-${lineIndex}`, name: sectionName, parentId: null };
+        categories.unshift(section);
+      }
+
+      // Find or create category under that section
+      let category = categories.find(c => c.name.toLowerCase() === categoryName.toLowerCase() && c.parentId === section!.id);
+      if (!category) {
+        category = { id: `c-import-${Date.now()}-${lineIndex}`, name: categoryName, parentId: section.id };
+        categories.unshift(category);
+      }
+      
+      const newItem: ChecklistItem = {
+        id: `i-import-${Date.now()}-${lineIndex}`,
+        name: itemName,
+        categoryId: category.id,
+        minPrice,
+        maxPrice,
+        isPurchased: false,
+      };
+      
+      newItems.push(newItem);
+    });
+    
+    if (newItems.length > 0) {
+      items.unshift(...newItems);
+    }
+    
     revalidatePath("/");
     return { success: true, count: newItems.length };
-  } catch (error) {
-    return { success: false, error: "معرفناش نقرا الملف." };
+
+  } catch (e) {
+    return { error: "حصلت مشكلة واحنا بنعالج الملف. اتأكد انه ملف CSV صحيح." };
   }
 }
 

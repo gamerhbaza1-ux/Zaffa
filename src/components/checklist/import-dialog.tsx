@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from 'react';
+import { useState, useActionState, useEffect, useRef } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -14,7 +14,14 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { importItems } from "@/lib/actions";
-import { Loader2 } from 'lucide-react';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { SubmitButton } from '../submit-button';
 
 type ImportDialogProps = {
   open: boolean;
@@ -22,78 +29,146 @@ type ImportDialogProps = {
   onImportCompleted: () => void;
 };
 
-export function ImportDialog({ open, onOpenChange }: ImportDialogProps) {
-  const [file, setFile] = useState<File | null>(null);
-  const [isPending, startTransition] = useTransition();
+const REQUIRED_FIELDS = [
+  { id: 'section', label: 'القسم' },
+  { id: 'category', label: 'الفئة' },
+  { id: 'name', label: 'اسم الحاجة' },
+  { id: 'minPrice', label: 'أقل سعر' },
+  { id: 'maxPrice', label: 'أقصى سعر' },
+];
+
+export function ImportDialog({ open, onOpenChange, onImportCompleted }: ImportDialogProps) {
+  const [state, formAction] = useActionState(importItems, { error: null, success: false, count: 0 });
   const { toast } = useToast();
+  
+  const [file, setFile] = useState<File | null>(null);
+  const [fileContent, setFileContent] = useState<string>('');
+  const [step, setStep] = useState<'selection' | 'mapping'>('selection');
+  const [headers, setHeaders] = useState<string[]>([]);
+  const [mapping, setMapping] = useState<Record<string, string>>({});
+  
+  const formRef = useRef<HTMLFormElement>(null);
 
-  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    if (event.target.files) {
-      setFile(event.target.files[0]);
+  useEffect(() => {
+    if (!open) {
+      // Reset all state when dialog closes
+      setTimeout(() => {
+        setFile(null);
+        setFileContent('');
+        setStep('selection');
+        setHeaders([]);
+        setMapping({});
+        if (formRef.current) {
+            // @ts-ignore
+            formRef.current.reset();
+        }
+      }, 200);
     }
-  };
+  }, [open]);
 
-  const handleImport = async () => {
-    if (!file) {
+  useEffect(() => {
+    if (state?.success) {
+      toast({
+        title: "نجحنا!",
+        description: `ضفنا ${state.count} حاجات جديدة للقائمة.`,
+      });
+      onImportCompleted();
+      onOpenChange(false);
+    } else if (state?.error) {
       toast({
         variant: "destructive",
-        title: "مفيش ملف",
-        description: "لازم نختار ملف .csv الأول.",
+        title: "معرفناش نستورد",
+        description: state.error,
       });
-      return;
+      setStep('mapping'); // Stay on mapping step on error
     }
+  }, [state, onImportCompleted, onOpenChange, toast]);
 
-    startTransition(async () => {
-      const reader = new FileReader();
-      reader.onload = async (e) => {
-        const text = e.target?.result as string;
-        // onItemAdded is now onImportCompleted
-        const result = await importItems(text);
-        if (result.success) {
-          toast({
-            title: "نجحنا!",
-            description: `ضفنا ${result.count} حاجات جديدة للقائمة.`,
-          });
-          onOpenChange(false);
-          setFile(null);
-          onImportCompleted();
-        } else {
-          toast({
-            variant: "destructive",
-            title: "معرفناش نستورد",
-            description: result.error || "حصلت مشكلة في الملف.",
-          });
-        }
-      };
-      reader.readAsText(file);
-    });
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const selectedFile = e.target.files?.[0];
+    if (!selectedFile) return;
+
+    setFile(selectedFile);
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const text = event.target?.result as string;
+      if (!text) return;
+      setFileContent(text);
+      const firstLine = text.split('\n')[0].trim();
+      const parsedHeaders = firstLine.split(',').map(h => h.trim().replace(/"/g, ''));
+      setHeaders(parsedHeaders);
+      setStep('mapping');
+    };
+    reader.readAsText(selectedFile);
   };
+
+  const handleMappingChange = (fieldId: string, header: string) => {
+    setMapping(prev => ({ ...prev, [fieldId]: header }));
+  };
+
+  const isMappingComplete = REQUIRED_FIELDS.every(field => mapping[field.id]);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[425px]">
-        <DialogHeader>
-          <DialogTitle className="font-headline">نستورد من ملف Excel/CSV</DialogTitle>
-          <DialogDescription>
-            ممكن نرفع ملف .csv عشان نضيف حاجات كتير مرة واحدة. الملف لازم يكون فيه الأعمدة دي: `name`, `minPrice`, `maxPrice`, `category`.
-          </DialogDescription>
-        </DialogHeader>
-        <div className="grid gap-4 py-4">
-          <div className="grid w-full max-w-sm items-center gap-1.5">
-            <Label htmlFor="import-file">ملف CSV</Label>
-            <Input id="import-file" type="file" accept=".csv" onChange={handleFileChange} />
-          </div>
-          <p className="text-xs text-muted-foreground">
-            متنسوش، أول صف في الملف مش هيتحسب (عشان أسماء الأعمدة).
-          </p>
-        </div>
-        <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={isPending}>نلغي</Button>
-          <Button onClick={handleImport} disabled={!file || isPending}>
-            {isPending && <Loader2 className="ml-2 h-4 w-4 animate-spin" />}
-            يلا نستورد
-          </Button>
-        </DialogFooter>
+      <DialogContent className="sm:max-w-md">
+        {step === 'selection' && (
+          <>
+            <DialogHeader>
+              <DialogTitle className="font-headline">نستورد من ملف Excel/CSV</DialogTitle>
+              <DialogDescription>
+                نختار ملف .csv عشان نضيف حاجات كتير مرة واحدة.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="grid gap-4 py-4">
+              <div className="grid w-full max-w-sm items-center gap-1.5">
+                <Label htmlFor="import-file">ملف CSV</Label>
+                <Input id="import-file" type="file" accept=".csv" onChange={handleFileChange} />
+              </div>
+              <p className="text-xs text-muted-foreground">
+                الخطوة الجاية هنختار كل عامود في الملف بيمثل إيه.
+              </p>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => onOpenChange(false)}>نلغي</Button>
+            </DialogFooter>
+          </>
+        )}
+
+        {step === 'mapping' && (
+          <form ref={formRef} action={formAction}>
+            <input type="hidden" name="fileContent" value={fileContent} />
+            <input type="hidden" name="mapping" value={JSON.stringify(mapping)} />
+            <DialogHeader>
+              <DialogTitle className="font-headline">نربط الأعمدة</DialogTitle>
+              <DialogDescription>
+                تمام، دلوقتي نختار كل عامود في الملف بتاعنا بيمثل إيه.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-3 py-4">
+              {REQUIRED_FIELDS.map(field => (
+                <div key={field.id} className="grid grid-cols-3 items-center gap-4">
+                  <Label className="text-right">
+                    {field.label}
+                  </Label>
+                  <Select onValueChange={(value) => handleMappingChange(field.id, value)} required>
+                    <SelectTrigger className="col-span-2">
+                      <SelectValue placeholder="نختار عامود..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {headers.map((header, idx) => (
+                        <SelectItem key={`${header}-${idx}`} value={header}>{header}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              ))}
+            </div>
+            <DialogFooter>
+              <Button variant="outline" type="button" onClick={() => setStep('selection')}>نرجع</Button>
+              <SubmitButton label="يلا نستورد" disabled={!isMappingComplete} />
+            </DialogFooter>
+          </form>
+        )}
       </DialogContent>
     </Dialog>
   );
