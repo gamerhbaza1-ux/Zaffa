@@ -22,6 +22,8 @@ import { InvitationNotification } from '@/components/invitation-notification';
 import { Home as HomeIcon, Loader2, LogOut } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { collection, doc, runTransaction } from 'firebase/firestore';
+import { errorEmitter } from '@/firebase/error-emitter';
+import { FirestorePermissionError } from '@/firebase/errors';
 
 function Header() {
   const { user, userProfile, isUserLoading, isProfileLoading } = useUser();
@@ -85,45 +87,42 @@ function AutomaticHouseholdSetup({ forceSetup = false }: { forceSetup?: boolean 
   const { toast } = useToast();
   
   useEffect(() => {
-    // This effect runs on the client when a user is logged in but has no household,
-    // or if their household data is inconsistent.
     if (user && firestore && !isPending) {
-      startTransition(async () => {
-        try {
-          await runTransaction(firestore, async (transaction) => {
-            const userRef = doc(firestore, "users", user.uid);
-            const userSnap = await transaction.get(userRef);
+      startTransition(() => {
+        runTransaction(firestore, async (transaction) => {
+          const userRef = doc(firestore, "users", user.uid);
+          const userSnap = await transaction.get(userRef);
 
-            if (!userSnap.exists()) {
-              throw new Error("لم يتم العثور على حسابك. حاول تسجيل الخروج والدخول مرة أخرى.");
-            }
+          if (!userSnap.exists()) {
+            throw new Error("لم يتم العثور على حسابك. حاول تسجيل الخروج والدخول مرة أخرى.");
+          }
 
-            // If householdId exists and we are not forcing a setup, bail out.
-            if (userSnap.data().householdId && !forceSetup) {
-              return;
-            }
+          if (userSnap.data().householdId && !forceSetup) {
+            return;
+          }
 
-            // 1. Create a new household document
-            const householdRef = doc(collection(firestore, "households"));
-            transaction.set(householdRef, {
-              memberIds: [user.uid],
+          const householdRef = doc(collection(firestore, "households"));
+          transaction.set(householdRef, {
+            memberIds: [user.uid],
+          });
+
+          transaction.update(userRef, { householdId: householdRef.id });
+        }).catch((e) => {
+           if (e && (e.name === 'FirebaseError' || e.code === 'permission-denied')) {
+             errorEmitter.emit('permission-error', new FirestorePermissionError({
+                path: `transaction for user ${user.uid}`, // best effort path
+                operation: 'write',
+             }));
+           } else {
+             const message = e instanceof Error ? e.message : "An unknown error occurred";
+             toast({
+              variant: "destructive",
+              title: "فشلت عملية الإعداد",
+              description: message,
             });
-
-            // 2. Update the user's profile with the new householdId
-            transaction.update(userRef, { householdId: householdRef.id });
-          });
-          // On success, the useUser hook's onSnapshot listener will re-fetch
-          // userProfile. This will cause this component to unmount and the
-          // main app content to show. No success toast is needed.
-        } catch (e) {
-           const message = e instanceof Error ? e.message : "An unknown error occurred";
-           toast({
-            variant: "destructive",
-            title: "فشلت عملية الإعداد",
-            description: message,
-          });
-           console.error("Automatic household setup failed:", e);
-        }
+             console.error("Automatic household setup failed:", e);
+           }
+        });
       });
     }
   }, [user, firestore, isPending, startTransition, toast, forceSetup]);
@@ -158,14 +157,12 @@ export default function Home() {
     return <div className="flex h-screen items-center justify-center">جاري التحميل...</div>;
   }
   
-  // Data is inconsistent if the user profile has a householdId, but the household document itself is missing.
   const isDataInconsistent = !!(userProfile?.householdId && !household);
 
   if (!userProfile || !userProfile.householdId || isDataInconsistent) {
     return <AutomaticHouseholdSetup forceSetup={isDataInconsistent} />;
   }
 
-  // If all checks pass, render the main application content.
   return (
     <div className="flex flex-col min-h-screen bg-background">
       <Header />

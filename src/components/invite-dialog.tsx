@@ -7,6 +7,8 @@ import { z } from "zod";
 import { useFirestore, useUser } from "@/firebase";
 import { collection, doc, getDoc, getDocs, query, where, addDoc } from "firebase/firestore";
 import type { Invitation, UserProfile } from "@/lib/types";
+import { errorEmitter } from "@/firebase/error-emitter";
+import { FirestorePermissionError } from "@/firebase/errors";
 
 
 import {
@@ -112,13 +114,22 @@ export function InviteDialog({
           status: 'pending',
         };
 
-        await addDoc(invitationsRef, newInvitation);
+        addDoc(invitationsRef, newInvitation)
+            .then(() => {
+                toast({
+                  title: "تمام!",
+                  description: "بعتنا الدعوة لشريكك.",
+                });
+                onOpenChange(false);
+            })
+            .catch(() => {
+              errorEmitter.emit('permission-error', new FirestorePermissionError({
+                path: invitationsRef.path,
+                operation: 'create',
+                requestResourceData: newInvitation,
+              }));
+            });
 
-        toast({
-          title: "تمام!",
-          description: "بعتنا الدعوة لشريكك.",
-        });
-        onOpenChange(false);
       } catch (e) {
         const message = e instanceof Error ? e.message : "An unknown error occurred";
         form.setError("inviteeEmail", { type: "server", message });
