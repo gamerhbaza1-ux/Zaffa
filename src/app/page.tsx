@@ -78,15 +78,15 @@ function Header() {
   );
 }
 
-function AutomaticHouseholdSetup() {
+function AutomaticHouseholdSetup({ forceSetup = false }: { forceSetup?: boolean }) {
   const { user } = useUser();
   const firestore = useFirestore();
   const [isPending, startTransition] = useTransition();
   const { toast } = useToast();
   
   useEffect(() => {
-    // This effect runs on the client when a user is logged in but has no household.
-    // It automatically creates a single-user household for them.
+    // This effect runs on the client when a user is logged in but has no household,
+    // or if their household data is inconsistent.
     if (user && firestore && !isPending) {
       startTransition(async () => {
         try {
@@ -98,9 +98,8 @@ function AutomaticHouseholdSetup() {
               throw new Error("لم يتم العثور على حسابك. حاول تسجيل الخروج والدخول مرة أخرى.");
             }
 
-            if (userSnap.data().householdId) {
-              // User already has a household, no action needed.
-              // The component will unmount on the next render as useUser updates.
+            // If householdId exists and we are not forcing a setup, bail out.
+            if (userSnap.data().householdId && !forceSetup) {
               return;
             }
 
@@ -127,7 +126,7 @@ function AutomaticHouseholdSetup() {
         }
       });
     }
-  }, [user, firestore, isPending, startTransition, toast]);
+  }, [user, firestore, isPending, startTransition, toast, forceSetup]);
 
   return (
      <div className="flex h-screen flex-col items-center justify-center bg-background p-4 text-center">
@@ -144,7 +143,7 @@ function AutomaticHouseholdSetup() {
 
 
 export default function Home() {
-  const { user, isUserLoading, userProfile, isProfileLoading } = useUser();
+  const { user, isUserLoading, userProfile, isProfileLoading, household, isHouseholdLoading } = useUser();
   const router = useRouter();
   
   useEffect(() => {
@@ -155,16 +154,15 @@ export default function Home() {
 
   const heroImage = PlaceHolderImages.find(p => p.id === 'hero');
   
-  if (isUserLoading || !user) {
+  if (isUserLoading || !user || isProfileLoading || isHouseholdLoading) {
     return <div className="flex h-screen items-center justify-center">جاري التحميل...</div>;
   }
   
-  if (isProfileLoading) {
-    return <div className="flex h-screen items-center justify-center">جاري تحميل حسابك...</div>;
-  }
+  // Data is inconsistent if the user profile has a householdId, but the household document itself is missing.
+  const isDataInconsistent = !!(userProfile?.householdId && !household);
 
-  if (!userProfile || !userProfile.householdId) {
-    return <AutomaticHouseholdSetup />;
+  if (!userProfile || !userProfile.householdId || isDataInconsistent) {
+    return <AutomaticHouseholdSetup forceSetup={isDataInconsistent} />;
   }
 
   // If all checks pass, render the main application content.
