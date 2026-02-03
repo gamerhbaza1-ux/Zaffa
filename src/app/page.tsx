@@ -3,11 +3,9 @@ import Image from 'next/image';
 import { PlaceHolderImages } from '@/lib/placeholder-images';
 import ChecklistClient from '@/components/checklist/checklist-client';
 import { Card, CardContent } from '@/components/ui/card';
-import { Skeleton } from '@/components/ui/skeleton';
-import { Home as HomeIcon, LogOut, UserPlus } from 'lucide-react';
 import { useUser } from '@/firebase';
 import { useRouter } from 'next/navigation';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useTransition } from 'react';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -19,10 +17,11 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { getAuth } from 'firebase/auth';
-import { InviteDialog } from '@/components/invite-dialog';
 import { PartnerDisplay } from '@/components/partner-display';
 import { InvitationNotification } from '@/components/invitation-notification';
-import { SetupChoice } from '@/components/setup-choice';
+import { setupSingleUserHousehold } from '@/lib/actions';
+import { Home as HomeIcon, Loader2, LogOut } from 'lucide-react';
+import { useToast } from '@/hooks/use-toast';
 
 function Header() {
   const { user, userProfile, isUserLoading, isProfileLoading } = useUser();
@@ -79,13 +78,49 @@ function Header() {
   );
 }
 
+function AutomaticHouseholdSetup() {
+  const { user } = useUser();
+  const [isPending, startTransition] = useTransition();
+  const { toast } = useToast();
+  
+  useEffect(() => {
+    // This effect runs when a user is logged in but has no household.
+    // It automatically creates a single-user household for them.
+    if (user && !isPending) {
+      startTransition(async () => {
+        const result = await setupSingleUserHousehold(user.uid);
+        if (result.error) {
+           toast({
+            variant: "destructive",
+            title: "فشلت عملية الإعداد",
+            description: result.error,
+          });
+        }
+        // On success, the useUser hook re-fetches userProfile, which will
+        // cause the Home component to re-render and show the main app content.
+      });
+    }
+  }, [user, isPending, startTransition, toast]);
+
+  return (
+     <div className="flex h-screen flex-col items-center justify-center bg-background p-4 text-center">
+        <div className="max-w-2xl mx-auto">
+            <Loader2 className="h-12 w-12 animate-spin text-primary mb-6" />
+            <h1 className="text-2xl font-bold font-headline mb-2">أهلاً بك في زفة!</h1>
+            <p className="text-lg text-muted-foreground">
+                لحظات من فضلك، نقوم بإعداد حسابك لأول مرة...
+            </p>
+        </div>
+      </div>
+  );
+}
+
+
 export default function Home() {
   const { user, isUserLoading, userProfile, isProfileLoading } = useUser();
   const router = useRouter();
   
-  // This effect handles the redirection for unauthenticated users.
   useEffect(() => {
-    // We wait until the loading is complete before checking for a user.
     if (!isUserLoading && !user) {
       router.push('/login');
     }
@@ -93,27 +128,16 @@ export default function Home() {
 
   const heroImage = PlaceHolderImages.find(p => p.id === 'hero');
   
-  // Gatekeeper 1: While checking auth state, show a loading screen.
-  if (isUserLoading) {
+  if (isUserLoading || !user) {
     return <div className="flex h-screen items-center justify-center">جاري التحميل...</div>;
   }
   
-  // Gatekeeper 2: If auth is resolved and there's NO user, the effect above will redirect.
-  // We render a loading screen to provide a seamless transition during redirection.
-  if (!user) {
-    return <div className="flex h-screen items-center justify-center">جاري التحميل...</div>;
-  }
-  
-  // From here on, we are guaranteed to have a logged-in user.
-
-  // Gatekeeper 3: Wait for the user's profile to load.
   if (isProfileLoading) {
     return <div className="flex h-screen items-center justify-center">جاري تحميل حسابك...</div>;
   }
 
-  // Gatekeeper 4: If profile is loaded but doesn't exist (edge case) or doesn't have a household
   if (!userProfile || !userProfile.householdId) {
-    return <SetupChoice />;
+    return <AutomaticHouseholdSetup />;
   }
 
   // If all checks pass, render the main application content.
