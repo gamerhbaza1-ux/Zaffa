@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import type { Category } from '@/lib/types';
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -11,14 +11,21 @@ interface AnalysisSetupDialogProps {
   onOpenChange: (open: boolean) => void;
   sections: Category[];
   subCategories: Category[];
-  onAnalyze: (selection: string[]) => void;
+  onSave: (selection: string[]) => void;
+  isEditing: boolean;
+  initialSelection: string[];
 }
 
-export function AnalysisSetupDialog({ open, onOpenChange, sections, subCategories, onAnalyze }: AnalysisSetupDialogProps) {
-  // Selection now only stores the IDs of leaf-node categories (sub-categories in this UI)
+export function AnalysisSetupDialog({ open, onOpenChange, sections, subCategories, onSave, isEditing, initialSelection }: AnalysisSetupDialogProps) {
   const [selection, setSelection] = useState<string[]>([]);
+  
+  useEffect(() => {
+    if(open) {
+        setSelection(initialSelection || []);
+    }
+  }, [open, initialSelection]);
 
-  // Group subcategories by their parent section ID for easier access
+
   const subCategoriesBySection = useMemo(() => {
     return subCategories.reduce((acc, cat) => {
       if (cat.parentId) {
@@ -31,22 +38,17 @@ export function AnalysisSetupDialog({ open, onOpenChange, sections, subCategorie
     }, {} as Record<string, Category[]>);
   }, [subCategories]);
 
-  // When a section checkbox is toggled...
   const handleSectionToggle = (sectionId: string, isChecked: boolean) => {
     const childIds = subCategoriesBySection[sectionId]?.map(c => c.id) || [];
     setSelection(prev => {
-      // Filter out all children of the current section first
       const otherSelections = prev.filter(id => !childIds.includes(id));
-      // If checking, add all children back
       if (isChecked) {
         return [...otherSelections, ...childIds];
       }
-      // If unchecking, just return the other selections
       return otherSelections;
     });
   };
 
-  // When a sub-category checkbox is toggled...
   const handleSubCategoryToggle = (subCategoryId: string, isChecked: boolean) => {
      setSelection(prev => {
       if (isChecked) {
@@ -57,17 +59,11 @@ export function AnalysisSetupDialog({ open, onOpenChange, sections, subCategorie
     });
   };
 
-  const handleAnalyzeClick = () => {
-    // The selection state already contains the specific sub-category IDs the user wants.
-    // If a section was selected, all its children are in the selection.
-    // If a sub-category was deselected, it's not in the selection.
-    // This is exactly what onAnalyze needs.
-    onAnalyze(selection);
-    handleClose(); // Close and reset
+  const handleSaveClick = () => {
+    onSave(selection);
   };
   
   const handleClose = () => {
-    setSelection([]); // Reset selection on close
     onOpenChange(false);
   }
 
@@ -75,7 +71,7 @@ export function AnalysisSetupDialog({ open, onOpenChange, sections, subCategorie
     <Dialog open={open} onOpenChange={handleClose}>
       <DialogContent className="sm:max-w-lg">
         <DialogHeader>
-          <DialogTitle className="font-headline">إنشاء تحليل جديد</DialogTitle>
+          <DialogTitle className="font-headline">{isEditing ? 'تعديل التحليل' : 'إنشاء تحليل جديد'}</DialogTitle>
           <DialogDescription>
             اختار الأقسام أو الفئات اللي عاوز تجمع تحليلها في تقرير واحد.
           </DialogDescription>
@@ -132,8 +128,8 @@ export function AnalysisSetupDialog({ open, onOpenChange, sections, subCategorie
         </div>
         <DialogFooter>
           <Button type="button" variant="outline" onClick={handleClose}>إلغاء</Button>
-          <Button onClick={handleAnalyzeClick} disabled={selection.length === 0}>
-            إنشاء تحليل
+          <Button onClick={handleSaveClick} disabled={selection.length === 0}>
+            {isEditing ? 'حفظ التعديلات' : 'إنشاء تحليل'}
           </Button>
         </DialogFooter>
       </DialogContent>

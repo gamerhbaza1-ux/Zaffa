@@ -7,7 +7,7 @@ import { useUser, useCollection, useFirestore } from '@/firebase';
 import { collection, addDoc, deleteDoc, doc, updateDoc } from 'firebase/firestore';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { ArrowRight, ListTree, ShoppingCart, Target, TrendingUp, X, PlusCircle, Star } from 'lucide-react';
+import { ArrowRight, ListTree, ShoppingCart, Target, TrendingUp, X, PlusCircle, Star, Pencil } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import type { Category, ChecklistItem, Analysis } from '@/lib/types';
 import { Progress } from '@/components/ui/progress';
@@ -68,7 +68,7 @@ function StatCard({ title, value, icon: Icon, onClick, className }: { title: str
     );
 }
 
-function AnalysisResultCard({ analysis, onRemove, onShowItems, onToggleFeatured }: { analysis: any, onRemove: (id: string) => void, onShowItems: () => void, onToggleFeatured: (id: string, isCurrentlyFeatured: boolean) => void }) {
+function AnalysisResultCard({ analysis, onRemove, onShowItems, onToggleFeatured, onEdit }: { analysis: any, onRemove: (id: string) => void, onShowItems: () => void, onToggleFeatured: (id: string, isCurrentlyFeatured: boolean) => void, onEdit: () => void }) {
     const { title, stats, isFeatured } = analysis;
 
     const formatPrice = (price: number) => {
@@ -86,10 +86,16 @@ function AnalysisResultCard({ analysis, onRemove, onShowItems, onToggleFeatured 
                         </Button>
                         <CardTitle className="font-headline text-lg">{title}</CardTitle>
                     </div>
-                    <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => onRemove(analysis.id)}>
-                        <X className="h-4 w-4" />
-                         <span className="sr-only">حذف التحليل</span>
-                    </Button>
+                     <div className="flex items-center">
+                        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={onEdit}>
+                            <Pencil className="h-4 w-4" />
+                            <span className="sr-only">تعديل التحليل</span>
+                        </Button>
+                        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => onRemove(analysis.id)}>
+                            <X className="h-4 w-4" />
+                            <span className="sr-only">حذف التحليل</span>
+                        </Button>
+                    </div>
                 </div>
             </CardHeader>
             <CardContent className="space-y-6">
@@ -116,6 +122,7 @@ export default function StatsPage() {
   
   const [isAnalysisDialogOpen, setAnalysisDialogOpen] = useState(false);
   const [itemsToShow, setItemsToShow] = useState<{title: string, items: ChecklistItem[]} | null>(null);
+  const [editingAnalysis, setEditingAnalysis] = useState<Analysis | null>(null);
 
   useEffect(() => {
     if (!isUserLoading && !user) {
@@ -175,34 +182,40 @@ export default function StatsPage() {
             id: saved.id,
             title: saved.title,
             isFeatured: saved.isFeatured,
+            categoryIds: saved.categoryIds,
             stats,
             items: relevantItems,
         };
     }).sort((a, b) => a.title.localeCompare(b.title));
   }, [savedAnalyses, categories, items]);
 
-  const handleCreateAnalysis = useCallback((selection: string[]) => {
-    if (selection.length === 0 || !analysesRef) return;
+  const handleSaveAnalysis = useCallback((selection: string[]) => {
+    if (!analysesRef) return;
+    const selectedNames = selection.map(id => categories.find(c => c.id === id)?.name).filter(Boolean);
+    const title = selection.length > 0 ? `تحليل: ${selectedNames.join('، ')}` : 'تحليل مخصص';
 
-    const selectedNames = selection
-        .map(id => categories.find(c => c.id === id)?.name)
-        .filter(Boolean);
-    const title = `تحليل: ${selectedNames.join('، ')}`;
+    if (editingAnalysis) { // UPDATE
+        const analysisDocRef = doc(analysesRef, editingAnalysis.id);
+        const updatedData = { categoryIds: selection, title };
+        
+        updateDoc(analysisDocRef, updatedData)
+            .then(() => {
+                toast({ title: 'تم تحديث التحليل' });
+            })
+            .catch(() => errorEmitter.emit('permission-error', new FirestorePermissionError({ path: analysisDocRef.path, operation: 'update', requestResourceData: updatedData })));
+    } else { // CREATE
+        if (selection.length === 0) return;
+        const newAnalysisData: Omit<Analysis, 'id'> = { title, categoryIds: selection, isFeatured: false };
+        addDoc(analysesRef, newAnalysisData)
+            .then(() => {
+                toast({ title: 'تم إنشاء التحليل', description: 'تم حفظ التحليل بنجاح.' });
+            })
+            .catch(() => errorEmitter.emit('permission-error', new FirestorePermissionError({ path: analysesRef.path, operation: 'create', requestResourceData: newAnalysisData })));
+    }
     
-    const newAnalysisData: Omit<Analysis, 'id'> = {
-        title,
-        categoryIds: selection,
-        isFeatured: false,
-    };
-    
-    addDoc(analysesRef, newAnalysisData)
-        .then(() => {
-            toast({ title: 'تم إنشاء التحليل', description: 'تم حفظ التحليل بنجاح.' });
-            setAnalysisDialogOpen(false);
-        })
-        .catch(() => errorEmitter.emit('permission-error', new FirestorePermissionError({ path: analysesRef.path, operation: 'create', requestResourceData: newAnalysisData })));
-
-  }, [categories, analysesRef, toast]);
+    setAnalysisDialogOpen(false);
+    setEditingAnalysis(null);
+  }, [categories, analysesRef, toast, editingAnalysis]);
 
   const handleRemoveAnalysis = (id: string) => {
     if (!analysesRef) return;
@@ -223,6 +236,14 @@ export default function StatsPage() {
         })
         .catch(() => errorEmitter.emit('permission-error', new FirestorePermissionError({ path: analysisDocRef.path, operation: 'update', requestResourceData: { isFeatured: !isCurrentlyFeatured } })));
   };
+
+  const isEditing = !!editingAnalysis;
+  const isDialogOpen = isAnalysisDialogOpen || isEditing;
+
+  const handleDialogClose = () => {
+    setAnalysisDialogOpen(false);
+    setEditingAnalysis(null);
+  }
 
   if (isLoading || !user) {
     return (
@@ -253,11 +274,13 @@ export default function StatsPage() {
             </div>
 
             <AnalysisSetupDialog
-                open={isAnalysisDialogOpen}
-                onOpenChange={setAnalysisDialogOpen}
+                open={isDialogOpen}
+                onOpenChange={(open) => !open && handleDialogClose()}
+                isEditing={isEditing}
+                initialSelection={editingAnalysis?.categoryIds || []}
                 sections={sections}
                 subCategories={subCategories}
-                onAnalyze={handleCreateAnalysis}
+                onSave={handleSaveAnalysis}
             />
 
             <AnalysisItemsDialog
@@ -276,6 +299,7 @@ export default function StatsPage() {
                             onRemove={handleRemoveAnalysis} 
                             onShowItems={() => setItemsToShow({ title: analysis.title, items: analysis.items })}
                             onToggleFeatured={handleToggleFeatured}
+                            onEdit={() => setEditingAnalysis(analysis)}
                         />
                     ))}
                 </div>
