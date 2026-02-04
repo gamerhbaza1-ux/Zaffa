@@ -1,8 +1,12 @@
+// This configuration is now set up to use environment variables,
+// making it suitable for deployment on platforms like Vercel.
+// For local development, create a .env.local file and add these variables.
 export const firebaseConfig = {
-  "projectId": "studio-8949399148-35df2",
-  "appId": "1:88498255454:web:d4c04f1a81da7cade066cf",
-  "apiKey": "AIzaSyBo_DNaxVEGSxvejdT3g1u8iP765eNTPGE",
-  "authDomain": "studio-8949399148-35df2.firebaseapp.com",
-  "measurementId": "",
-  "messagingSenderId": "88498255454"
+  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
+  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
+  projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
+  storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
+  appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
+  measurementId: process.env.NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID,
 };
