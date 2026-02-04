@@ -5,7 +5,6 @@ import { FirebaseApp } from 'firebase/app';
 import { Firestore } from 'firebase/firestore';
 import { Auth } from 'firebase/auth';
 import { FirebaseErrorListener } from '@/components/FirebaseErrorListener';
-import { DevSeedUsers } from '@/components/dev-seed-users';
 
 // Simple context for providing the service instances
 interface FirebaseServices {
@@ -30,7 +29,6 @@ export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
   return (
     <FirebaseContext.Provider value={{ firebaseApp, firestore, auth }}>
       <FirebaseErrorListener />
-      <DevSeedUsers />
       {children}
     </FirebaseContext.Provider>
   );
