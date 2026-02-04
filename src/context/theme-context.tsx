@@ -1,46 +1,32 @@
 'use client';
 
-import { createContext, useContext, useEffect, useCallback, ReactNode } from 'react';
-import { useLocalStorage } from '@/hooks/use-local-storage';
+import { createContext, useContext, useEffect, ReactNode } from 'react';
 import { useUser } from '@/firebase';
 
 export type Theme = 'groom' | 'bride';
 
+// The context now only provides the theme, no setter.
 type ThemeContextType = {
     theme: Theme;
-    toggleTheme: () => void;
 };
 
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
     const { userProfile } = useUser();
-    // Initialize with a default and let the effects handle the update.
-    const [theme, setTheme] = useLocalStorage<Theme>('theme', 'groom');
     
-    // Update theme based on user's role, but only if they haven't manually changed it.
-    useEffect(() => {
-        if (userProfile?.role) {
-            const manualOverride = localStorage.getItem('theme_manual_override');
-            if (!manualOverride) {
-                setTheme(userProfile.role);
-            }
-        }
-    }, [userProfile?.role, setTheme]);
-
+    // The theme is directly derived from the user's role. Default to 'groom'.
+    const theme: Theme = userProfile?.role || 'groom';
 
     useEffect(() => {
         const root = document.documentElement;
+        // Clean up previous themes and apply the current one.
         root.classList.remove('theme-groom', 'theme-bride');
         root.classList.add(`theme-${theme}`);
     }, [theme]);
-
-    const toggleTheme = useCallback(() => {
-        localStorage.setItem('theme_manual_override', 'true');
-        setTheme(prevTheme => (prevTheme === 'groom' ? 'bride' : 'groom'));
-    }, [setTheme]);
     
-    const value = { theme, toggleTheme };
+    // The context value no longer includes a toggle function.
+    const value = { theme };
 
     return <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>;
 }

@@ -13,7 +13,6 @@ import { InvitationNotification } from '@/components/invitation-notification';
 import { getAuth, signOut } from 'firebase/auth';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
-import { ThemeSwitcher } from '@/components/theme-switcher';
 import type { HeroConfig } from '@/lib/types';
 import { HeroSettingsDialog } from '@/components/hero-settings-dialog';
 import { useFirestore } from '@/firebase';
@@ -57,7 +56,6 @@ function Header() {
           </div>
           {user && (
             <div className="flex items-center gap-2">
-              <ThemeSwitcher />
               <Button variant="ghost" size="icon" asChild>
                 <Link href="/stats" aria-label="عرض الزتونة">
                     <ZaytounaIcon className="h-5 w-5 text-muted-foreground" />
