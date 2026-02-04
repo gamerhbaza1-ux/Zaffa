@@ -41,6 +41,7 @@ import { Skeleton } from '../ui/skeleton';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
 import { FeaturedAnalyses } from '../featured-analyses';
+import type { ActivityLog } from '@/lib/types';
 
 const normalizeArabic = (text: string): string => {
     return text
@@ -62,6 +63,7 @@ export default function ChecklistClient() {
     const { data: itemsData, isLoading: areItemsLoading } = useCollection<ChecklistItem>(itemsRef);
     const categories = useMemo(() => categoriesData || [], [categoriesData]);
     const items = useMemo(() => itemsData || [], [itemsData]);
+    const categoriesById = useMemo(() => new Map(categories.map(c => [c.id, c])), [categories]);
 
     // Dialog states
     const [isAddDialogOpen, setAddDialogOpen] = useState(false);
@@ -75,17 +77,38 @@ export default function ChecklistClient() {
     const [categoryToEdit, setCategoryToEdit] = useState<Category | null>(null);
     const [categoryToDelete, setCategoryToDelete] = useState<Category | null>(null);
     
-    const logActivity = useCallback((action: string, details: string) => {
+    const getCategoryHierarchy = useCallback((categoryId: string): string => {
+        const category = categoriesById.get(categoryId);
+        if (!category) return 'فئة غير معروفة';
+
+        const path: string[] = [category.name];
+        let current = category;
+        while (current.parentId) {
+            const parent = categoriesById.get(current.parentId);
+            if (parent) {
+                path.unshift(parent.name);
+                current = parent;
+            } else {
+                break;
+            }
+        }
+        return path.join(' / ');
+    }, [categoriesById]);
+    
+    const logActivity = useCallback((action: string, details: string, payload?: Record<string, any>) => {
         if (!firestore || !household || !userProfile) return;
         const activityLogsRef = collection(firestore, `households/${household.id}/activityLogs`);
-        const logEntry = {
+        const logEntry: Omit<ActivityLog, 'id' | 'timestamp'> & { timestamp: any } = {
             userId: userProfile.id,
             userName: userProfile.firstName,
             action,
             details,
             timestamp: serverTimestamp(),
         };
-        addDoc(activityLogsRef, logEntry)
+        if (payload) {
+            logEntry.payload = payload;
+        }
+        addDoc(activityLogsRef, logEntry as any)
             .catch(() => {
                 errorEmitter.emit('permission-error', new FirestorePermissionError({
                     path: activityLogsRef.path,
@@ -118,7 +141,8 @@ export default function ChecklistClient() {
             .then(() => {
                 toast({ title: "تمام!", description: "علمنا على الحاجة دي انها اتجابت خلاص." });
                 if (item) {
-                  logActivity('purchase_item', `شراء "${item.name}" بسعر ${formatPrice(finalPrice)}`);
+                  const categoryInfo = getCategoryHierarchy(item.categoryId);
+                  logActivity('purchase_item', `شراء "${item.name}" من ${categoryInfo} بسعر ${formatPrice(finalPrice)}`);
                 }
             })
             .catch(() => errorEmitter.emit('permission-error', new FirestorePermissionError({ path: itemDocRef.path, operation: 'update', requestResourceData: { isPurchased: true, finalPrice } })));
@@ -127,12 +151,13 @@ export default function ChecklistClient() {
 
     const handleUnpurchaseConfirm = () => {
         if (!itemToUnpurchase || !itemsRef) return;
-        const itemName = itemToUnpurchase.name;
-        const itemDocRef = doc(itemsRef, itemToUnpurchase.id);
+        const item = itemToUnpurchase;
+        const itemDocRef = doc(itemsRef, item.id);
         updateDoc(itemDocRef, { isPurchased: false, finalPrice: undefined })
              .then(() => {
-                toast({ title: "رجعناها القائمة", description: `رجعنا "${itemName}" للحاجات اللي لسه هنجيبها.` });
-                logActivity('unpurchase_item', `إلغاء شراء "${itemName}"`);
+                toast({ title: "رجعناها القائمة", description: `رجعنا "${item.name}" للحاجات اللي لسه هنجيبها.` });
+                const categoryInfo = getCategoryHierarchy(item.categoryId);
+                logActivity('unpurchase_item', `إلغاء شراء "${item.name}" من ${categoryInfo}`);
             })
             .catch(() => errorEmitter.emit('permission-error', new FirestorePermissionError({ path: itemDocRef.path, operation: 'update', requestResourceData: { isPurchased: false } })));
         setItemToUnpurchase(null);
@@ -140,12 +165,23 @@ export default function ChecklistClient() {
 
     const handleDeleteItemConfirm = () => {
         if (!itemToDelete || !itemsRef) return;
-        const itemName = itemToDelete.name;
-        const itemDocRef = doc(itemsRef, itemToDelete.id);
+        const item = itemToDelete;
+        const itemDocRef = doc(itemsRef, item.id);
+        const categoryInfo = getCategoryHierarchy(item.categoryId);
+        
+        const revertPayload = {
+            name: item.name,
+            categoryId: item.categoryId,
+            minPrice: item.minPrice,
+            maxPrice: item.maxPrice,
+            priority: item.priority,
+            isPurchased: false,
+        };
+        
         deleteDoc(itemDocRef)
             .then(() => {
-                toast({ title: "اتمسحت", description: `مسحنا الحاجة "${itemName}".` });
-                logActivity('delete_item', `حذف "${itemName}"`);
+                toast({ title: "اتمسحت", description: `مسحنا الحاجة "${item.name}".` });
+                logActivity('delete_item', `حذف "${item.name}" من ${categoryInfo}`, { item: revertPayload });
             })
             .catch(() => errorEmitter.emit('permission-error', new FirestorePermissionError({ path: itemDocRef.path, operation: 'delete' })));
         setItemToDelete(null);
@@ -266,8 +302,8 @@ export default function ChecklistClient() {
         addDoc(itemsRef, { ...newItem, isPurchased: false })
             .then(() => {
                 toast({ title: 'تمام!', description: 'ضفنا الحاجة الجديدة.'});
-                const categoryName = categories.find(c => c.id === newItem.categoryId)?.name || '';
-                logActivity('create_item', `إضافة "${newItem.name}" إلى "${categoryName}"`);
+                const categoryInfo = getCategoryHierarchy(newItem.categoryId);
+                logActivity('create_item', `إضافة "${newItem.name}" إلى "${categoryInfo}"`);
                 setAddDialogOpen(false);
             })
             .catch(() => errorEmitter.emit('permission-error', new FirestorePermissionError({ path: itemsRef.path, operation: 'create', requestResourceData: newItem })));
@@ -282,7 +318,8 @@ export default function ChecklistClient() {
             .then(() => {
                 toast({ title: "تمام!", description: "حدثنا الحاجة دي." });
                 if(originalItem) {
-                   logActivity('update_item', `تعديل "${originalItem.name}" إلى "${data.name}"`);
+                   const categoryInfo = getCategoryHierarchy(data.categoryId);
+                   logActivity('update_item', `تعديل "${originalItem.name}" إلى "${data.name}" في ${categoryInfo}`);
                 }
                 setItemToEdit(null);
             })
@@ -298,7 +335,8 @@ export default function ChecklistClient() {
             .then(() => {
                 toast({ title: "تمام!", description: "تم تحديث الأولوية." });
                 if (item) {
-                    logActivity('update_item_priority', `تغيير أولوية "${item.name}"`);
+                    const categoryInfo = getCategoryHierarchy(item.categoryId);
+                    logActivity('update_item_priority', `تغيير أولوية "${item.name}" في ${categoryInfo}`);
                 }
             })
             .catch(() => errorEmitter.emit('permission-error', new FirestorePermissionError({ path: itemDocRef.path, operation: 'update', requestResourceData: { priority } })));
@@ -307,7 +345,6 @@ export default function ChecklistClient() {
     const isLoading = isHouseholdLoading || areCategoriesLoading || areItemsLoading;
     const purchasedCount = useMemo(() => items.filter(item => item.isPurchased).length, [items]);
     const totalCount = items.length;
-    const categoriesById = useMemo(() => new Map(categories.map(c => [c.id, c])), [categories]);
     const topLevelCategories = useMemo(() => {
         return categories.filter(c => !c.parentId).sort((a, b) => a.name.localeCompare(b.name));
     }, [categories]);

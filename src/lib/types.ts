@@ -57,6 +57,7 @@ export type ActivityLog = {
   action: string;
   details: string;
   timestamp: Timestamp;
+  payload?: Record<string, any>;
 };
 
 export type Analysis = {

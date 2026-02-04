@@ -234,6 +234,13 @@
         "details": {
           "type": "string"
         },
+        "payload": {
+          "type": [
+            "object",
+            "null"
+          ],
+          "description": "Optional data payload associated with the action, e.g., the state of an entity before deletion for restoration purposes."
+        },
         "timestamp": {
           "type": "string",
           "format": "date-time"
