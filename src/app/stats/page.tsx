@@ -155,21 +155,7 @@ export default function StatsPage() {
     return savedAnalyses.map(saved => {
         const selection = saved.categoryIds;
         
-        const getDescendantIds = (catId: string): string[] => {
-            let ids = [catId];
-            const children = categories.filter(c => c.parentId === catId);
-            children.forEach(child => {
-                ids = [...ids, ...getDescendantIds(child.id)];
-            });
-            return ids;
-        };
-        
-        const allRelevantCategoryIds = new Set<string>();
-        selection.forEach(id => {
-            getDescendantIds(id).forEach(descId => allRelevantCategoryIds.add(descId));
-        });
-
-        const relevantItems = items.filter(item => allRelevantCategoryIds.has(item.categoryId));
+        const relevantItems = items.filter(item => selection.includes(item.categoryId));
         const totalItems = relevantItems.length;
         const purchasedItems = relevantItems.filter(i => i.isPurchased).length;
         const totalExpected = relevantItems.reduce((sum, item) => sum + (item.minPrice + item.maxPrice) / 2, 0);
@@ -187,16 +173,41 @@ export default function StatsPage() {
             items: relevantItems,
         };
     }).sort((a, b) => a.title.localeCompare(b.title));
-  }, [savedAnalyses, categories, items]);
+  }, [savedAnalyses, items]);
 
   const handleSaveAnalysis = useCallback((selection: string[]) => {
     if (!analysesRef) return;
-    const selectedNames = selection.map(id => categories.find(c => c.id === id)?.name).filter(Boolean);
-    const title = selection.length > 0 ? `تحليل: ${selectedNames.join('، ')}` : 'تحليل مخصص';
+    
+    // Find all sub-categories that are part of the selection
+    const selectedSubCategoryIds = selection.filter(id => subCategories.some(sub => sub.id === id));
+
+    // Find all sections that have all their sub-categories selected
+    const selectedSectionIds = sections
+        .map(section => {
+            const childIds = subCategories.filter(sub => sub.parentId === section.id).map(sub => sub.id);
+            if (childIds.length > 0 && childIds.every(childId => selection.includes(childId))) {
+                return section.id;
+            }
+            return null;
+        })
+        .filter((id): id is string => id !== null);
+
+    // Filter out sub-categories that are already covered by a full section selection
+    const finalSubCategoryIds = selectedSubCategoryIds.filter(subId => {
+        const parentId = subCategories.find(sub => sub.id === subId)?.parentId;
+        return !parentId || !selectedSectionIds.includes(parentId);
+    });
+
+    // The final list of IDs to save is the fully selected sections plus the individual sub-categories
+    const idsToSave = [...selectedSectionIds, ...finalSubCategoryIds];
+
+    const selectedNames = idsToSave.map(id => categories.find(c => c.id === id)?.name).filter(Boolean);
+    const title = selectedNames.length > 0 ? `تحليل: ${selectedNames.join('، ')}` : 'تحليل مخصص';
+
 
     if (editingAnalysis) { // UPDATE
         const analysisDocRef = doc(analysesRef, editingAnalysis.id);
-        const updatedData = { categoryIds: selection, title };
+        const updatedData = { categoryIds: selection, title }; // We still save the raw selection
         
         updateDoc(analysisDocRef, updatedData)
             .then(() => {
@@ -215,7 +226,7 @@ export default function StatsPage() {
     
     setAnalysisDialogOpen(false);
     setEditingAnalysis(null);
-  }, [categories, analysesRef, toast, editingAnalysis]);
+  }, [categories, analysesRef, toast, editingAnalysis, sections, subCategories]);
 
   const handleRemoveAnalysis = (id: string) => {
     if (!analysesRef) return;

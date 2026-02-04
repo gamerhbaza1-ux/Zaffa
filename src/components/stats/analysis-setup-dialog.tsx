@@ -20,10 +20,17 @@ export function AnalysisSetupDialog({ open, onOpenChange, sections, subCategorie
   const [selection, setSelection] = useState<string[]>([]);
   
   useEffect(() => {
-    if(open) {
-        setSelection(initialSelection || []);
+    // This effect syncs the internal selection state with the initialSelection prop from outside.
+    // It runs whenever the dialog is opened for editing (and initialSelection changes).
+    setSelection(initialSelection || []);
+  }, [initialSelection]);
+
+  // This effect clears the selection when the dialog is closed.
+  useEffect(() => {
+    if (!open) {
+      setSelection([]);
     }
-  }, [open, initialSelection]);
+  }, [open]);
 
 
   const subCategoriesBySection = useMemo(() => {
