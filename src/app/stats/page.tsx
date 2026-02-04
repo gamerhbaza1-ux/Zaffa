@@ -285,6 +285,7 @@ export default function StatsPage() {
                 onOpenChange={() => setItemsToShow(null)}
                 title={itemsToShow?.title || 'البنود'}
                 items={itemsToShow?.items || []}
+                categories={categories}
             />
 
             {analyses.length > 0 ? (
