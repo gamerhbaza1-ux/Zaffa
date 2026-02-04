@@ -5,33 +5,34 @@ import type { Category } from '@/lib/types';
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 
 interface AnalysisSetupDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   sections: Category[];
   subCategories: Category[];
-  onSave: (selection: string[]) => void;
+  onSave: (data: { title: string; selection: string[] }) => void;
   isEditing: boolean;
-  initialSelection: string[];
+  initialData?: { title: string; selection: string[] } | null;
 }
 
-export function AnalysisSetupDialog({ open, onOpenChange, sections, subCategories, onSave, isEditing, initialSelection }: AnalysisSetupDialogProps) {
+export function AnalysisSetupDialog({ open, onOpenChange, sections, subCategories, onSave, isEditing, initialData }: AnalysisSetupDialogProps) {
+  const [title, setTitle] = useState('');
   const [selection, setSelection] = useState<string[]>([]);
   
   useEffect(() => {
-    // This effect syncs the internal selection state with the initialSelection prop from outside.
-    // It runs whenever the dialog is opened for editing (and initialSelection changes).
-    setSelection(initialSelection || []);
-  }, [initialSelection]);
-
-  // This effect clears the selection when the dialog is closed.
-  useEffect(() => {
-    if (!open) {
-      setSelection([]);
+    if (open) {
+      if (isEditing && initialData) {
+        setTitle(initialData.title);
+        setSelection(initialData.selection || []);
+      } else {
+        setTitle('');
+        setSelection([]);
+      }
     }
-  }, [open]);
-
+  }, [open, isEditing, initialData]);
 
   const subCategoriesBySection = useMemo(() => {
     return subCategories.reduce((acc, cat) => {
@@ -67,7 +68,10 @@ export function AnalysisSetupDialog({ open, onOpenChange, sections, subCategorie
   };
 
   const handleSaveClick = () => {
-    onSave(selection);
+    if (!title.trim()) {
+        return;
+    }
+    onSave({ title, selection });
   };
   
   const handleClose = () => {
@@ -80,12 +84,22 @@ export function AnalysisSetupDialog({ open, onOpenChange, sections, subCategorie
         <DialogHeader>
           <DialogTitle className="font-headline">{isEditing ? 'تعديل التحليل' : 'إنشاء تحليل جديد'}</DialogTitle>
           <DialogDescription>
-            اختار الأقسام أو الفئات اللي عاوز تجمع تحليلها في تقرير واحد.
+            اختار عنوانًا وحدد الأقسام أو الفئات التي تريد تحليلها.
           </DialogDescription>
         </DialogHeader>
-        <div className="space-y-4 py-4 max-h-[60vh] overflow-y-auto pr-4">
+        <div className="space-y-6 py-4 max-h-[60vh] overflow-y-auto pr-4">
+            <div>
+                <Label htmlFor="analysis-title">عنوان التحليل</Label>
+                <Input
+                    id="analysis-title"
+                    value={title}
+                    onChange={(e) => setTitle(e.target.value)}
+                    placeholder="مثال: تحليل الأجهزة والمطبخ"
+                />
+            </div>
           {sections.length > 0 ? (
              <div className="space-y-3">
+              <p className="text-sm font-medium text-muted-foreground">الأقسام والفئات</p>
               {sections.map(section => {
                   const children = subCategoriesBySection[section.id] || [];
                   const childIds = children.map(c => c.id);
@@ -135,7 +149,7 @@ export function AnalysisSetupDialog({ open, onOpenChange, sections, subCategorie
         </div>
         <DialogFooter>
           <Button type="button" variant="outline" onClick={handleClose}>إلغاء</Button>
-          <Button onClick={handleSaveClick} disabled={selection.length === 0}>
+          <Button onClick={handleSaveClick} disabled={selection.length === 0 || !title.trim()}>
             {isEditing ? 'حفظ التعديلات' : 'إنشاء تحليل'}
           </Button>
         </DialogFooter>

@@ -153,9 +153,21 @@ export default function StatsPage() {
     if (!savedAnalyses) return [];
 
     return savedAnalyses.map(saved => {
-        const selection = saved.categoryIds;
-        
-        const relevantItems = items.filter(item => selection.includes(item.categoryId));
+        const allRelevantCategoryIds = new Set<string>();
+        const getDescendantIds = (catId: string, allCategories: Category[]): string[] => {
+            let ids = [catId];
+            const children = allCategories.filter(c => c.parentId === catId);
+            children.forEach(child => {
+                ids = [...ids, ...getDescendantIds(child.id, allCategories)];
+            });
+            return ids;
+        };
+
+        saved.categoryIds.forEach(id => {
+            getDescendantIds(id, categories).forEach(descId => allRelevantCategoryIds.add(descId));
+        });
+
+        const relevantItems = items.filter(item => allRelevantCategoryIds.has(item.categoryId));
         const totalItems = relevantItems.length;
         const purchasedItems = relevantItems.filter(i => i.isPurchased).length;
         const totalExpected = relevantItems.reduce((sum, item) => sum + (item.minPrice + item.maxPrice) / 2, 0);
@@ -173,41 +185,15 @@ export default function StatsPage() {
             items: relevantItems,
         };
     }).sort((a, b) => a.title.localeCompare(b.title));
-  }, [savedAnalyses, items]);
+  }, [savedAnalyses, items, categories]);
 
-  const handleSaveAnalysis = useCallback((selection: string[]) => {
+  const handleSaveAnalysis = useCallback((data: { title: string; selection: string[] }) => {
     if (!analysesRef) return;
-    
-    // Find all sub-categories that are part of the selection
-    const selectedSubCategoryIds = selection.filter(id => subCategories.some(sub => sub.id === id));
-
-    // Find all sections that have all their sub-categories selected
-    const selectedSectionIds = sections
-        .map(section => {
-            const childIds = subCategories.filter(sub => sub.parentId === section.id).map(sub => sub.id);
-            if (childIds.length > 0 && childIds.every(childId => selection.includes(childId))) {
-                return section.id;
-            }
-            return null;
-        })
-        .filter((id): id is string => id !== null);
-
-    // Filter out sub-categories that are already covered by a full section selection
-    const finalSubCategoryIds = selectedSubCategoryIds.filter(subId => {
-        const parentId = subCategories.find(sub => sub.id === subId)?.parentId;
-        return !parentId || !selectedSectionIds.includes(parentId);
-    });
-
-    // The final list of IDs to save is the fully selected sections plus the individual sub-categories
-    const idsToSave = [...selectedSectionIds, ...finalSubCategoryIds];
-
-    const selectedNames = idsToSave.map(id => categories.find(c => c.id === id)?.name).filter(Boolean);
-    const title = selectedNames.length > 0 ? `تحليل: ${selectedNames.join('، ')}` : 'تحليل مخصص';
-
+    const { title, selection } = data;
 
     if (editingAnalysis) { // UPDATE
         const analysisDocRef = doc(analysesRef, editingAnalysis.id);
-        const updatedData = { categoryIds: selection, title }; // We still save the raw selection
+        const updatedData = { categoryIds: selection, title };
         
         updateDoc(analysisDocRef, updatedData)
             .then(() => {
@@ -226,7 +212,7 @@ export default function StatsPage() {
     
     setAnalysisDialogOpen(false);
     setEditingAnalysis(null);
-  }, [categories, analysesRef, toast, editingAnalysis, sections, subCategories]);
+  }, [analysesRef, toast, editingAnalysis]);
 
   const handleRemoveAnalysis = (id: string) => {
     if (!analysesRef) return;
@@ -288,7 +274,7 @@ export default function StatsPage() {
                 open={isDialogOpen}
                 onOpenChange={(open) => !open && handleDialogClose()}
                 isEditing={isEditing}
-                initialSelection={editingAnalysis?.categoryIds || []}
+                initialData={editingAnalysis ? { title: editingAnalysis.title, selection: editingAnalysis.categoryIds } : null}
                 sections={sections}
                 subCategories={subCategories}
                 onSave={handleSaveAnalysis}
