@@ -3,7 +3,7 @@
 import { useMemo, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useUser, useFirestore } from '@/firebase';
+import { useUser, useFirestore, useCollection } from '@/firebase';
 import { collection, query, orderBy, addDoc, doc, updateDoc } from 'firebase/firestore';
 import { formatDistanceToNow } from 'date-fns';
 import { arSA } from 'date-fns/locale';
