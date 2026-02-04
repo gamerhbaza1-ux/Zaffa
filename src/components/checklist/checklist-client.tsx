@@ -42,6 +42,12 @@ import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
 import { FeaturedAnalyses } from '../featured-analyses';
 
+const normalizeArabic = (text: string): string => {
+    return text
+        .replace(/[أإآ]/g, 'ا') // Unify alefs
+        .replace(/ة/g, 'ه');   // Unify Taa Marbuta and Haa
+};
+
 export default function ChecklistClient() {
     const { userProfile, household, isHouseholdLoading } = useUser();
     const firestore = useFirestore();
@@ -308,8 +314,9 @@ export default function ChecklistClient() {
 
     const filteredItems = useMemo(() => {
         if (!searchQuery) return [];
+        const normalizedQuery = normalizeArabic(searchQuery.toLowerCase());
         return items.filter(item =>
-            item.name.toLowerCase().includes(searchQuery.toLowerCase())
+            normalizeArabic(item.name.toLowerCase()).includes(normalizedQuery)
         );
     }, [items, searchQuery]);
   
