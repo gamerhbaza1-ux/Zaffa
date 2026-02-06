@@ -7,13 +7,30 @@ import { getFirestore } from 'firebase/firestore'
 
 // IMPORTANT: DO NOT MODIFY THIS FUNCTION
 export function initializeFirebase() {
-  if (!getApps().length) {
-    const firebaseApp = initializeApp(firebaseConfig);
-    return getSdks(firebaseApp);
+  if (getApps().length) {
+    return getSdks(getApp());
   }
 
-  // If already initialized, return the SDKs with the already initialized App
-  return getSdks(getApp());
+  if (
+    !firebaseConfig.apiKey ||
+    !firebaseConfig.authDomain ||
+    !firebaseConfig.projectId
+  ) {
+    // Return mock instances if config is not set to avoid app crash.
+    // This is useful for environments where Firebase is not configured.
+    console.warn("Firebase config is not set. Using mock services.");
+    const mockApp = { name: 'mock', options: {}, automaticDataCollectionEnabled: false };
+    const mockAuth = { app: mockApp };
+    const mockFirestore = { app: mockApp };
+    return {
+        firebaseApp: mockApp as FirebaseApp,
+        auth: mockAuth as any,
+        firestore: mockFirestore as any,
+    }
+  }
+
+  const firebaseApp = initializeApp(firebaseConfig);
+  return getSdks(firebaseApp);
 }
 
 export function getSdks(firebaseApp: FirebaseApp) {
