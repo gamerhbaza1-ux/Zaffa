@@ -1,3 +1,4 @@
+
 'use client';
 
 import { firebaseConfig } from '@/firebase/config';
@@ -5,7 +6,8 @@ import { initializeApp, getApps, getApp, FirebaseApp } from 'firebase/app';
 import { getAuth } from 'firebase/auth';
 import { getFirestore } from 'firebase/firestore'
 
-// IMPORTANT: DO NOT MODIFY THIS FUNCTION
+// IMPORTANT: This function initializes Firebase with the hardcoded config
+// to ensure it works in all environments (Studio, Vercel, etc.)
 export function initializeFirebase() {
   if (getApps().length) {
     return getSdks(getApp());
