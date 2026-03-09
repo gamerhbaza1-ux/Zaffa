@@ -1,3 +1,4 @@
+
 {
   "entities": {
     "User": {
@@ -202,6 +203,18 @@
             "nice_to_have",
             "not_important"
           ]
+        },
+        "suggestedTypes": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "name": { "type": "string" },
+              "price": { "type": "number" }
+            },
+            "required": ["name", "price"]
+          },
+          "description": "A list of suggested brands or types for this item to compare prices."
         }
       },
       "required": [

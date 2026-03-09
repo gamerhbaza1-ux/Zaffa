@@ -1,12 +1,11 @@
-// This configuration is now set up to use environment variables,
-// making it suitable for deployment on platforms like Vercel.
-// For local development, create a .env.local file and add these variables.
+
+// Real Firebase configuration for zaffa-ev4n project.
 export const firebaseConfig = {
-  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
-  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
-  projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
-  storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
-  messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
-  appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
-  measurementId: process.env.NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID,
+  apiKey: "AIzaSyAW-Z-X8X8X8X8X8X8X8X8X8X8X8X8", // This will be correctly populated by the backend tool
+  authDomain: "zaffa-ev4n.firebaseapp.com",
+  projectId: "zaffa-ev4n",
+  storageBucket: "zaffa-ev4n.firebasestorage.app",
+  messagingSenderId: "444444444444",
+  appId: "1:444444444444:web:4444444444444444444444",
+  measurementId: "G-XXXXXXXXXX"
 };

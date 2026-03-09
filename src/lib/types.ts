@@ -1,6 +1,12 @@
+
 import type { Timestamp } from 'firebase/firestore';
 
 export type Priority = 'important' | 'nice_to_have' | 'not_important';
+
+export type SuggestedType = {
+  name: string;
+  price: number;
+};
 
 export type Category = {
   id:string;
@@ -17,6 +23,7 @@ export type ChecklistItem = {
   isPurchased: boolean;
   finalPrice?: number;
   priority: Priority;
+  suggestedTypes?: SuggestedType[];
 };
 
 export type UserProfile = {
