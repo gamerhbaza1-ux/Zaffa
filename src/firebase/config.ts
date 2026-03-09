@@ -1,7 +1,7 @@
 
 // Real Firebase configuration for zaffa-ev4n project.
 export const firebaseConfig = {
-  apiKey: "AIzaSyAW-Z-X8X8X8X8X8X8X8X8X8X8X8X8", // This will be correctly populated by the backend tool
+  apiKey: "AIzaSyAW-Z-X8X8X8X8X8X8X8X8X8X8X8X8",
   authDomain: "zaffa-ev4n.firebaseapp.com",
   projectId: "zaffa-ev4n",
   storageBucket: "zaffa-ev4n.firebasestorage.app",
