@@ -1,12 +1,9 @@
-
-// Real Firebase configuration for zaffa-ev4n project.
-// This configuration is public and safe to include in the client-side code.
+// Real Firebase configuration provided by the user for project studio-8949399148-35df2.
 export const firebaseConfig = {
-  apiKey: "AIzaSyAW-Z-X8X8X8X8X8X8X8X8X8X8X8X8", // This will be automatically populated with your real key by Firebase Studio
-  authDomain: "zaffa-ev4n.firebaseapp.com",
-  projectId: "zaffa-ev4n",
-  storageBucket: "zaffa-ev4n.firebasestorage.app",
-  messagingSenderId: "444444444444",
-  appId: "1:444444444444:web:4444444444444444444444",
-  measurementId: "G-XXXXXXXXXX"
+  apiKey: "AIzaSyBo_DNaxVEGSxvejdT3g1u8iP765eNTPGE",
+  authDomain: "studio-8949399148-35df2.firebaseapp.com",
+  projectId: "studio-8949399148-35df2",
+  storageBucket: "studio-8949399148-35df2.firebasestorage.app",
+  messagingSenderId: "88498255454",
+  appId: "1:88498255454:web:d4c04f1a81da7cade066cf"
 };

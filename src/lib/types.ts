@@ -1,4 +1,3 @@
-
 import type { Timestamp } from 'firebase/firestore';
 
 export type Priority = 'important' | 'nice_to_have' | 'not_important';
