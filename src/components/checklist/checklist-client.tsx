@@ -26,6 +26,8 @@ import {
   Carousel,
   CarouselContent,
   CarouselItem,
+  CarouselNext,
+  CarouselPrevious,
 } from "@/components/ui/carousel";
 import {
   DropdownMenu,
@@ -516,7 +518,8 @@ export default function ChecklistClient() {
             <Tabs defaultValue={topLevelCategories[0]?.id} className="w-full" dir="rtl">
                 <div className="flex items-center gap-2 mb-4">
                   <div className="flex-grow min-w-0">
-                    <Carousel opts={{ align: "start", direction: "rtl" }} className="w-full">
+                    <Carousel opts={{ align: "start", direction: "rtl" }} className="w-full relative px-10">
+                      <CarouselPrevious className="absolute left-0 h-8 w-8 -translate-y-1/2 top-1/2 z-10" />
                       <TabsList className="bg-transparent h-auto p-0 justify-start w-full border-0">
                         <CarouselContent className="-ml-2 flex flex-row">
                           {topLevelCategories.map(category => (
@@ -531,6 +534,7 @@ export default function ChecklistClient() {
                           ))}
                         </CarouselContent>
                       </TabsList>
+                      <CarouselNext className="absolute right-0 h-8 w-8 -translate-y-1/2 top-1/2 z-10" />
                     </Carousel>
                   </div>
                   <Button variant="outline" size="icon" onClick={() => setAddSectionDialogOpen(true)} className="shrink-0 h-10 w-10">
