@@ -5,8 +5,7 @@ import { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { findProductPrices, type MarketPrice } from '@/app/actions/price-comparison';
-import { ExternalLink, Loader2, ShoppingBag, AlertCircle } from 'lucide-react';
-import Image from 'next/image';
+import { ExternalLink, Loader2, ShoppingBag, AlertCircle, Store } from 'lucide-react';
 import { Card } from '../ui/card';
 
 interface PriceComparisonDialogProps {
@@ -61,25 +60,34 @@ export function PriceComparisonDialog({ productName, onOpenChange }: PriceCompar
               {prices.map((store, idx) => (
                 <Card key={idx} className="flex items-center justify-between p-4 hover:shadow-md transition-shadow group border-accent/20">
                   <div className="flex items-center gap-4">
-                    <div className="relative h-10 w-10 rounded-md border p-1 bg-white">
+                    <div className="relative h-12 w-12 rounded-md border p-1 bg-white flex items-center justify-center overflow-hidden shrink-0">
                       <img 
                         src={store.storeLogo} 
                         alt={store.storeName} 
-                        className="h-full w-full object-contain"
+                        className="max-h-full max-w-full object-contain"
+                        onError={(e) => {
+                          // إخفاء الصورة في حال فشل تحميلها وإظهار أيقونة بديلة
+                          e.currentTarget.style.display = 'none';
+                          const fallback = e.currentTarget.parentElement?.querySelector('.fallback-icon');
+                          if (fallback) (fallback as HTMLElement).style.display = 'flex';
+                        }}
                       />
+                      <div className="fallback-icon hidden h-full w-full items-center justify-center bg-accent/10 text-accent-foreground">
+                        <Store className="h-6 w-6 opacity-40" />
+                      </div>
                     </div>
                     <div>
-                      <h4 className="font-bold text-sm">{store.storeName}</h4>
-                      <p className="text-xs text-muted-foreground">متوفر الآن</p>
+                      <h4 className="font-bold text-sm leading-tight">{store.storeName}</h4>
+                      <p className="text-[10px] text-muted-foreground">متوفر الآن</p>
                     </div>
                   </div>
                   <div className="flex items-center gap-4">
-                    <div className="text-left">
-                      <p className="text-xs text-muted-foreground">أفضل سعر</p>
-                      <p className="font-bold text-primary">{store.price}</p>
+                    <div className="text-left hidden sm:block">
+                      <p className="text-[10px] text-muted-foreground uppercase">أفضل سعر</p>
+                      <p className="font-bold text-primary text-sm">{store.price}</p>
                     </div>
-                    <Button variant="outline" size="sm" asChild className="group-hover:bg-primary group-hover:text-primary-foreground">
-                      <a href={store.link} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2">
+                    <Button variant="outline" size="sm" asChild className="group-hover:bg-primary group-hover:text-primary-foreground h-8">
+                      <a href={store.link} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 text-xs">
                         فتح المتجر
                         <ExternalLink className="h-3 w-3" />
                       </a>
@@ -87,8 +95,8 @@ export function PriceComparisonDialog({ productName, onOpenChange }: PriceCompar
                   </div>
                 </Card>
               ))}
-              <div className="mt-4 p-4 bg-muted rounded-lg text-xs text-muted-foreground text-center">
-                * الأسعار المعروضة قد تختلف حسب وقت البحث وتوافر العروض في كل متجر.
+              <div className="mt-4 p-4 bg-muted/50 rounded-lg text-[10px] text-muted-foreground text-center">
+                * الأسعار والروابط معروضة للمقارنة وتعتمد على تحديثات المتاجر الخارجية.
               </div>
             </div>
           )}
