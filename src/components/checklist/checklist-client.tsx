@@ -23,6 +23,11 @@ import { PriceComparisonDialog } from './price-comparison-dialog';
 import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
+  Carousel,
+  CarouselContent,
+  CarouselItem,
+} from "@/components/ui/carousel";
+import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -509,16 +514,28 @@ export default function ChecklistClient() {
             </div>
           ) : (totalCount > 0 || categories.length > 0) ? (
             <Tabs defaultValue={topLevelCategories[0]?.id} className="w-full" dir="rtl">
-                <div className="flex items-center flex-wrap gap-2">
-                  <TabsList className="flex-wrap h-auto justify-start flex-grow gap-2">
-                      {topLevelCategories.map(category => (
-                          <TabsTrigger key={category.id} value={category.id}>
-                              <span className="truncate">{category.name}</span>
-                          </TabsTrigger>
-                      ))}
-                  </TabsList>
-                  <Button variant="outline" onClick={() => setAddSectionDialogOpen(true)} className="shrink-0">
-                      <FolderPlus className="ml-2 h-4 w-4" /> نضيف قسم
+                <div className="flex items-center gap-2 mb-4">
+                  <div className="flex-grow min-w-0">
+                    <Carousel opts={{ align: "start", direction: "rtl" }} className="w-full">
+                      <TabsList className="bg-transparent h-auto p-0 justify-start w-full border-0">
+                        <CarouselContent className="-ml-2 flex flex-row">
+                          {topLevelCategories.map(category => (
+                            <CarouselItem key={category.id} className="basis-auto pl-2">
+                              <TabsTrigger 
+                                value={category.id}
+                                className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground border px-4 py-2"
+                              >
+                                <span className="truncate">{category.name}</span>
+                              </TabsTrigger>
+                            </CarouselItem>
+                          ))}
+                        </CarouselContent>
+                      </TabsList>
+                    </Carousel>
+                  </div>
+                  <Button variant="outline" size="icon" onClick={() => setAddSectionDialogOpen(true)} className="shrink-0 h-10 w-10">
+                      <FolderPlus className="h-4 w-4" />
+                      <span className="sr-only">نضيف قسم</span>
                   </Button>
                 </div>
                 {topLevelCategories.map(topLevelCategory => {
@@ -613,7 +630,7 @@ export default function ChecklistClient() {
                     const directSubCategories = categories.filter(c => c.parentId === topLevelCategory.id).sort((a,b) => a.name.localeCompare(b.name));
     
                     return (
-                        <TabsContent key={topLevelCategory.id} value={topLevelCategory.id} className="mt-4">
+                        <TabsContent key={topLevelCategory.id} value={topLevelCategory.id} className="mt-4 outline-none">
                             <Card>
                                 <div className="flex justify-between items-start p-4 border-b">
                                     <div>
