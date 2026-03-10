@@ -1,10 +1,11 @@
+
 "use client";
 
 import type { ChecklistItem, Priority } from '@/lib/types';
 import { cn } from '@/lib/utils';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Button } from '@/components/ui/button';
-import { Trash2, Pencil, AlertTriangle, Star, MinusCircle, ListTree } from 'lucide-react';
+import { Trash2, Pencil, AlertTriangle, Star, MinusCircle, Info } from 'lucide-react';
 import { Badge } from '../ui/badge';
 import {
   DropdownMenu,
@@ -60,13 +61,21 @@ export function ItemCard({ item, onToggle, onDelete, onEdit, onPriorityChange }:
             {item.name}
             </label>
             {item.isPurchased && typeof item.finalPrice === 'number' ? (
-                <p className="text-sm text-primary">
+                <p className="text-sm text-primary font-bold">
                     جبناها بكام: {formatPrice(item.finalPrice)}
                 </p>
             ) : (
-                <p className={cn("text-sm text-muted-foreground", item.isPurchased && 'line-through')}>
-                السعر المتوقع: {formatPrice(item.minPrice)} - {formatPrice(item.maxPrice)}
-                </p>
+                <div className="space-y-1">
+                    <p className={cn("text-sm text-muted-foreground", item.isPurchased && 'line-through')}>
+                        السعر المتوقع: {formatPrice(item.minPrice)} - {formatPrice(item.maxPrice)}
+                    </p>
+                    {item.suggestedModel && (
+                        <div className="flex items-center gap-1.5 text-xs text-primary bg-primary/5 w-fit px-2 py-0.5 rounded-md border border-primary/10">
+                            <Info className="h-3 w-3" />
+                            <span className="font-medium">الموديل المقترح: {item.suggestedModel}</span>
+                        </div>
+                    )}
+                </div>
             )}
         </div>
         {item.isPurchased && (
@@ -120,23 +129,6 @@ export function ItemCard({ item, onToggle, onDelete, onEdit, onPriorityChange }:
             </Button>
         </div>
       </div>
-
-      {!item.isPurchased && item.suggestedTypes && item.suggestedTypes.length > 0 && (
-        <div className="mr-7 mt-1 space-y-1">
-            <div className="flex items-center gap-1.5 text-xs font-semibold text-muted-foreground mb-1.5">
-                <ListTree className="h-3 w-3" />
-                <span>خيارات للمقارنة:</span>
-            </div>
-            <div className="flex flex-wrap gap-2">
-                {item.suggestedTypes.map((type, idx) => (
-                    <div key={idx} className="bg-background/50 border rounded-full px-2.5 py-0.5 text-[11px] flex items-center gap-1">
-                        <span className="text-foreground">{type.name}</span>
-                        <span className="text-primary font-bold">{type.price} ج.م</span>
-                    </div>
-                ))}
-            </div>
-        </div>
-      )}
     </div>
   );
 }

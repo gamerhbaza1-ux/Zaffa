@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useMemo, useCallback } from 'react';
@@ -176,6 +177,7 @@ export default function ChecklistClient() {
             maxPrice: item.maxPrice,
             priority: item.priority,
             isPurchased: false,
+            suggestedModel: item.suggestedModel
         };
         
         deleteDoc(itemDocRef)
@@ -285,7 +287,14 @@ export default function ChecklistClient() {
             const section = getOrCreateCategory(record.section, null);
             const category = getOrCreateCategory(record.category, section.id);
             const newItemRef = doc(itemsRef);
-            batch.set(newItemRef, { name: record.name, categoryId: category.id, minPrice: record.minPrice, maxPrice: record.maxPrice, isPurchased: false, priority: 'important' });
+            batch.set(newItemRef, { 
+                name: record.name, 
+                categoryId: category.id, 
+                minPrice: record.minPrice, 
+                maxPrice: record.maxPrice, 
+                isPurchased: false, 
+                priority: 'important' 
+            });
         }
         
         await batch.commit()
@@ -393,7 +402,7 @@ export default function ChecklistClient() {
         };
 
         const headers = [
-            "القسم", "الفئة", "اسم الحاجة", "أقل سعر متوقع",
+            "القسم", "الفئة", "اسم الحاجة", "الموديل المقترح", "أقل سعر متوقع",
             "أقصى سعر متوقع", "تم الشراء", "السعر النهائي", "الأولوية"
         ];
         
@@ -403,6 +412,7 @@ export default function ChecklistClient() {
                 sectionName,
                 categoryName,
                 item.name,
+                item.suggestedModel || '',
                 item.minPrice,
                 item.maxPrice,
                 item.isPurchased ? "نعم" : "لا",
