@@ -19,6 +19,7 @@ import { AddCategoryDialog } from './add-category-dialog';
 import { EditCategoryDialog } from './edit-category-dialog';
 import { PurchaseDialog } from './purchase-dialog';
 import { EditItemDialog } from './edit-item-dialog';
+import { PriceComparisonDialog } from './price-comparison-dialog';
 import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
@@ -77,6 +78,7 @@ export default function ChecklistClient() {
     const [itemToEdit, setItemToEdit] = useState<ChecklistItem | null>(null);
     const [categoryToEdit, setCategoryToEdit] = useState<Category | null>(null);
     const [categoryToDelete, setCategoryToDelete] = useState<Category | null>(null);
+    const [modelToCompare, setModelToCompare] = useState<string | null>(null);
     
     const getCategoryHierarchy = useCallback((categoryId: string): string => {
         const category = categoriesById.get(categoryId);
@@ -490,6 +492,7 @@ export default function ChecklistClient() {
                             onDelete={() => setItemToDelete(item)}
                             onEdit={() => setItemToEdit(item)}
                             onPriorityChange={(priority) => handleUpdatePriority(item.id, priority)}
+                            onComparePrice={setModelToCompare}
                         />
                     ))
                 ) : (
@@ -588,6 +591,7 @@ export default function ChecklistClient() {
                                                         onDelete={() => setItemToDelete(item)}
                                                         onEdit={() => setItemToEdit(item)}
                                                         onPriorityChange={(priority) => handleUpdatePriority(item.id, priority)}
+                                                        onComparePrice={setModelToCompare}
                                                     />
                                                 ))}
                                             </div>
@@ -710,6 +714,11 @@ export default function ChecklistClient() {
             categories={categories}
             onOpenChange={(open) => !open && setCategoryToEdit(null)}
             onCategoryUpdated={handleUpdateCategory}
+          />
+
+          <PriceComparisonDialog
+            productName={modelToCompare}
+            onOpenChange={(open) => !open && setModelToCompare(null)}
           />
           
           <AlertDialog open={!!categoryToDelete} onOpenChange={(open) => !open && setCategoryToDelete(null)}>

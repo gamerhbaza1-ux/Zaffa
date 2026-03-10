@@ -5,7 +5,7 @@ import type { ChecklistItem, Priority } from '@/lib/types';
 import { cn } from '@/lib/utils';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Button } from '@/components/ui/button';
-import { Trash2, Pencil, AlertTriangle, Star, MinusCircle, Info } from 'lucide-react';
+import { Trash2, Pencil, AlertTriangle, Star, MinusCircle, Info, Search } from 'lucide-react';
 import { Badge } from '../ui/badge';
 import {
   DropdownMenu,
@@ -20,9 +20,10 @@ type ItemCardProps = {
   onDelete: () => void;
   onEdit: () => void;
   onPriorityChange: (priority: Priority) => void;
+  onComparePrice?: (model: string) => void;
 };
 
-export function ItemCard({ item, onToggle, onDelete, onEdit, onPriorityChange }: ItemCardProps) {
+export function ItemCard({ item, onToggle, onDelete, onEdit, onPriorityChange, onComparePrice }: ItemCardProps) {
   const formatPrice = (price: number) => {
     return new Intl.NumberFormat('ar-EG', { style: 'currency', currency: 'EGP', minimumFractionDigits: 0 }).format(price);
   };
@@ -70,10 +71,13 @@ export function ItemCard({ item, onToggle, onDelete, onEdit, onPriorityChange }:
                         السعر المتوقع: {formatPrice(item.minPrice)} - {formatPrice(item.maxPrice)}
                     </p>
                     {item.suggestedModel && (
-                        <div className="flex items-center gap-1.5 text-xs text-primary bg-primary/5 w-fit px-2 py-0.5 rounded-md border border-primary/10">
-                            <Info className="h-3 w-3" />
+                        <button 
+                          onClick={() => onComparePrice?.(item.suggestedModel!)}
+                          className="flex items-center gap-1.5 text-[10px] sm:text-xs text-primary bg-primary/5 hover:bg-primary/10 w-fit px-2 py-0.5 rounded-md border border-primary/10 transition-colors"
+                        >
+                            <Search className="h-3 w-3" />
                             <span className="font-medium">الموديل المقترح: {item.suggestedModel}</span>
-                        </div>
+                        </button>
                     )}
                 </div>
             )}
