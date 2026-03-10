@@ -177,6 +177,7 @@ export default function ChecklistClient() {
             categoryId: item.categoryId,
             minPrice: item.minPrice,
             maxPrice: item.maxPrice,
+            quantity: item.quantity || 1,
             priority: item.priority,
             isPurchased: false,
             suggestedModel: item.suggestedModel
@@ -294,6 +295,7 @@ export default function ChecklistClient() {
                 categoryId: category.id, 
                 minPrice: record.minPrice, 
                 maxPrice: record.maxPrice, 
+                quantity: 1,
                 isPurchased: false, 
                 priority: 'important' 
             });
@@ -404,8 +406,8 @@ export default function ChecklistClient() {
         };
 
         const headers = [
-            "القسم", "الفئة", "اسم الحاجة", "الموديل المقترح", "أقل سعر متوقع",
-            "أقصى سعر متوقع", "تم الشراء", "السعر النهائي", "الأولوية"
+            "القسم", "الفئة", "اسم الحاجة", "العدد", "الموديل المقترح", "أقل سعر متوقع (للقطعة)",
+            "أقصى سعر متوقع (للقطعة)", "تم الشراء", "السعر النهائي (الإجمالي)", "الأولوية"
         ];
         
         const rows = items.map(item => {
@@ -414,6 +416,7 @@ export default function ChecklistClient() {
                 sectionName,
                 categoryName,
                 item.name,
+                item.quantity || 1,
                 item.suggestedModel || '',
                 item.minPrice,
                 item.maxPrice,
@@ -529,7 +532,7 @@ export default function ChecklistClient() {
                     }
                     const allDescendantIds = getDescendantIds(topLevelCategory.id);
     
-                    const totalExpectedInTab = items.filter(i => allDescendantIds.includes(i.categoryId) && !i.isPurchased).reduce((sum, item) => sum + (item.minPrice + item.maxPrice) / 2, 0);
+                    const totalExpectedInTab = items.filter(i => allDescendantIds.includes(i.categoryId) && !i.isPurchased).reduce((sum, item) => sum + ((item.minPrice + item.maxPrice) / 2) * (item.quantity || 1), 0);
                     const totalPaidInTab = items.filter(i => allDescendantIds.includes(i.categoryId) && i.isPurchased).reduce((sum, item) => sum + (item.finalPrice ?? 0), 0);
     
                     const renderCategoryTree = (categoryId: string) => {
@@ -541,7 +544,7 @@ export default function ChecklistClient() {
                         const children = categories.filter(c => c.parentId === category.id).sort((a,b) => a.name.localeCompare(b.name));
                         const level = getCategoryDepth(category.id);
     
-                        const expectedInSubCat = items.filter(i => descendantIdsForCat.includes(i.categoryId) && !i.isPurchased).reduce((sum, item) => sum + (item.minPrice + item.maxPrice) / 2, 0);
+                        const expectedInSubCat = items.filter(i => descendantIdsForCat.includes(i.categoryId) && !i.isPurchased).reduce((sum, item) => sum + ((item.minPrice + item.maxPrice) / 2) * (item.quantity || 1), 0);
                         const paidInSubCat = items.filter(i => descendantIdsForCat.includes(i.categoryId) && i.isPurchased).reduce((sum, item) => sum + (item.finalPrice ?? 0), 0);
     
                         return (

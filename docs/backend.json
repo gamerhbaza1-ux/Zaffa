@@ -184,6 +184,11 @@
           "type": "number",
           "description": "Maximum estimated price of the item."
         },
+        "quantity": {
+          "type": "number",
+          "description": "The quantity needed.",
+          "default": 1
+        },
         "isPurchased": {
           "type": "boolean",
           "description": "Indicates whether the item has been purchased."
@@ -214,6 +219,7 @@
         "name",
         "minPrice",
         "maxPrice",
+        "quantity",
         "isPurchased",
         "categoryId",
         "priority"

@@ -15,6 +15,7 @@ export type ChecklistItem = {
   categoryId: string;
   minPrice: number;
   maxPrice: number;
+  quantity: number;
   isPurchased: boolean;
   finalPrice?: number;
   priority: Priority;

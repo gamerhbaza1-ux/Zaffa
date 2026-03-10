@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useMemo, useEffect, useState, useCallback } from 'react';
@@ -102,11 +103,11 @@ function AnalysisResultCard({ analysis, onRemove, onShowItems, onToggleFeatured,
                 <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
                     <StatCard title="إجمالي المتوقع" value={formatPrice(stats.totalExpected)} icon={Target} />
                     <StatCard title="إجمالي المدفوع" value={formatPrice(stats.totalPaid)} icon={ShoppingCart} />
-                    <StatCard title="إجمالي البنود" value={stats.totalItems.toString()} icon={ListTree} onClick={onShowItems} />
+                    <StatCard title="إجمالي البنود" value={stats.totalItemsCount.toString()} icon={ListTree} onClick={onShowItems} />
                     <StatCard title="نسبة الإنجاز" value={`${Math.round(stats.progress)}%`} icon={TrendingUp} />
                 </div>
                 <div>
-                    <h3 className="text-sm font-medium mb-2">شريط التقدم ({stats.purchasedItems} من {stats.totalItems})</h3>
+                    <h3 className="text-sm font-medium mb-2">شريط التقدم ({stats.purchasedItemsCount} من {stats.totalItemsCount})</h3>
                     <Progress value={stats.progress} />
                 </div>
             </CardContent>
@@ -168,13 +169,17 @@ export default function StatsPage() {
         });
 
         const relevantItems = items.filter(item => allRelevantCategoryIds.has(item.categoryId));
-        const totalItems = relevantItems.length;
-        const purchasedItems = relevantItems.filter(i => i.isPurchased).length;
-        const totalExpected = relevantItems.reduce((sum, item) => sum + (item.minPrice + item.maxPrice) / 2, 0);
-        const totalPaid = relevantItems.filter(i => i.isPurchased).reduce((sum, item) => sum + (item.finalPrice ?? 0), 0);
-        const progress = totalItems > 0 ? (purchasedItems / totalItems) * 100 : 0;
         
-        const stats = { totalItems, purchasedItems, totalExpected, totalPaid, progress };
+        // Items calculations accounting for quantity
+        const totalItemsCount = relevantItems.reduce((sum, item) => sum + (item.quantity || 1), 0);
+        const purchasedItemsCount = relevantItems.filter(i => i.isPurchased).reduce((sum, item) => sum + (item.quantity || 1), 0);
+        
+        const totalExpected = relevantItems.reduce((sum, item) => sum + ((item.minPrice + item.maxPrice) / 2) * (item.quantity || 1), 0);
+        const totalPaid = relevantItems.filter(i => i.isPurchased).reduce((sum, item) => sum + (item.finalPrice ?? 0), 0);
+        
+        const progress = totalItemsCount > 0 ? (purchasedItemsCount / totalItemsCount) * 100 : 0;
+        
+        const stats = { totalItemsCount, purchasedItemsCount, totalExpected, totalPaid, progress };
         
         return {
             id: saved.id,

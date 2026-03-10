@@ -15,6 +15,7 @@ const itemSchema = z.object({
   categoryId: z.string().min(1, "لازم نختار فئة."),
   minPrice: z.coerce.number().min(0, "السعر لازم يكون رقم."),
   maxPrice: z.coerce.number().min(0, "السعر لازم يكون رقم."),
+  quantity: z.coerce.number().min(1, "العدد لازم يكون 1 على الأقل."),
   priority: z.enum(['important', 'nice_to_have', 'not_important']),
   suggestedModel: z.string().optional(),
 }).refine(data => data.maxPrice >= data.minPrice, {
@@ -34,6 +35,7 @@ export function AddItemDialog({ open, onOpenChange, onItemAdded, categories }: A
   const [categoryId, setCategoryId] = useState('');
   const [minPrice, setMinPrice] = useState(0);
   const [maxPrice, setMaxPrice] = useState(0);
+  const [quantity, setQuantity] = useState(1);
   const [priority, setPriority] = useState<Priority>('important');
   const [suggestedModel, setSuggestedModel] = useState('');
   const [errors, setErrors] = useState<any>({});
@@ -42,7 +44,7 @@ export function AddItemDialog({ open, onOpenChange, onItemAdded, categories }: A
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    const data = { name, categoryId, minPrice, maxPrice, priority, suggestedModel };
+    const data = { name, categoryId, minPrice, maxPrice, quantity, priority, suggestedModel };
     const result = itemSchema.safeParse(data);
 
     if (!result.success) {
@@ -59,6 +61,7 @@ export function AddItemDialog({ open, onOpenChange, onItemAdded, categories }: A
     setCategoryId('');
     setMinPrice(0);
     setMaxPrice(0);
+    setQuantity(1);
     setPriority('important');
     setSuggestedModel('');
     setErrors({});
@@ -76,10 +79,17 @@ export function AddItemDialog({ open, onOpenChange, onItemAdded, categories }: A
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-6 pt-4">
             <div className="space-y-4">
-                <div>
-                  <Label htmlFor="name">اسم الحاجة</Label>
-                  <Input id="name" value={name} onChange={e => setName(e.target.value)} placeholder="مثال: كنبة" />
-                  {errors.name && <p className="text-sm font-medium text-destructive">{errors.name}</p>}
+                <div className="flex gap-4">
+                    <div className="flex-1">
+                      <Label htmlFor="name">اسم الحاجة</Label>
+                      <Input id="name" value={name} onChange={e => setName(e.target.value)} placeholder="مثال: كنبة" />
+                      {errors.name && <p className="text-sm font-medium text-destructive">{errors.name}</p>}
+                    </div>
+                    <div className="w-24">
+                      <Label htmlFor="quantity">العدد</Label>
+                      <Input id="quantity" type="number" min="1" value={quantity} onChange={e => setQuantity(Number(e.target.value))} />
+                      {errors.quantity && <p className="text-sm font-medium text-destructive">{errors.quantity}</p>}
+                    </div>
                 </div>
                 
                 <div>
@@ -107,12 +117,12 @@ export function AddItemDialog({ open, onOpenChange, onItemAdded, categories }: A
 
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <Label htmlFor='minPrice'>أقل سعر متوقع</Label>
+                    <Label htmlFor='minPrice'>أقل سعر (للقطعة)</Label>
                     <Input id='minPrice' type="number" value={minPrice} onChange={e => setMinPrice(Number(e.target.value))} />
                     {errors.minPrice && <p className="text-sm font-medium text-destructive">{errors.minPrice}</p>}
                   </div>
                   <div>
-                    <Label htmlFor='maxPrice'>أقصى سعر متوقع</Label>
+                    <Label htmlFor='maxPrice'>أقصى سعر (للقطعة)</Label>
                     <Input id='maxPrice' type="number" value={maxPrice} onChange={e => setMaxPrice(Number(e.target.value))} />
                     {errors.maxPrice && <p className="text-sm font-medium text-destructive">{errors.maxPrice}</p>}
                   </div>

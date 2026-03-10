@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useMemo, useState } from 'react';
@@ -69,8 +70,10 @@ export function FeaturedAnalyses() {
             });
 
             const relevantItems = items.filter(item => allRelevantCategoryIds.has(item.categoryId));
-            const totalCount = relevantItems.length;
-            const purchasedCount = relevantItems.filter(i => i.isPurchased).length;
+            
+            // Stats accounting for quantity
+            const totalCount = relevantItems.reduce((sum, item) => sum + (item.quantity || 1), 0);
+            const purchasedCount = relevantItems.filter(i => i.isPurchased).reduce((sum, item) => sum + (item.quantity || 1), 0);
 
             return {
                 id: saved.id,

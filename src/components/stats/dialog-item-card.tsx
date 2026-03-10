@@ -1,3 +1,4 @@
+
 'use client';
 
 import type { ChecklistItem } from '@/lib/types';
@@ -11,6 +12,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { CheckCircle2, MoreVertical, Pencil, Trash2 } from 'lucide-react';
+import { Badge } from '../ui/badge';
 
 const formatPrice = (price: number) => {
   return new Intl.NumberFormat('ar-EG', {
@@ -31,6 +33,7 @@ export function DialogItemCard({
   onEdit,
   onDelete,
 }: DialogItemCardProps) {
+  const qty = item.quantity || 1;
   return (
     <Card
       className={cn(
@@ -72,20 +75,25 @@ export function DialogItemCard({
           <CheckCircle2 className="w-5 h-5 text-green-600 dark:text-green-500 absolute top-3 right-3" />
         )}
         <div
-          className="h-full flex items-center justify-center pt-5 cursor-pointer"
+          className="h-full flex flex-col items-center justify-center pt-5 cursor-pointer"
           onClick={() => onEdit(item)}
         >
-          <p className="font-bold text-sm text-center truncate">{item.name}</p>
+          <p className="font-bold text-sm text-center truncate w-full">{item.name}</p>
+          {qty > 1 && (
+            <Badge variant="outline" className="mt-1 text-[10px] h-4 px-1 border-primary/20 text-primary scale-90">
+                ×{qty}
+            </Badge>
+          )}
         </div>
       </CardContent>
       <CardFooter
         className="bg-card-foreground/5 dark:bg-card-foreground/10 p-2 text-xs text-muted-foreground cursor-pointer"
         onClick={() => onEdit(item)}
       >
-        <p className="truncate">
+        <p className="truncate w-full text-center">
           {item.isPurchased
-            ? `تم: ${formatPrice(item.finalPrice ?? 0)}`
-            : `~ ${formatPrice((item.minPrice + item.maxPrice) / 2)}`}
+            ? `إجمالي: ${formatPrice(item.finalPrice ?? 0)}`
+            : `~ ${formatPrice(((item.minPrice + item.maxPrice) / 2) * qty)}`}
         </p>
       </CardFooter>
     </Card>

@@ -5,7 +5,7 @@ import type { ChecklistItem, Priority } from '@/lib/types';
 import { cn } from '@/lib/utils';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Button } from '@/components/ui/button';
-import { Trash2, Pencil, AlertTriangle, Star, MinusCircle, Info, Search } from 'lucide-react';
+import { Trash2, Pencil, AlertTriangle, Star, MinusCircle, Search } from 'lucide-react';
 import { Badge } from '../ui/badge';
 import {
   DropdownMenu,
@@ -35,6 +35,7 @@ export function ItemCard({ item, onToggle, onDelete, onEdit, onPriorityChange, o
   };
 
   const currentPriority = priorityConfig[item.priority || 'important'];
+  const qty = item.quantity || 1;
 
   return (
     <div
@@ -52,15 +53,22 @@ export function ItemCard({ item, onToggle, onDelete, onEdit, onPriorityChange, o
             className="h-5 w-5 rounded"
         />
         <div className="flex-1 grid gap-1">
-            <label
-            htmlFor={`item-${item.id}`}
-            className={cn(
-                'font-medium text-base cursor-pointer transition-all',
-                item.isPurchased && 'line-through text-muted-foreground'
-            )}
-            >
-            {item.name}
-            </label>
+            <div className="flex items-center gap-2">
+                <label
+                htmlFor={`item-${item.id}`}
+                className={cn(
+                    'font-medium text-base cursor-pointer transition-all',
+                    item.isPurchased && 'line-through text-muted-foreground'
+                )}
+                >
+                {item.name}
+                </label>
+                {qty > 1 && (
+                    <Badge variant="outline" className="text-[10px] h-5 px-1.5 py-0 border-primary/30 text-primary">
+                        ×{qty}
+                    </Badge>
+                )}
+            </div>
             {item.isPurchased && typeof item.finalPrice === 'number' ? (
                 <p className="text-sm text-primary font-bold">
                     جبناها بكام: {formatPrice(item.finalPrice)}
@@ -68,7 +76,8 @@ export function ItemCard({ item, onToggle, onDelete, onEdit, onPriorityChange, o
             ) : (
                 <div className="space-y-1">
                     <p className={cn("text-sm text-muted-foreground", item.isPurchased && 'line-through')}>
-                        السعر المتوقع: {formatPrice(item.minPrice)} - {formatPrice(item.maxPrice)}
+                        المتوقع: {formatPrice(item.minPrice * qty)} - {formatPrice(item.maxPrice * qty)}
+                        {qty > 1 && <span className="text-[10px] mr-1">({formatPrice((item.minPrice + item.maxPrice) / 2)} للواحدة)</span>}
                     </p>
                     {item.suggestedModel && (
                         <button 
