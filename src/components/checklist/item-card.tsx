@@ -5,7 +5,7 @@ import type { ChecklistItem, Priority } from '@/lib/types';
 import { cn } from '@/lib/utils';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Button } from '@/components/ui/button';
-import { Trash2, Pencil, AlertTriangle, Star, MinusCircle, Search } from 'lucide-react';
+import { Trash2, Pencil, AlertTriangle, Star, MinusCircle, Search, MoreHorizontal } from 'lucide-react';
 import { Badge } from '../ui/badge';
 import {
   DropdownMenu,
@@ -40,62 +40,65 @@ export function ItemCard({ item, onToggle, onDelete, onEdit, onPriorityChange, o
   return (
     <div
       className={cn(
-        'p-3 flex flex-col gap-2 transition-colors duration-200 rounded-lg border border-transparent hover:bg-accent group',
+        'p-3 sm:p-4 flex flex-col gap-3 transition-colors duration-200 rounded-lg border border-border/50 hover:bg-accent/30 group',
         item.isPurchased && 'bg-accent/50'
       )}
     >
-      <div className="flex items-center gap-2">
+      <div className="flex items-start gap-3">
         <Checkbox
             id={`item-${item.id}`}
             checked={item.isPurchased}
             onCheckedChange={onToggle}
             aria-label={`نعلم على ${item.name} انها اتجابت`}
-            className="h-5 w-5 rounded"
+            className="h-5 w-5 rounded mt-1 shrink-0"
         />
-        <div className="flex-1 grid gap-1">
-            <div className="flex items-center gap-2">
+        
+        <div className="flex-1 min-w-0">
+            <div className="flex flex-wrap items-center gap-x-2 gap-y-1 mb-1">
                 <label
                 htmlFor={`item-${item.id}`}
                 className={cn(
-                    'font-medium text-base cursor-pointer transition-all',
+                    'font-bold text-base sm:text-lg cursor-pointer transition-all truncate',
                     item.isPurchased && 'line-through text-muted-foreground'
                 )}
                 >
                 {item.name}
                 </label>
                 {qty > 1 && (
-                    <Badge variant="outline" className="text-[10px] h-5 px-1.5 py-0 border-primary/30 text-primary">
+                    <Badge variant="outline" className="text-[10px] h-5 px-1.5 py-0 border-primary/30 text-primary shrink-0">
                         ×{qty}
                     </Badge>
                 )}
+                {item.isPurchased && (
+                    <Badge variant="secondary" className="bg-green-100 text-green-800 border-green-200 dark:bg-green-900/50 dark:text-green-300 dark:border-green-800/50 text-[10px] h-5">جبناها</Badge>
+                )}
             </div>
+
             {item.isPurchased && typeof item.finalPrice === 'number' ? (
                 <p className="text-sm text-primary font-bold">
                     جبناها بكام: {formatPrice(item.finalPrice)}
                 </p>
             ) : (
-                <div className="space-y-1">
-                    <p className={cn("text-sm text-muted-foreground", item.isPurchased && 'line-through')}>
+                <div className="space-y-2">
+                    <p className={cn("text-xs sm:text-sm text-muted-foreground", item.isPurchased && 'line-through')}>
                         المتوقع: {formatPrice(item.minPrice * qty)} - {formatPrice(item.maxPrice * qty)}
-                        {qty > 1 && <span className="text-[10px] mr-1">({formatPrice((item.minPrice + item.maxPrice) / 2)} للواحدة)</span>}
+                        {qty > 1 && <span className="text-[10px] mr-1 block sm:inline text-muted-foreground/70">({formatPrice((item.minPrice + item.maxPrice) / 2)} للواحدة)</span>}
                     </p>
                     {item.suggestedModel && (
                         <button 
                           onClick={() => onComparePrice?.(item.suggestedModel!)}
-                          className="flex items-center gap-1.5 text-[10px] sm:text-xs text-primary bg-primary/5 hover:bg-primary/10 w-fit px-2 py-0.5 rounded-md border border-primary/10 transition-colors"
+                          className="flex items-center gap-1.5 text-[10px] sm:text-xs text-primary bg-primary/5 hover:bg-primary/10 w-fit px-2 py-1 rounded-md border border-primary/10 transition-colors text-right"
                         >
-                            <Search className="h-3 w-3" />
-                            <span className="font-medium">الموديل المقترح: {item.suggestedModel}</span>
+                            <Search className="h-3 w-3 shrink-0" />
+                            <span className="font-medium truncate">الموديل المقترح: {item.suggestedModel}</span>
                         </button>
                     )}
                 </div>
             )}
         </div>
-        {item.isPurchased && (
-            <Badge variant="secondary" className="bg-green-100 text-green-800 border-green-200 dark:bg-green-900/50 dark:text-green-300 dark:border-green-800/50">جبناها</Badge>
-        )}
-        
-        <div className="flex items-center gap-0 opacity-0 group-hover:opacity-100 transition-opacity">
+
+        {/* Desktop Actions */}
+        <div className="hidden sm:flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
             <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                     <Button
@@ -140,6 +143,47 @@ export function ItemCard({ item, onToggle, onDelete, onEdit, onPriorityChange, o
             >
                 <Trash2 className="h-4 w-4" />
             </Button>
+        </div>
+
+        {/* Mobile Actions Button */}
+        <div className="sm:hidden shrink-0">
+            <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                    <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full">
+                        <MoreHorizontal className="h-5 w-5 text-muted-foreground" />
+                    </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-48">
+                    <DropdownMenuItem onSelect={onEdit}>
+                        <Pencil className="ml-2 h-4 w-4" />
+                        نعدّل
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onSelect={() => {}} className="p-0">
+                         <DropdownMenu>
+                            <DropdownMenuTrigger className="flex w-full items-center px-2 py-1.5 text-sm outline-none transition-colors hover:bg-accent focus:bg-accent">
+                                <currentPriority.Icon className={cn("ml-2 h-4 w-4", currentPriority.className)} />
+                                <span>الأولوية: {currentPriority.label}</span>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent side="left" align="start">
+                                {Object.keys(priorityConfig).map((p) => {
+                                    const priority = p as Priority;
+                                    const config = priorityConfig[priority];
+                                    return (
+                                        <DropdownMenuItem key={priority} onSelect={() => onPriorityChange(priority)}>
+                                            <config.Icon className={cn("ml-2 h-4 w-4", config.className)} />
+                                            <span>{config.label}</span>
+                                        </DropdownMenuItem>
+                                    );
+                                })}
+                            </DropdownMenuContent>
+                        </DropdownMenu>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onSelect={onDelete} className="text-destructive focus:text-destructive">
+                        <Trash2 className="ml-2 h-4 w-4" />
+                        نمسح
+                    </DropdownMenuItem>
+                </DropdownMenuContent>
+            </DropdownMenu>
         </div>
       </div>
     </div>
