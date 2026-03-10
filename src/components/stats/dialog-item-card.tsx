@@ -1,4 +1,3 @@
-
 'use client';
 
 import type { ChecklistItem } from '@/lib/types';
@@ -11,7 +10,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { CheckCircle2, MoreVertical, Pencil, Trash2 } from 'lucide-react';
+import { CheckCircle2, MoreVertical, Pencil, Trash2, Search } from 'lucide-react';
 import { Badge } from '../ui/badge';
 
 const formatPrice = (price: number) => {
@@ -26,23 +25,25 @@ interface DialogItemCardProps {
   item: ChecklistItem;
   onEdit: (item: ChecklistItem) => void;
   onDelete: (item: ChecklistItem) => void;
+  onComparePrice?: (model: string) => void;
 }
 
 export function DialogItemCard({
   item,
   onEdit,
   onDelete,
+  onComparePrice,
 }: DialogItemCardProps) {
   const qty = item.quantity || 1;
   return (
     <Card
       className={cn(
-        'overflow-hidden transition-all group',
+        'overflow-hidden transition-all group relative',
         item.isPurchased &&
           'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800'
       )}
     >
-      <CardContent className="p-3 relative">
+      <CardContent className="p-3">
         <div className="absolute top-1 left-1 z-10">
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
@@ -72,27 +73,45 @@ export function DialogItemCard({
         </div>
 
         {item.isPurchased && (
-          <CheckCircle2 className="w-5 h-5 text-green-600 dark:text-green-500 absolute top-3 right-3" />
+          <CheckCircle2 className="w-4 h-4 text-green-600 dark:text-green-500 absolute top-2 right-2" />
         )}
-        <div
-          className="h-full flex flex-col items-center justify-center pt-5 cursor-pointer"
-          onClick={() => onEdit(item)}
-        >
-          <p className="font-bold text-sm text-center truncate w-full">{item.name}</p>
-          {qty > 1 && (
-            <Badge variant="outline" className="mt-1 text-[10px] h-4 px-1 border-primary/20 text-primary scale-90">
-                ×{qty}
-            </Badge>
+        
+        <div className="flex flex-col items-center justify-center pt-2 gap-1 text-center">
+          <p className="font-bold text-xs sm:text-sm truncate w-full px-2" title={item.name}>
+            {item.name}
+          </p>
+          
+          <div className="flex items-center justify-center gap-1 flex-wrap">
+            {qty > 1 && (
+                <Badge variant="outline" className="text-[9px] h-3.5 px-1 border-primary/20 text-primary">
+                    ×{qty}
+                </Badge>
+            )}
+            {item.isPurchased && (
+                <Badge variant="secondary" className="bg-green-100 text-green-800 text-[9px] h-3.5 px-1">تم</Badge>
+            )}
+          </div>
+
+          {item.suggestedModel && onComparePrice && (
+            <button 
+              onClick={(e) => {
+                e.stopPropagation();
+                onComparePrice(item.suggestedModel!);
+              }}
+              className="mt-1 flex items-center gap-1 text-[10px] text-primary hover:text-primary/80 transition-colors bg-primary/5 px-1.5 py-0.5 rounded border border-primary/10 w-full max-w-[90%] justify-center"
+            >
+                <Search className="h-2.5 w-2.5 shrink-0" />
+                <span className="truncate">{item.suggestedModel}</span>
+            </button>
           )}
         </div>
       </CardContent>
       <CardFooter
-        className="bg-card-foreground/5 dark:bg-card-foreground/10 p-2 text-xs text-muted-foreground cursor-pointer"
-        onClick={() => onEdit(item)}
+        className="bg-card-foreground/5 dark:bg-card-foreground/10 p-2 text-[10px] text-muted-foreground justify-center"
       >
-        <p className="truncate w-full text-center">
+        <p className="truncate w-full text-center font-medium">
           {item.isPurchased
-            ? `إجمالي: ${formatPrice(item.finalPrice ?? 0)}`
+            ? `المدفوع: ${formatPrice(item.finalPrice ?? 0)}`
             : `~ ${formatPrice(((item.minPrice + item.maxPrice) / 2) * qty)}`}
         </p>
       </CardFooter>

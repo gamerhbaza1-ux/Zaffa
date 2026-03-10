@@ -8,6 +8,7 @@ import { useToast } from '@/hooks/use-toast';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
 import { EditItemDialog } from '@/components/checklist/edit-item-dialog';
+import { PriceComparisonDialog } from '@/components/checklist/price-comparison-dialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -16,6 +17,7 @@ import { DialogItemCard } from './dialog-item-card';
 export function InteractiveItemsGrid({ items, categories }: { items: ChecklistItem[], categories: Category[] }) {
     const [itemToEdit, setItemToEdit] = useState<ChecklistItem | null>(null);
     const [itemToDelete, setItemToDelete] = useState<ChecklistItem | null>(null);
+    const [modelToCompare, setModelToCompare] = useState<string | null>(null);
 
     const { userProfile, household } = useUser();
     const firestore = useFirestore();
@@ -155,13 +157,13 @@ export function InteractiveItemsGrid({ items, categories }: { items: ChecklistIt
                     <ScrollArea className="flex-1 mt-4">
                         <TabsContent value="all" className="mt-0">
                             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 p-1">
-                                {items.map(item => <DialogItemCard key={item.id} item={item} onEdit={setItemToEdit} onDelete={setItemToDelete} />)}
+                                {items.map(item => <DialogItemCard key={item.id} item={item} onEdit={setItemToEdit} onDelete={setItemToDelete} onComparePrice={setModelToCompare} />)}
                             </div>
                         </TabsContent>
                         {sections.map(section => (
                             <TabsContent key={section.id} value={section.id} className="mt-0">
                                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 p-1">
-                                    {itemsBySection[section.id].map(item => <DialogItemCard key={item.id} item={item} onEdit={setItemToEdit} onDelete={setItemToDelete} />)}
+                                    {itemsBySection[section.id].map(item => <DialogItemCard key={item.id} item={item} onEdit={setItemToEdit} onDelete={setItemToDelete} onComparePrice={setModelToCompare} />)}
                                 </div>
                             </TabsContent>
                         ))}
@@ -177,6 +179,10 @@ export function InteractiveItemsGrid({ items, categories }: { items: ChecklistIt
                 categories={categories}
                 onOpenChange={(open) => !open && setItemToEdit(null)}
                 onItemUpdated={handleUpdateItem}
+            />
+            <PriceComparisonDialog
+                productName={modelToCompare}
+                onOpenChange={(open) => !open && setModelToCompare(null)}
             />
             <AlertDialog open={!!itemToDelete} onOpenChange={(open) => !open && setItemToDelete(null)}>
               <AlertDialogContent>
