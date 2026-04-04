@@ -1,4 +1,3 @@
-
 'use server';
 
 /**
@@ -41,6 +40,11 @@ export async function findProductPrices(productName: string): Promise<MarketPric
       name: 'بي تك',
       url: `https://btech.com/ar/catalogsearch/result/?q=${query}`,
       logo: 'https://upload.wikimedia.org/wikipedia/commons/b/b6/B.TECH_logo.png'
+    },
+    {
+      name: 'كايرو سيلز',
+      url: `https://www.cairosales.com/ar/catalogsearch/result/?q=${query}`,
+      logo: 'https://www.cairosales.com/media/logo/stores/1/Cairo_Sales_Logo.png'
     },
     {
       name: 'راية شوب',
