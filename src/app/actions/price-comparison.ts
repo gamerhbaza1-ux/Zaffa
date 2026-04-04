@@ -14,8 +14,10 @@ export type MarketPrice = {
 };
 
 export async function findProductPrices(productName: string): Promise<MarketPrice[]> {
-  // نقوم بتنظيف اسم المنتج للبحث
+  // تنظيف اسم المنتج وتجهيزه للروابط
   const query = encodeURIComponent(productName);
+  // بعض المتاجر تفضل استخدام علامة + بدلاً من %20 في روابط البحث
+  const queryWithPlus = encodeURIComponent(productName).replace(/%20/g, '+');
 
   // قائمة المتاجر المصرية وروابط البحث الخاصة بها مع شعارات مستقرة
   const stores = [
@@ -43,7 +45,7 @@ export async function findProductPrices(productName: string): Promise<MarketPric
     },
     {
       name: 'كايرو سيلز',
-      url: `https://www.cairosales.com/ar/catalogsearch/result/?q=${query}`,
+      url: `https://cairosales.com/en/find?search_query=${queryWithPlus}`,
       logo: 'https://www.cairosales.com/media/logo/stores/1/Cairo_Sales_Logo.png'
     },
     {
