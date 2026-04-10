@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useMemo, useCallback, useEffect } from 'react';
@@ -86,7 +87,7 @@ export default function ChecklistClient() {
     const [categoryToDelete, setCategoryToDelete] = useState<Category | null>(null);
     const [modelToCompare, setModelToCompare] = useState<string | null>(null);
 
-    // Fix for mobile unresponsiveness after dialog close (common Radix/Shadcn issue)
+    // Fix for mobile unresponsiveness
     useEffect(() => {
         const anyOpen = isAddDialogOpen || isImportDialogOpen || isAddSectionDialogOpen || 
                         isAddCategoryDialogOpen || !!itemToPurchase || !!itemToUnpurchase || 
@@ -94,7 +95,6 @@ export default function ChecklistClient() {
                         !!categoryToDelete || !!modelToCompare;
         
         if (!anyOpen) {
-            // Force reset body styles that Radix might leave behind on mobile browsers
             const timer = setTimeout(() => {
                 document.body.style.pointerEvents = '';
                 document.body.style.overflow = '';
@@ -272,26 +272,51 @@ export default function ChecklistClient() {
         return true;
     }
 
-    const handleDeleteCategory = () => {
-        if (!categoryToDelete || !categoriesRef) return;
-        const hasChildren = categories.some(c => c.parentId === categoryToDelete.id);
-        if(hasChildren) {
-            toast({ variant: 'destructive', title: 'خطأ', description: 'مينفعش نمسحها عشان جواها فئات تانية.' });
-            setCategoryToDelete(null); return;
-        }
-        const hasItems = items.some(i => i.categoryId === categoryToDelete.id);
-        if(hasItems) {
-            toast({ variant: 'destructive', title: 'خطأ', description: 'مينفعش نمسحها عشان جواها حاجات.' });
-            setCategoryToDelete(null); return;
-        }
+    const handleDeleteCategory = async () => {
+        if (!categoryToDelete || !categoriesRef || !itemsRef || !firestore) return;
+
+        const categoryId = categoryToDelete.id;
         const categoryName = categoryToDelete.name;
-        const catDocRef = doc(categoriesRef, categoryToDelete.id);
-        deleteDoc(catDocRef)
-            .then(() => {
-                toast({ title: 'اتمسحت', description: `مسحنا "${categoryName}".` })
-                logActivity('delete_category', `حذف القسم/الفئة "${categoryName}"`);
-            })
-            .catch(() => errorEmitter.emit('permission-error', new FirestorePermissionError({ path: catDocRef.path, operation: 'delete' })));
+
+        // Recursive function to get all descendant category IDs
+        const getAllDescendantIds = (parentId: string): string[] => {
+            let ids = [parentId];
+            const children = categories.filter(c => c.parentId === parentId);
+            children.forEach(child => {
+                ids = [...ids, ...getAllDescendantIds(child.id)];
+            });
+            return ids;
+        };
+
+        const allCategoryIdsToDelete = getAllDescendantIds(categoryId);
+        const itemsToDeleteInBatch = items.filter(item => allCategoryIdsToDelete.includes(item.categoryId));
+
+        const batch = writeBatch(firestore);
+
+        // Delete all categories
+        allCategoryIdsToDelete.forEach(id => {
+            batch.delete(doc(categoriesRef, id));
+        });
+
+        // Delete all items
+        itemsToDeleteInBatch.forEach(item => {
+            batch.delete(doc(itemsRef, item.id));
+        });
+
+        try {
+            await batch.commit();
+            toast({ 
+                title: 'تم الحذف بنجاح', 
+                description: `مسحنا "${categoryName}" وكل اللي جواها (${itemsToDeleteInBatch.length} حاجة).` 
+            });
+            logActivity('delete_category', `حذف القسم/الفئة "${categoryName}" وكل محتوياتها`);
+        } catch (error) {
+            errorEmitter.emit('permission-error', new FirestorePermissionError({ 
+                path: `batch delete for category ${categoryId}`, 
+                operation: 'delete' 
+            }));
+        }
+
         setCategoryToDelete(null);
     };
 
@@ -768,7 +793,7 @@ export default function ChecklistClient() {
               <AlertDialogHeader>
                 <AlertDialogTitle>متأكدين اننا هنمسح؟</AlertDialogTitle>
                 <AlertDialogDescription>
-                  القسم ده "{categoryToDelete?.name}" هيتمسح ومش هنعرف نرجعه تاني.
+                  القسم ده "{categoryToDelete?.name}" هيتمسح هو وكل الفئات والحاجات اللي جواه نهائياً.
                 </AlertDialogDescription>
               </AlertDialogHeader>
               <AlertDialogFooter>
@@ -777,7 +802,7 @@ export default function ChecklistClient() {
                   onClick={handleDeleteCategory}
                   className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                 >
-                  أه، نمسح
+                  أه، نمسح كله
                 </AlertDialogAction>
               </AlertDialogFooter>
             </AlertDialogContent>
@@ -807,7 +832,7 @@ export default function ChecklistClient() {
               <AlertDialogHeader>
                 <AlertDialogTitle>متأكدين اننا هنمسح؟</AlertDialogTitle>
                 <AlertDialogDescription>
-                  الحاجة دي "{itemToDelete?.name}" هتتمسح خالص ومش هنعرف نرجعها تاني.
+                  الحاجة دي "{itemToDelete?.name}" هتتمسح خالص ومش هنعرف نرجعه تاني.
                 </AlertDialogDescription>
               </AlertDialogHeader>
               <AlertDialogFooter>
