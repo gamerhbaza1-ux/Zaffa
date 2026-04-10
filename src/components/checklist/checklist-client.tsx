@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useMemo, useCallback, useEffect } from 'react';
@@ -86,24 +85,6 @@ export default function ChecklistClient() {
     const [categoryToEdit, setCategoryToEdit] = useState<Category | null>(null);
     const [categoryToDelete, setCategoryToDelete] = useState<Category | null>(null);
     const [modelToCompare, setModelToCompare] = useState<string | null>(null);
-
-    // Fix for mobile unresponsiveness
-    useEffect(() => {
-        const anyOpen = isAddDialogOpen || isImportDialogOpen || isAddSectionDialogOpen || 
-                        isAddCategoryDialogOpen || !!itemToPurchase || !!itemToUnpurchase || 
-                        !!itemToDelete || !!itemToEdit || !!categoryToEdit || 
-                        !!categoryToDelete || !!modelToCompare;
-        
-        if (!anyOpen) {
-            const timer = setTimeout(() => {
-                document.body.style.pointerEvents = '';
-                document.body.style.overflow = '';
-            }, 100);
-            return () => clearTimeout(timer);
-        }
-    }, [isAddDialogOpen, isImportDialogOpen, isAddSectionDialogOpen, isAddCategoryDialogOpen, 
-        itemToPurchase, itemToUnpurchase, itemToDelete, itemToEdit, categoryToEdit, 
-        categoryToDelete, modelToCompare]);
     
     const getCategoryHierarchy = useCallback((categoryId: string): string => {
         const category = categoriesById.get(categoryId);
@@ -799,7 +780,7 @@ export default function ChecklistClient() {
               <AlertDialogFooter>
                 <AlertDialogCancel>لأ، نرجع</AlertDialogCancel>
                 <AlertDialogAction
-                  onClick={handleDeleteCategory}
+                  onClick={(e) => { e.preventDefault(); handleDeleteCategory(); }}
                   className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                 >
                   أه، نمسح كله
@@ -819,7 +800,7 @@ export default function ChecklistClient() {
               <AlertDialogFooter>
                 <AlertDialogCancel>لأ، نرجع</AlertDialogCancel>
                 <AlertDialogAction
-                  onClick={handleUnpurchaseConfirm}
+                  onClick={(e) => { e.preventDefault(); handleUnpurchaseConfirm(); }}
                 >
                   تمام، نرجعها
                 </AlertDialogAction>
@@ -838,7 +819,7 @@ export default function ChecklistClient() {
               <AlertDialogFooter>
                 <AlertDialogCancel>لأ، نرجع</AlertDialogCancel>
                 <AlertDialogAction
-                  onClick={handleDeleteItemConfirm}
+                  onClick={(e) => { e.preventDefault(); handleDeleteItemConfirm(); }}
                   className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                 >
                   أه، نمسح

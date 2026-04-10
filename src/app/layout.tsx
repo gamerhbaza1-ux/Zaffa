@@ -4,6 +4,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { cn } from '@/lib/utils';
 import { FirebaseClientProvider } from '@/firebase';
 import { ThemeProvider } from '@/context/theme-context';
+import { PointerLockFixer } from '@/components/PointerLockFixer';
 
 export const metadata: Metadata = {
   title: 'زفة',
@@ -25,6 +26,7 @@ export default function RootLayout({
       <body className={cn("font-body antialiased", "min-h-screen bg-background")}>
         <FirebaseClientProvider>
           <ThemeProvider>
+            <PointerLockFixer />
             {children}
           </ThemeProvider>
         </FirebaseClientProvider>
