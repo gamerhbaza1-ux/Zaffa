@@ -1,4 +1,3 @@
-
 "use client";
 
 import type { ChecklistItem, Priority } from '@/lib/types';
@@ -154,11 +153,11 @@ export function ItemCard({ item, onToggle, onDelete, onEdit, onPriorityChange, o
                     </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="w-48">
-                    <DropdownMenuItem onSelect={onEdit}>
+                    <DropdownMenuItem onSelect={(e) => { e.preventDefault(); onEdit(); }}>
                         <Pencil className="ml-2 h-4 w-4" />
                         نعدّل
                     </DropdownMenuItem>
-                    <DropdownMenuItem onSelect={() => {}} className="p-0">
+                    <DropdownMenuItem onSelect={(e) => { e.preventDefault(); }} className="p-0">
                          <DropdownMenu>
                             <DropdownMenuTrigger className="flex w-full items-center px-2 py-1.5 text-sm outline-none transition-colors hover:bg-accent focus:bg-accent">
                                 <currentPriority.Icon className={cn("ml-2 h-4 w-4", currentPriority.className)} />
@@ -169,7 +168,7 @@ export function ItemCard({ item, onToggle, onDelete, onEdit, onPriorityChange, o
                                     const priority = p as Priority;
                                     const config = priorityConfig[priority];
                                     return (
-                                        <DropdownMenuItem key={priority} onSelect={() => onPriorityChange(priority)}>
+                                        <DropdownMenuItem key={priority} onSelect={(e) => { e.preventDefault(); onPriorityChange(priority); }}>
                                             <config.Icon className={cn("ml-2 h-4 w-4", config.className)} />
                                             <span>{config.label}</span>
                                         </DropdownMenuItem>
@@ -178,7 +177,7 @@ export function ItemCard({ item, onToggle, onDelete, onEdit, onPriorityChange, o
                             </DropdownMenuContent>
                         </DropdownMenu>
                     </DropdownMenuItem>
-                    <DropdownMenuItem onSelect={onDelete} className="text-destructive focus:text-destructive">
+                    <DropdownMenuItem onSelect={(e) => { e.preventDefault(); onDelete(); }} className="text-destructive focus:text-destructive">
                         <Trash2 className="ml-2 h-4 w-4" />
                         نمسح
                     </DropdownMenuItem>

@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useMemo, useEffect, useState, useCallback } from 'react';
@@ -124,6 +123,18 @@ export default function StatsPage() {
   const [isAnalysisDialogOpen, setAnalysisDialogOpen] = useState(false);
   const [itemsToShow, setItemsToShow] = useState<{title: string, items: ChecklistItem[]} | null>(null);
   const [editingAnalysis, setEditingAnalysis] = useState<Analysis | null>(null);
+
+  // Fix for mobile unresponsiveness
+  useEffect(() => {
+    const anyOpen = isAnalysisDialogOpen || !!itemsToShow || !!editingAnalysis;
+    if (!anyOpen) {
+        const timer = setTimeout(() => {
+            document.body.style.pointerEvents = '';
+            document.body.style.overflow = '';
+        }, 100);
+        return () => clearTimeout(timer);
+    }
+  }, [isAnalysisDialogOpen, itemsToShow, editingAnalysis]);
 
   useEffect(() => {
     if (!isUserLoading && !user) {

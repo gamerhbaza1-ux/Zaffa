@@ -1,7 +1,6 @@
-
 "use client";
 
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback, useEffect } from 'react';
 import type { ChecklistItem, Category, Priority } from '@/lib/types';
 import { useUser } from '@/hooks/use-user';
 import { useCollection, useFirestore } from '@/firebase';
@@ -86,6 +85,25 @@ export default function ChecklistClient() {
     const [categoryToEdit, setCategoryToEdit] = useState<Category | null>(null);
     const [categoryToDelete, setCategoryToDelete] = useState<Category | null>(null);
     const [modelToCompare, setModelToCompare] = useState<string | null>(null);
+
+    // Fix for mobile unresponsiveness after dialog close (common Radix/Shadcn issue)
+    useEffect(() => {
+        const anyOpen = isAddDialogOpen || isImportDialogOpen || isAddSectionDialogOpen || 
+                        isAddCategoryDialogOpen || !!itemToPurchase || !!itemToUnpurchase || 
+                        !!itemToDelete || !!itemToEdit || !!categoryToEdit || 
+                        !!categoryToDelete || !!modelToCompare;
+        
+        if (!anyOpen) {
+            // Force reset body styles that Radix might leave behind on mobile browsers
+            const timer = setTimeout(() => {
+                document.body.style.pointerEvents = '';
+                document.body.style.overflow = '';
+            }, 100);
+            return () => clearTimeout(timer);
+        }
+    }, [isAddDialogOpen, isImportDialogOpen, isAddSectionDialogOpen, isAddCategoryDialogOpen, 
+        itemToPurchase, itemToUnpurchase, itemToDelete, itemToEdit, categoryToEdit, 
+        categoryToDelete, modelToCompare]);
     
     const getCategoryHierarchy = useCallback((categoryId: string): string => {
         const category = categoriesById.get(categoryId);
@@ -592,11 +610,11 @@ export default function ChecklistClient() {
                                             </Button>
                                         </DropdownMenuTrigger>
                                         <DropdownMenuContent align="end">
-                                            <DropdownMenuItem onSelect={() => setCategoryToEdit(category)}>
+                                            <DropdownMenuItem onSelect={(e) => { e.preventDefault(); setCategoryToEdit(category); }}>
                                                 <Pencil className="ml-2 h-4 w-4" />
                                                 <span>نعدّل</span>
                                             </DropdownMenuItem>
-                                            <DropdownMenuItem onSelect={() => setCategoryToDelete(category)} className="text-destructive focus:text-destructive">
+                                            <DropdownMenuItem onSelect={(e) => { e.preventDefault(); setCategoryToDelete(category); }} className="text-destructive focus:text-destructive">
                                                 <Trash2 className="ml-2 h-4 w-4" />
                                                 <span>نمسح</span>
                                             </DropdownMenuItem>
@@ -654,11 +672,11 @@ export default function ChecklistClient() {
                                             </Button>
                                         </DropdownMenuTrigger>
                                         <DropdownMenuContent align="end">
-                                            <DropdownMenuItem onSelect={() => setCategoryToEdit(topLevelCategory)}>
+                                            <DropdownMenuItem onSelect={(e) => { e.preventDefault(); setCategoryToEdit(topLevelCategory); }}>
                                                 <Pencil className="ml-2 h-4 w-4" />
                                                 <span>نعدّل</span>
                                             </DropdownMenuItem>
-                                            <DropdownMenuItem onSelect={() => setCategoryToDelete(topLevelCategory)} className="text-destructive focus:text-destructive">
+                                            <DropdownMenuItem onSelect={(e) => { e.preventDefault(); setCategoryToDelete(topLevelCategory); }} className="text-destructive focus:text-destructive">
                                                 <Trash2 className="ml-2 h-4 w-4" />
                                                 <span>نمسح</span>
                                             </DropdownMenuItem>

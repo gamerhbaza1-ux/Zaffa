@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -59,20 +58,21 @@ export function PriceComparisonDialog({ productName, onOpenChange }: PriceCompar
             <div className="grid gap-4">
               {prices.map((store, idx) => (
                 <Card key={idx} className="flex items-center justify-between p-4 hover:shadow-md transition-shadow group border-accent/20">
-                  <div className="flex items-center gap-4">
+                  <div className="flex items-center gap-4 w-full sm:w-auto">
                     <div className="relative h-12 w-12 rounded-md border p-1 bg-white flex items-center justify-center overflow-hidden shrink-0">
-                      <img 
-                        src={store.storeLogo} 
-                        alt={store.storeName} 
-                        className="max-h-full max-w-full object-contain"
-                        onError={(e) => {
-                          // إخفاء الصورة في حال فشل تحميلها وإظهار أيقونة بديلة
-                          e.currentTarget.style.display = 'none';
-                          const fallback = e.currentTarget.parentElement?.querySelector('.fallback-icon');
-                          if (fallback) (fallback as HTMLElement).style.display = 'flex';
-                        }}
-                      />
-                      <div className="fallback-icon hidden h-full w-full items-center justify-center bg-accent/10 text-accent-foreground">
+                      {store.storeLogo ? (
+                        <img 
+                          src={store.storeLogo} 
+                          alt={store.storeName} 
+                          className="max-h-full max-w-full object-contain"
+                          onError={(e) => {
+                            e.currentTarget.style.display = 'none';
+                            const fallback = e.currentTarget.parentElement?.querySelector('.fallback-icon');
+                            if (fallback) (fallback as HTMLElement).style.display = 'flex';
+                          }}
+                        />
+                      ) : null}
+                      <div className={cn("fallback-icon h-full w-full items-center justify-center bg-accent/10 text-accent-foreground", store.storeLogo ? "hidden" : "flex")}>
                         <Store className="h-6 w-6 opacity-40" />
                       </div>
                     </div>
@@ -105,3 +105,5 @@ export function PriceComparisonDialog({ productName, onOpenChange }: PriceCompar
     </Dialog>
   );
 }
+
+import { cn } from '@/lib/utils';

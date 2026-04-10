@@ -189,13 +189,13 @@ export function InteractiveItemsGrid({ items, categories }: { items: ChecklistIt
                 <AlertDialogHeader>
                   <AlertDialogTitle>متأكدين اننا هنمسح؟</AlertDialogTitle>
                   <AlertDialogDescription>
-                    الحاجة دي "{itemToDelete?.name}" هتتمسح خالص ومش هنعرف نرجعها تاني.
+                    الحاجة دي "{itemToDelete?.name}" هتتمسح خالص ومش هنعرف نرجعه تاني.
                   </AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter>
                   <AlertDialogCancel>لأ، نرجع</AlertDialogCancel>
                   <AlertDialogAction
-                    onClick={handleDeleteItemConfirm}
+                    onClick={(e) => { e.preventDefault(); handleDeleteItemConfirm(); }}
                     className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                   >
                     أه، نمسح

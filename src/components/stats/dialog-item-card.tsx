@@ -57,12 +57,12 @@ export function DialogItemCard({
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="start">
-              <DropdownMenuItem onSelect={() => onEdit(item)}>
+              <DropdownMenuItem onSelect={(e) => { e.preventDefault(); onEdit(item); }}>
                 <Pencil className="ml-2 h-4 w-4" />
                 <span>تعديل/نقل</span>
               </DropdownMenuItem>
               <DropdownMenuItem
-                onSelect={() => onDelete(item)}
+                onSelect={(e) => { e.preventDefault(); onDelete(item); }}
                 className="text-destructive focus:text-destructive"
               >
                 <Trash2 className="ml-2 h-4 w-4" />
