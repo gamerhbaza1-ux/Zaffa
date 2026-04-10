@@ -4,7 +4,7 @@ import { useState, useMemo, useCallback, useEffect } from 'react';
 import type { ChecklistItem, Category, Priority } from '@/lib/types';
 import { useUser } from '@/hooks/use-user';
 import { useCollection, useFirestore } from '@/firebase';
-import { collection, doc, addDoc, updateDoc, deleteDoc, writeBatch, serverTimestamp } from 'firebase/firestore';
+import { collection, doc, addDoc, updateDoc, deleteDoc, writeBatch, serverTimestamp, deleteField } from 'firebase/firestore';
 
 import { Button } from '@/components/ui/button';
 import { Plus, Upload, ListPlus, MoreVertical, Pencil, Trash2, FolderPlus, Search, Download } from 'lucide-react';
@@ -162,13 +162,19 @@ export default function ChecklistClient() {
         if (!itemToUnpurchase || !itemsRef) return;
         const item = itemToUnpurchase;
         const itemDocRef = doc(itemsRef, item.id);
-        updateDoc(itemDocRef, { isPurchased: false, finalPrice: undefined })
-             .then(() => {
-                toast({ title: "رجعناها القائمة", description: `رجعنا "${item.name}" للحاجات اللي لسه هنجيبها.` });
-                const categoryInfo = getCategoryHierarchy(item.categoryId);
-                logActivity('unpurchase_item', `إلغاء شراء "${item.name}" من ${categoryInfo}`);
-            })
-            .catch(() => errorEmitter.emit('permission-error', new FirestorePermissionError({ path: itemDocRef.path, operation: 'update', requestResourceData: { isPurchased: false } })));
+        
+        // Use deleteField() to properly remove finalPrice and set isPurchased to false
+        updateDoc(itemDocRef, { 
+            isPurchased: false, 
+            finalPrice: deleteField() 
+        })
+        .then(() => {
+            toast({ title: "رجعناها القائمة", description: `رجعنا "${item.name}" للحاجات اللي لسه هنجيبها.` });
+            const categoryInfo = getCategoryHierarchy(item.categoryId);
+            logActivity('unpurchase_item', `إلغاء شراء "${item.name}" من ${categoryInfo}`);
+        })
+        .catch(() => errorEmitter.emit('permission-error', new FirestorePermissionError({ path: itemDocRef.path, operation: 'update', requestResourceData: { isPurchased: false } })));
+        
         setItemToUnpurchase(null);
     };
 
